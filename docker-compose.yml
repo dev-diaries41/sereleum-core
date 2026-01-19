@@ -5,23 +5,25 @@ services:
       - "127.0.0.1:8000:8000"
     volumes:
       - .:/app
-      - shared_data:/data/uploads     
+      - shared_data:/data
     environment:
       - REDIS_HOST=redis
-      - REDIS_PASSWORD=${REDIS_PASSWORD}  # Use an environment variable for the password
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - REVELIUM_BASE_DIR=/data
     depends_on:
       - redis
     restart: unless-stopped
 
   dramatiq_worker:
     build: .
-    command: dramatiq api.tasks --processes 2 --threads 2
+    command: dramatiq api.tasks --processes 1 --threads 1
     volumes:
       - .:/app
-      - shared_data:/data/uploads
+      - shared_data:/data
     environment:
       - REDIS_HOST=redis
       - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - REVELIUM_BASE_DIR=/data
     depends_on:
       - redis
       - revelium
