@@ -1,5 +1,5 @@
 from smartscan.classify import IncrementalClusterer
-from revelium.prompts.prompts_manager import PromptsManager
+from revelium.prompts_manager import PromptsManager
 from revelium.plot import plot_clusters_bytes
 from typing import Optional
 

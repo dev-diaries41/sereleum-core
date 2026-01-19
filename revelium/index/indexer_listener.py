@@ -2,8 +2,8 @@ from smartscan import ItemEmbedding
 from smartscan.processor import ProcessorListener
 from revelium.types import Prompt
 from tqdm import tqdm
-from revelium.prompts.cluster import cluster_prompts
-from revelium.prompts.prompts_manager import PromptsManager
+from revelium.cluster import cluster_prompts
+from revelium.prompts_manager import PromptsManager
 from redis import Redis
 from revelium.types import Status
 

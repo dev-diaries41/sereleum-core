@@ -8,12 +8,12 @@ from dramatiq.brokers.redis import RedisBroker
 
 from revelium.types import Prompt
 from revelium.embeddings.helpers import get_embedding_store
-from revelium.prompts.indexer import PromptIndexer
-from revelium.prompts.indexer_listener import PromptIndexListener
+from revelium.index.indexer import PromptIndexer
+from revelium.index.indexer_listener import PromptIndexListener
 from revelium.providers.llm.openai import OpenAIClient
 from revelium.models.manage import ModelManager
 from revelium.schemas.llm import LLMClientConfig
-from revelium.prompts.prompts_manager import PromptsManager
+from revelium.prompts_manager import PromptsManager
 from revelium.constants.models import OPENAI_API_KEY, DEFAULT_SYSTEM_PROMPT, DEFAULT_OPENAI_MODEL
 from revelium.constants import DEFAULT_CHROMADB_PATH
 

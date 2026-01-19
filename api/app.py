@@ -13,9 +13,9 @@ from api.tasks import index_prompts
 from revelium.constants.models import OPENAI_API_KEY, DEFAULT_SYSTEM_PROMPT, DEFAULT_OPENAI_MODEL
 from revelium.constants import DEFAULT_CHROMADB_PATH, UPLOAD_DIR
 from revelium.constants.api import Routes
-from revelium.prompts.cluster import cluster_prompts, get_cluster_plot
+from revelium.cluster import cluster_prompts, get_cluster_plot
 from revelium.schemas.llm import LLMClientConfig
-from revelium.prompts.prompts_manager import PromptsManager
+from revelium.prompts_manager import PromptsManager
 from revelium.embeddings.helpers import get_embedding_store
 from revelium.providers.llm.openai import OpenAIClient
 from revelium.models.manage import ModelManager

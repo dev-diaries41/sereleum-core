@@ -8,20 +8,20 @@ from dotenv import load_dotenv
 load_dotenv()
 from dataclasses import asdict
 from revelium.types import Prompt
-from revelium.prompts.indexer import PromptIndexer
-from revelium.prompts.indexer_listener import ProgressBarIndexerListener, PromptIndexListenerWithProgressBar
+from revelium.index.indexer import PromptIndexer
+from revelium.index.indexer_listener import ProgressBarIndexerListener, PromptIndexListenerWithProgressBar
 from revelium.data import get_dummy_data, get_placeholder_prompts
-from revelium.prompts.prompts_manager import PromptsManager
+from revelium.prompts_manager import PromptsManager
 from revelium.models.manage import ModelManager
 from revelium.embeddings.helpers import get_embedding_store
 from benchmarks.constants import BENCHMARK_CHROMADB_PATH, BENCHMARK_DIR
 from revelium.constants.api import Routes
 from revelium.constants.models import OPENAI_API_KEY, DEFAULT_SYSTEM_PROMPT, DEFAULT_OPENAI_MODEL
 from revelium.constants import DEFAULT_CHROMADB_PATH
-from revelium.prompts.cluster import cluster_prompts, get_cluster_plot
+from revelium.cluster import cluster_prompts, get_cluster_plot
 from revelium.models.manage import ModelManager
 from revelium.embeddings.helpers import get_embedding_store
-from revelium.prompts.indexer import PromptIndexer
+from revelium.index.indexer import PromptIndexer
 from dotenv import load_dotenv
 
 load_dotenv()

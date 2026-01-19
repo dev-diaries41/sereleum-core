@@ -8,10 +8,10 @@ load_dotenv()
 
 from benchmarks.constants import BENCHMARK_CHROMADB_PATH, BENCHMARK_DIR
 from revelium.constants.models import DEFAULT_SYSTEM_PROMPT, OPENAI_API_KEY, DEFAULT_OPENAI_MODEL
-from revelium.prompts.prompts_manager import PromptsManager
+from revelium.prompts_manager import PromptsManager
 from revelium.providers.llm.openai import OpenAIClient
 from revelium.schemas.llm import LLMClientConfig
-from revelium.prompts.prompts_manager import PromptsManager
+from revelium.prompts_manager import PromptsManager
 from revelium.embeddings.helpers import get_embedding_store
 
 
