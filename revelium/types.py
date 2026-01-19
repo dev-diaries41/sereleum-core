@@ -20,7 +20,7 @@ class PromptsOverviewInfo(BaseModel):
 
 
 # Long running jobs
-FinishedStatus = Literal['completed', 'failed']
+FinishedStatus = Literal['complete', 'failed']
 
 Status = Literal[
     FinishedStatus,
