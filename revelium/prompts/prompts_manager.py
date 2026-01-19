@@ -7,7 +7,7 @@ from smartscan.classify import  calculate_cluster_accuracy
 from smartscan.embeds import EmbeddingStore
 
 from revelium.schemas.api import ClusterNoEmbeddings
-from revelium.prompts.types import Prompt, PromptMetadata, PromptsOverviewInfo
+from revelium.types import Prompt, PromptMetadata, PromptsOverviewInfo
 from revelium.providers.types import TextEmbeddingModel
 from revelium.schemas.llm import LLMClassificationResult
 from revelium.providers.llm.llm_client import LLMClient

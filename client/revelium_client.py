@@ -3,7 +3,7 @@ import httpx
 
 from smartscan import ClusterAccuracy
 from revelium.constants.api import Routes
-from revelium.prompts.types import Prompt, PromptsOverviewInfo
+from revelium.types import Prompt, PromptsOverviewInfo
 from revelium.schemas.api import AddPromptsRequest, GetPromptsRequest, GetClusterRequestParams, ClusterNoEmbeddings, UpdateLabelParams, QueryPromptsRequest, UpdatePromptClusterIdParams
 
 class ReveliumClient:

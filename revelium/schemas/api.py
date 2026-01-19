@@ -3,7 +3,7 @@ from typing import List, Optional, Literal, ClassVar
 
 from smartscan import  ClusterMetadata, ClusterAccuracy
 
-from revelium.prompts.types import Prompt, PromptsOverviewInfo
+from revelium.types import Prompt, PromptsOverviewInfo, Status
 
 # Websocksets / SSE
 class ActiveMessage(BaseModel):
@@ -26,16 +26,6 @@ class CompleteMessage(BaseModel):
     type: Literal["complete"] = "complete"
     total_processed: int
     time_elapsed: float
-
-# Long running jobs
-FinishedStatus = Literal['completed', 'failed']
-
-Status = Literal[
-    FinishedStatus,
-    "active",
-    "delayed",
-    "queued",
-]
 
 class JobReceipt(BaseModel):
   status: Status

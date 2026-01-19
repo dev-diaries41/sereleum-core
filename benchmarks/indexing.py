@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 from dataclasses import asdict
-from revelium.prompts.types import Prompt
+from revelium.types import Prompt
 from revelium.prompts.indexer import PromptIndexer
 from revelium.prompts.indexer_listener import ProgressBarIndexerListener, PromptIndexListenerWithProgressBar
 from revelium.data import get_dummy_data, get_placeholder_prompts

@@ -1,7 +1,7 @@
 import random
 import string
 from placeholder_data import physics_sentences, quantum_mechanics_sentences, btc_analysis, forex_analysis, long_physics_sentences, long_btc_analysis, long_forex_analysis
-from revelium.prompts.types import Prompt
+from revelium.types import Prompt
 from revelium.providers.llm.llm_client import LLMClient
 
 
