@@ -51,14 +51,18 @@ class PromptIndexListener(ProcessorListener[Prompt, ItemEmbedding]):
         self.redis = redis_client
 
     async def on_active(self):
-        self.redis.sadd(self._get_status_key(), 'active')
+        self._update_status('active')
 
     async def on_complete(self, result):
         cluster_prompts(self.prompts_manager)
+        self._update_status('complete')
+        # print(f"Job complete - status: {self.redis.get(self._get_status_key())} | progress: {self.redis.get(self._get_progres_key())}")
 
     async def on_progress(self, progress):
-        self.redis.sadd(self._get_progres_key(), progress)
-        print(f"Progress: {progress} | job_id: {self.job_id}")
+        self.redis.set(self._get_progres_key(), progress, ex=86400)
+
+    async def on_fail(self, result):
+        self._update_status('failed')
 
     def _get_progres_key(self):
         return f"progress_{self.job_id}"
@@ -67,9 +71,4 @@ class PromptIndexListener(ProcessorListener[Prompt, ItemEmbedding]):
         return f"status_{self.job_id}"
     
     def _update_status(self, status: Status ):
-        self.redis.sadd(self._get_status_key(), 'active')
-    
-
-        
-    
-    
+        self.redis.set(self._get_status_key(), status, ex=86400)

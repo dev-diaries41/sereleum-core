@@ -5,17 +5,18 @@ import redis
 
 from dramatiq.middleware import AsyncIO, CurrentMessage
 from dramatiq.brokers.redis import RedisBroker
+
 from revelium.types import Prompt
 from revelium.embeddings.helpers import get_embedding_store
 from revelium.prompts.indexer import PromptIndexer
 from revelium.prompts.indexer_listener import PromptIndexListener
 from revelium.providers.llm.openai import OpenAIClient
 from revelium.models.manage import ModelManager
-
 from revelium.schemas.llm import LLMClientConfig
 from revelium.prompts.prompts_manager import PromptsManager
 from revelium.constants.models import OPENAI_API_KEY, DEFAULT_SYSTEM_PROMPT, DEFAULT_OPENAI_MODEL
 from revelium.constants import DEFAULT_CHROMADB_PATH
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -55,5 +56,5 @@ async def index_prompts(file_path: str):
     cluster_embedding_store = get_embedding_store(DEFAULT_CHROMADB_PATH, PromptsManager.CLUSTER_TYPE, 'all-minilm-l6-v2', text_embedder.embedding_dim) 
     llm = OpenAIClient(OPENAI_API_KEY, LLMClientConfig(model_name=DEFAULT_OPENAI_MODEL, system_prompt=DEFAULT_SYSTEM_PROMPT))
     prompts_manager = PromptsManager(llm_client=llm, prompt_embedding_store=prompt_embedding_store, cluster_embedding_store=cluster_embedding_store)
-    indexer = PromptIndexer(text_embedder, prompt_embedding_store, listener=PromptIndexListener(prompts_manager, msg.message_id))
+    indexer = PromptIndexer(text_embedder, prompt_embedding_store, listener=PromptIndexListener(prompts_manager, msg.message_id, redis_client))
     await indexer.run(prompts)
