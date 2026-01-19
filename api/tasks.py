@@ -1,7 +1,5 @@
-import os
 import json
 import dramatiq
-import redis
 
 from dramatiq.middleware import AsyncIO, CurrentMessage
 from dramatiq.brokers.redis import RedisBroker
@@ -17,21 +15,7 @@ from revelium.prompts_manager import PromptsManager
 from revelium.constants.models import OPENAI_API_KEY, DEFAULT_SYSTEM_PROMPT, DEFAULT_OPENAI_MODEL
 from revelium.constants import DEFAULT_CHROMADB_PATH
 
-from dotenv import load_dotenv
-
-load_dotenv()
-
-REDIS_HOST = os.environ.get("REDIS_HOST")
-REDIS_PASSWORD = os.environ.get("REDIS_PASSWORD")
-REDIS_PORT = int(os.environ.get("REDIS_PORT", 6379))
-
-redis_client=redis.Redis(
-    host=REDIS_HOST,
-    port=REDIS_PORT,
-    password=REDIS_PASSWORD,
-    decode_responses=True,
-    db=2
-)
+from api.redis import REDIS_HOST, REDIS_PASSWORD, REDIS_PORT, redis_client
 
 redis_broker = RedisBroker(
     host=REDIS_HOST,

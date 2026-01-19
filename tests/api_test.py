@@ -73,7 +73,9 @@ class TestReveliumClient:
         client, _ = setup_client
         add_file_result = await client.add_prompts_file("output/placeholder_prompts.json")
         assert add_file_result is not None
-
+        async for event in  client.track_prompts_index_progress( add_file_result['job_id']):
+            pass
+        
     async def test_prompts_overview(self, setup_client: tuple[ReveliumClient, list[Prompt]]):
         client, _ = setup_client
         accuracy = await client.get_cluster_accuracy()

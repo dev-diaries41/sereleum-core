@@ -1,20 +1,25 @@
 import os
+import asyncio
 
-from fastapi import FastAPI, HTTPException, UploadFile, File, Query, Response
+from fastapi import FastAPI, HTTPException, UploadFile, File, Query, Response, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.concurrency import run_in_threadpool
+from fastapi import Request
+from sse_starlette import EventSourceResponse
 
 from typing import Optional
 from tempfile import NamedTemporaryFile
 
 from api.tasks import index_prompts
+from api.redis import redis_client
 
 from revelium.constants.models import OPENAI_API_KEY, DEFAULT_SYSTEM_PROMPT, DEFAULT_OPENAI_MODEL
 from revelium.constants import DEFAULT_CHROMADB_PATH, UPLOAD_DIR
 from revelium.constants.api import Routes
 from revelium.cluster import cluster_prompts, get_cluster_plot
 from revelium.schemas.llm import LLMClientConfig
+from revelium.schemas.api import FailMessage, CompleteMessage, ProgressMessage
 from revelium.prompts_manager import PromptsManager
 from revelium.embeddings.helpers import get_embedding_store
 from revelium.providers.llm.openai import OpenAIClient
@@ -45,33 +50,45 @@ app.add_middleware(
     max_age=3600,
 )
 
-# @app.websocket("/ws/promtps/index")
-# async def index_prompts(ws: WebSocket):
-#     await ws.accept()
-#     try:
-#         msg = await ws.receive_json()
-#         if msg.get("action") == "index":
-#             # TODO:  retreive prompts
-#             # await revelium.index(prompts)
-#             await ws.close()
-#         else: 
-#             await ws.send_json(FailMessage(error="invalid action").model_dump())
-#             await ws.close()
-#     except RuntimeError:
-#          print("Runtime Error")
-#     except WebSocketDisconnect:
-#         print("Client disconnected")
 
-# @app.post(Routes.ADD_PROMPTS_ENDPOINT)
-# async def add_prompts(req: AddPromptsRequest):
-#     if not req.prompts:
-#         raise HTTPException(status_code=400, detail="Missing prompts")
-#     # TODO: Add job to queue and return JobReceipt
-#     # result = await indexer.run(req.prompts)
-#     if hasattr(result, "error" ):
-#         raise result.error
-#     result_dict: MetricsSuccess = {k: v for k, v in asdict(result).items() if k != "error"}
-#     return JSONResponse(result_dict)
+@app.get("/sse/prompts/index/progress")
+async def track_prompts_index_progress(request: Request, job_id: str | None = None):
+    if not job_id:
+        return EventSourceResponse(
+            [{"event": "failed", "data": FailMessage(error="invalid job id").model_dump_json()}],
+            status_code=400,
+        )
+
+    async def event_generator():
+        sent_active_msg = False
+        try:
+            while True:
+                if await request.is_disconnected():
+                    break
+
+                progress = redis_client.get(f"progress_{job_id}")
+                status = redis_client.get(f"status_{job_id}")
+
+                if status == 'active':
+                    if not sent_active_msg:
+                        yield {"event": "active", "data": {}}
+                        sent_active_msg = True
+
+                if status == 'failed':
+                    raise RuntimeError("Job failed")
+
+                if progress:
+                    if float(progress) == 1 or status == 'completed':
+                        yield {"event": "progress", "data": ProgressMessage(progress=float(progress)).model_dump_json()}
+                        yield {"event": "complete", "data": {}}
+                        break
+                    yield {"event": "progress", "data": ProgressMessage(progress=float(progress)).model_dump_json()}
+                await asyncio.sleep(1)
+        except RuntimeError:
+            yield {"event": "failed", "data": FailMessage(error="error processing job").model_dump_json()}
+            return
+
+    return EventSourceResponse(event_generator())
 
 
 os.makedirs(UPLOAD_DIR, exist_ok=True)
