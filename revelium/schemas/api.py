@@ -34,18 +34,12 @@ Status = Literal[
     FinishedStatus,
     "active",
     "delayed",
-    "prioritized",
-    "waiting",
-    "waiting-children",
+    "queued",
 ]
 
 class JobReceipt(BaseModel):
-    jobId: str
-    status: Status
-    queue: int
-    createdAt: str # may change to float / datetime
-    delay: float
-    jobName: Optional[str] = None
+  status: Status
+  job_id: str
 
 # HTTP
 class PromptsPayload(BaseModel):

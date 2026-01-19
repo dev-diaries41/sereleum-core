@@ -8,8 +8,10 @@ from fastapi.concurrency import run_in_threadpool
 from typing import Optional
 from tempfile import NamedTemporaryFile
 
-from revelium.errors import ReveliumError, ErrorCode
-from revelium.schemas.api import  GetPromptsRequest, GetPromptsResponse, GetCountResponse, GetLabelsResponse, GetClustersResponse, GetPromptsOverviewResponse, UpdateLabelResponse, GetClustersAccuracyResponse, QueryPromptsRequest, UpdatePromptClusterIdResponse
+from api.tasks import index_prompts
+
+from revelium.constants.models import OPENAI_API_KEY, DEFAULT_SYSTEM_PROMPT, DEFAULT_OPENAI_MODEL
+from revelium.constants import DEFAULT_CHROMADB_PATH, UPLOAD_DIR
 from revelium.constants.api import Routes
 from revelium.prompts.cluster import cluster_prompts, get_cluster_plot
 from revelium.schemas.llm import LLMClientConfig
@@ -17,11 +19,20 @@ from revelium.prompts.prompts_manager import PromptsManager
 from revelium.embeddings.helpers import get_embedding_store
 from revelium.providers.llm.openai import OpenAIClient
 from revelium.models.manage import ModelManager
-
-from api.tasks import index_prompts
-
-from revelium.constants.models import OPENAI_API_KEY, DEFAULT_SYSTEM_PROMPT, DEFAULT_OPENAI_MODEL
-from revelium.constants import DEFAULT_CHROMADB_PATH, UPLOAD_DIR
+from revelium.errors import ReveliumError, ErrorCode
+from revelium.schemas.api import (
+    GetPromptsRequest, 
+    GetPromptsResponse, 
+    GetCountResponse, 
+    GetLabelsResponse, 
+    GetClustersResponse, 
+    GetPromptsOverviewResponse, 
+    UpdateLabelResponse, 
+    GetClustersAccuracyResponse, 
+    QueryPromptsRequest, 
+    UpdatePromptClusterIdResponse, 
+    AddPromptsResponse
+    )
 
 MAX_UPLOAD_SIZE = 50 * 1024 * 1024  # 50MB
 
@@ -81,8 +92,8 @@ async def add_prompts_file(file: UploadFile = File(...)):
     with NamedTemporaryFile(dir=UPLOAD_DIR, delete=False, suffix=".json") as tmp:
         tmp.write(await file.read())
         tmp.flush()
-        jobid = index_prompts.send(tmp.name)
-    return {"status": "queued", "job_id": jobid.message_id}
+        job = index_prompts.send(tmp.name)
+    return AddPromptsResponse(status='queued', job_id=job.message_id )
 
 @app.post(Routes.BASE_PROMPTS_ENDPOINT)
 async def get_prompts(req: GetPromptsRequest):
