@@ -29,11 +29,6 @@ class TestReveliumClient:
         clusters = await client.get_clusters("fce4cfdc44b3ea3f")  # Replace with valid prompt_id
         assert isinstance(clusters, list)
 
-    async def test_cluster_prompts(self, setup_client: tuple[ReveliumClient, list[Prompt]]):
-        client, _ = setup_client
-        clustering_result = await client.cluster_prompts()
-        assert clustering_result is not None
-
     async def test_get_prompts(self, setup_client: tuple[ReveliumClient, list[Prompt]]):
         client, prompts = setup_client
         prompt_ids = [p.get("prompt_id") if isinstance(p, dict) else p.prompt_id for p in prompts]

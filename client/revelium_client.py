@@ -71,15 +71,6 @@ class ReveliumClient:
             return res.json().get("updated_cluster_id")
 
 
-    ## NOTE: May have to queue and return job id
-    async def cluster_prompts(self) -> dict:
-        url = f"{self.base_url}{Routes.START_CLUSTERING_ENDPOINT}"
-        async with httpx.AsyncClient() as client:
-            res = await client.post(url)
-            res.raise_for_status() 
-            return res.json()
-        
-
     async def get_clusters(self, cluster_id: Optional[str] = None, limit: Optional[str] = None, offset: Optional[str] = None ) ->List[ClusterNoEmbeddings]:
         url = f"{self.base_url}{Routes.BASE_CLUSTER_ENDPOINT}"
         params = GetClusterRequestParams(cluster_id=cluster_id, limit=limit, offset=offset)

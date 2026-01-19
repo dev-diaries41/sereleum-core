@@ -157,12 +157,6 @@ async def update_prompt_cluster(prompt_id: str, cluster_id: str):
 
 
 
-@app.post(Routes.START_CLUSTERING_ENDPOINT)
-async def start_clustering_prompts():
-    prompts_manager = get_prompt_manager()
-    _ = await run_in_threadpool(cluster_prompts, prompts_manager)
-    return JSONResponse({"status": "in_progress"}) # testing only
-
 @app.get(Routes.BASE_CLUSTER_ENDPOINT)
 async def get_clusters(cluster_id: Optional[str] = Query(None), limit: Optional[str] = Query(None), offset: Optional[str] = Query(None)):
     limit_int = int(limit) if limit not in (None, "") else None
