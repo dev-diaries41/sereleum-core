@@ -10,7 +10,7 @@ from smartscan import ClusterResult
 from smartscan.classify import IncrementalClusterer
 from revelium.utils import with_time, get_new_filename
 from revelium.prompts_manager import PromptsManager
-from revelium.plot import plot_clusters
+from revelium.cluster import plot_clusters
 from benchmarks.constants import BENCHMARK_CHROMADB_PATH, BENCHMARK_DIR
 from revelium.embeddings.helpers import get_embedding_store
 from revelium.providers.types import TextEmbeddingModel
