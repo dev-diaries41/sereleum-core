@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from pydantic import BaseModel, Field
+from typing import Literal
 
 class PromptMetadata(BaseModel):
     UNCLUSTERED: str = "Unclustered"
@@ -16,3 +17,14 @@ class PromptsOverviewInfo(BaseModel):
     total_prompts: int
     total_clusters: int
     average_prompt_cost: int
+
+
+# Long running jobs
+FinishedStatus = Literal['completed', 'failed']
+
+Status = Literal[
+    FinishedStatus,
+    "active",
+    "delayed",
+    "queued",
+]

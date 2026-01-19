@@ -17,15 +17,15 @@ WORKDIR /home/revelium_user/app
 COPY . .
 
 # Install dependencies
-RUN pip install .[api]
+RUN pip install --no-cache-dir .[api]
 
 # Copy the remaining application code and set ownership
 COPY --chown=revelium_user:revelium_user . .
 
-# Ensure the /home/cwuser/app directory is writable
+USER root
+RUN mkdir -p /data/uploads && chown -R revelium_user:revelium_user /data/uploads
 RUN chown -R revelium_user:revelium_user /home/revelium_user/app
 
-# Change to the cwuser user
 USER revelium_user
 
 # Expose the port your app runs on

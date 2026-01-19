@@ -1,7 +1,7 @@
 from typing import List, Optional
 from abc import ABC, abstractmethod
 from datetime import datetime
-from revelium.prompts.types import Prompt
+from revelium.types import Prompt
 
 
 class PromptStore(ABC):

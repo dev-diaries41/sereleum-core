@@ -2,8 +2,8 @@ from typing import List, Optional, Literal
 import aiosqlite
 import asyncio
 from datetime import datetime
-from revelium.prompts.types import Prompt
-from revelium.prompts.store.prompt_store import PromptStore
+from revelium.types import Prompt
+from revelium.store.prompt_store import PromptStore
 
 class AsyncSQLitePromptStore(PromptStore):
     """Async SQLite PromptStore supporting timestamps and optional cluster_id filtering."""

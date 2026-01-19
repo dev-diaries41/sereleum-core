@@ -1,17 +1,18 @@
 from typing import List, Optional
 import httpx
+import json
 
 from smartscan import ClusterAccuracy
 from revelium.constants.api import Routes
-from revelium.prompts.types import Prompt, PromptsOverviewInfo
-from revelium.schemas.api import AddPromptsRequest, GetPromptsRequest, GetClusterRequestParams, ClusterNoEmbeddings, UpdateLabelParams, QueryPromptsRequest, UpdatePromptClusterIdParams
+from revelium.types import Prompt, PromptsOverviewInfo
+from revelium.schemas.api import AddPromptsRequest, GetPromptsRequest, GetClusterRequestParams, ClusterNoEmbeddings, UpdateLabelParams, QueryPromptsRequest, UpdatePromptClusterIdParams, AddPromptsResponse
 
 class ReveliumClient:
     def __init__(self, base_url: str):
         self.base_url = base_url.rstrip("/")
 
 
-    async def add_prompts(self, prompts: List[Prompt]) -> dict:
+    async def add_prompts(self, prompts: List[Prompt]) -> AddPromptsResponse:
         url = f"{self.base_url}{Routes.ADD_PROMPTS_ENDPOINT}"
         # Convert dataclasses to dicts
         # TODD: chane prompts to pydantic basemodel
@@ -23,7 +24,7 @@ class ReveliumClient:
             return res.json()
         
     
-    async def add_prompts_file(self, file_path: str) -> dict:
+    async def add_prompts_file(self, file_path: str) -> AddPromptsResponse:
         """
         Upload a JSON file containing prompts.
         """
@@ -128,9 +129,6 @@ class ReveliumClient:
             return res.json().get("accuracy")
         
     async def get_cluster_plot(self) -> Optional[bytes]:
-        """
-        Fetches the cluster plot image as PNG bytes.
-        """
         url = f"{self.base_url}{Routes.GET_CLUSTER_PLOT_ENDPOINT}"
         # params = {"method": method}
 
@@ -142,3 +140,16 @@ class ReveliumClient:
 
             res.raise_for_status()
             return res.content 
+        
+    async def track_prompts_index_progress(self, job_id: str):
+        url = f"{self.base_url}/{Routes.SSE_PROMPTS_INDEX_PROGRESS}?job_id={job_id}"
+
+        async with httpx.AsyncClient(timeout=None) as client:
+            async with client.stream("GET", url) as response:
+                async for line in response.aiter_lines():
+                    line = line.strip()
+                    if not line:
+                        continue
+                    if line.startswith("data:"):
+                        data_str = line[len("data:"):].strip()
+                        yield json.loads(data_str)
