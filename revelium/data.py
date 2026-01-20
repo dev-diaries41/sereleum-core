@@ -1,17 +1,31 @@
 import random
 import string
 from placeholder_data import physics_sentences, quantum_mechanics_sentences, btc_analysis, forex_analysis, long_physics_sentences, long_btc_analysis, long_forex_analysis
-from revelium.prompts.types import Prompt
-## DEV ONLY placeholders for getting data to cluster
-def strings_to_prompts(arr: list[str], label_prefix: str) -> list[Prompt]:
-    return [Prompt(prompt_id=f"{label_prefix}_{idx}", content=prompt_content) for idx, prompt_content in enumerate(arr)]
+from revelium.types import Prompt
+from revelium.providers.llm.llm_client import LLMClient
 
-def get_placeholder_prompts() -> list[Prompt]:
+
+from pydantic import BaseModel
+from typing import List
+
+class PromptContent(BaseModel):
+    prompts: List[str]
+    
+def generate_synthetic_prompt_data(llm: LLMClient, label: str, topic: str, n:int, prompt_size:int = 300, prompt: str | None = None):
+    prompt = prompt or f"""Generate {n} realistic example prompts, each {prompt_size} characters long, that a user may have about {topic}"""
+    result =  llm.generate_json(prompt, PromptContent)
+    return strings_to_prompts(result.prompts, label)
+
+## DEV ONLY placeholders for getting data to cluster
+def strings_to_prompts(arr: list[str], label_prefix: str, offset: int = 0) -> list[Prompt]:
+    return [Prompt(prompt_id=f"{label_prefix}_{idx + offset}", content=prompt_content) for idx, prompt_content in enumerate(arr)]
+
+def get_placeholder_prompts(offset=0) -> list[Prompt]:
     all_data: list[Prompt] = []
-    all_data.extend(strings_to_prompts(long_physics_sentences, "physics"))
-    all_data.extend(strings_to_prompts(quantum_mechanics_sentences, "quantum"))
-    all_data.extend(strings_to_prompts(long_btc_analysis, "btc"))
-    all_data.extend(strings_to_prompts(long_forex_analysis, "forex"))
+    all_data.extend(strings_to_prompts(long_physics_sentences, "physics", offset))
+    all_data.extend(strings_to_prompts(quantum_mechanics_sentences, "quantum", offset))
+    all_data.extend(strings_to_prompts(long_btc_analysis, "btc", offset))
+    all_data.extend(strings_to_prompts(long_forex_analysis, "forex", offset))
     return all_data
 
 def get_dummy_data(n: int = 100, offset = 0) -> list[Prompt]:
@@ -19,14 +33,6 @@ def get_dummy_data(n: int = 100, offset = 0) -> list[Prompt]:
 
 def random_string(n):
     return ''.join(random.choices(string.ascii_letters + string.digits, k=n))
-
-def get_label_counts():
-    labels_count: dict[str, int] = {}
-    labels_count["physics"] = len(long_physics_sentences)
-    labels_count["quantum"] = len(quantum_mechanics_sentences)
-    labels_count["btc"] = len(long_btc_analysis)
-    labels_count["forex"] = len(long_forex_analysis)
-    return labels_count
 
 def generate_test_clusters(num_items: int = 100_000, num_clusters: int = 1_000, max_merges_per_cluster: int = 5,) -> tuple[dict[str, list[str]], dict[str, str]]:
     """

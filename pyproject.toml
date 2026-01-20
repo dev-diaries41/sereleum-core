@@ -22,7 +22,9 @@ dependencies = [
 [project.optional-dependencies]
 api = [
     "fastapi==0.121.2",
-    "python-multipart==0.0.20"
+    "python-multipart==0.0.20",
+    "dramatiq[redis]==2.0.0", 
+    " sse-starlette==3.2.0"
 ]
 
 [tool.setuptools]

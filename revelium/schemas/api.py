@@ -1,58 +1,34 @@
 from pydantic import BaseModel
-from typing import List, Optional, Literal
+from typing import List, Optional, Literal, ClassVar
 
-from smartscan import ClusterMetadata
+from smartscan import  ClusterMetadata, ClusterAccuracy
 
-from revelium.prompts.types import Prompt, PromptsOverviewInfo
+from revelium.types import Prompt, PromptsOverviewInfo, Status
 
 # Websocksets / SSE
-class ActiveMessage(BaseModel):
-    type: Literal["active"] = "active"
     
 class ProgressMessage(BaseModel):
-    type: Literal["progress"] = "progress"
     progress: float
 
 class ErrorMessage(BaseModel):
-    type: Literal["error"] = "error"
     error: str
     item: str
 
 class FailMessage(BaseModel):
-    type: Literal["fail"] = "fail"
     error: str
 
 class CompleteMessage(BaseModel):
-    type: Literal["complete"] = "complete"
     total_processed: int
     time_elapsed: float
 
-# Long running jobs
-FinishedStatus = Literal['completed', 'failed']
-
-Status = Literal[
-    FinishedStatus,
-    "active",
-    "delayed",
-    "prioritized",
-    "waiting",
-    "waiting-children",
-]
-
 class JobReceipt(BaseModel):
-    jobId: str
-    status: Status
-    queue: int
-    createdAt: str # may change to float / datetime
-    delay: float
-    jobName: Optional[str] = None
+  status: Status
+  job_id: str
 
 # HTTP
 class PromptsPayload(BaseModel):
     prompts: List[Prompt]
 
-class ClusterIdParam(BaseModel):
-    cluster_id: str
 
 class AddPromptsRequest(PromptsPayload):
     pass
@@ -61,9 +37,20 @@ class AddPromptsResponse(JobReceipt):
     pass
  
 class GetPromptsRequest(BaseModel):
-    prompt_ids: List[str]
+    prompt_ids: Optional[List[str]] = None
+    cluster_id: Optional[str] = None
+    limit: Optional[int] = None
+    offset: Optional[int] = None
+
+class QueryPromptsRequest(BaseModel):
+    query:str
+    cluster_id: Optional[str] = None
+    limit: Optional[int] = None
 
 class GetPromptsResponse(PromptsPayload):
+    pass
+
+class GetPromptsOverviewResponse(PromptsOverviewInfo):
     pass
 
 class GetCountResponse(BaseModel):
@@ -72,13 +59,36 @@ class GetCountResponse(BaseModel):
 class GetLabelsResponse(BaseModel):
     labels: List[str]
 
-class GetClusterMetadataResponse(BaseModel):
-    metadata: Optional[ClusterMetadata]
+class GetClusterRequestParams(BaseModel):
+    cluster_id: Optional[str] = None
+    limit: Optional[int] = None
+    offset: Optional[int] = None
 
-class GetPromptsOverviewResponse(PromptsOverviewInfo):
-    pass
-    
 
+class ClusterNoEmbeddings(BaseModel):
+    UNLABELLED:ClassVar[str] = "unlabelled"
+    prototype_id: str
+    metadata: ClusterMetadata
+    label: str
     
-    
+class GetClustersResponse(BaseModel):
+    clusters: List[ClusterNoEmbeddings]
 
+class GetClustersAccuracyResponse(BaseModel):
+    accuracy: ClusterAccuracy
+
+
+class UpdateLabelParams(BaseModel):
+    cluster_id: str
+    label: str
+
+class UpdateLabelResponse(BaseModel):
+    updated_label: str
+
+class UpdatePromptClusterIdResponse(BaseModel):
+    updated_cluster_id: str
+
+class UpdatePromptClusterIdParams(BaseModel):
+    prompt_id: str
+    cluster_id: str
+    

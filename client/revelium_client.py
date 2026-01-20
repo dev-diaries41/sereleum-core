@@ -1,101 +1,146 @@
 from typing import List, Optional
 import httpx
+import json
 
-from revelium.prompts.types import Prompt, PromptsOverviewInfo
-from revelium.schemas.api import AddPromptsRequest, GetPromptsRequest, ClusterIdParam
-from smartscan import ClusterMetadata
+from smartscan import ClusterAccuracy
+from revelium.constants.api import Routes
+from revelium.types import Prompt, PromptsOverviewInfo
+from revelium.schemas.api import AddPromptsRequest, GetPromptsRequest, GetClusterRequestParams, ClusterNoEmbeddings, UpdateLabelParams, QueryPromptsRequest, UpdatePromptClusterIdParams, AddPromptsResponse
 
 class ReveliumClient:
-    ADD_PROMPTS_ENDPOINT = "/api/prompts/add"
-    ADD_PROMPTS_FILE_ENDPOINT = "/api/prompts/add/file"
-    GET_PROMPTS_ENDPOINT = "/api/prompts/"
-    GET_PROMPTS_OVERVIEW_ENDPOINT = "/api/prompts/overview"
-    GET_CLUSTER_META_ENDPOINT = "/api/clusters/metadata"
-    GET_PROMPTS_COUNT_ENDPOINT = "/api/prompts/count"
-    GET_CLUSTER_COUNT_ENDPOINT = "/api/clusters/count"
-    GET_LABELS_ENDPOINT = "/api/labels"
-    
     def __init__(self, base_url: str):
         self.base_url = base_url.rstrip("/")
 
 
-    async def add_prompts(self, prompts: List[Prompt]) -> dict:
-        url = f"{self.base_url}{ReveliumClient.ADD_PROMPTS_ENDPOINT}"
+    async def add_prompts(self, prompts: List[Prompt]) -> AddPromptsResponse:
+        url = f"{self.base_url}{Routes.ADD_PROMPTS_ENDPOINT}"
         # Convert dataclasses to dicts
         # TODD: chane prompts to pydantic basemodel
         payload = AddPromptsRequest(prompts=prompts)
 
         async with httpx.AsyncClient() as client:
             res = await client.post(url, json=payload.model_dump())
-            if res.status_code != 200:
-                raise Exception(f"Error adding prompts: {res.text}")
+            res.raise_for_status() 
             return res.json()
         
     
-    async def add_prompts_file(self, file_path: str) -> dict:
+    async def add_prompts_file(self, file_path: str) -> AddPromptsResponse:
         """
         Upload a JSON file containing prompts.
         """
-        url = f"{self.base_url}{ReveliumClient.ADD_PROMPTS_FILE_ENDPOINT}"
+        url = f"{self.base_url}{Routes.ADD_PROMPTS_FILE_ENDPOINT}"
         async with httpx.AsyncClient() as client:
             with open(file_path, "rb") as f:
                 files = {"file": (file_path, f, "application/json")}
                 res = await client.post(url, files=files)
-            if res.status_code != 200:
-                raise Exception(f"Error adding prompts from file: {res.text}")
+            res.raise_for_status() 
             return res.json()
         
-    async def get_prompts(self, ids: List[str]) -> List[Prompt]:
-        url = f"{self.base_url}{ReveliumClient.GET_PROMPTS_ENDPOINT}"
-        payload = GetPromptsRequest(prompt_ids=ids)
+    async def get_prompts(self, ids: Optional[List[str]] = None, cluster_id: Optional[str] = None, limit: Optional[int] = None, offset: Optional[int] = None) -> List[Prompt]:
+        url = f"{self.base_url}{Routes.BASE_PROMPTS_ENDPOINT}"
+        payload = GetPromptsRequest(prompt_ids=ids, cluster_id=cluster_id, limit=limit, offset=offset)
 
         async with httpx.AsyncClient() as client:
             res = await client.post(url, json=payload.model_dump())
-            if res.status_code != 200:
-                raise Exception(f"Error adding prompts: {res.text}")
+            res.raise_for_status() 
             return res.json().get('prompts', [])
         
+    async def query_prompts(self, query: str, cluster_id: Optional[str] = None, limit: Optional[int] = None) -> List[Prompt]:
+        url = f"{self.base_url}{Routes.QUERY_PROMPTS_ENDPOINT}"
+        payload = QueryPromptsRequest(query=query, cluster_id=cluster_id, limit=limit)
+
+        async with httpx.AsyncClient() as client:
+            res = await client.post(url, json=payload.model_dump())
+            res.raise_for_status() 
+            return res.json().get('prompts', [])
+        
+        
     async def get_prompts_overview(self) -> PromptsOverviewInfo:
-        url = f"{self.base_url}{ReveliumClient.GET_PROMPTS_OVERVIEW_ENDPOINT}"
+        url = f"{self.base_url}{Routes.GET_PROMPTS_OVERVIEW_ENDPOINT}"
         async with httpx.AsyncClient() as client:
             res = await client.get(url)
-            if res.status_code != 200:
-                raise Exception(f"Error getting ovrerview: {res.text}")
+            res.raise_for_status() 
             return res.json()
 
+    async def update_prompt_cluster_id(self, prompt_id: str, cluster_id: str) -> str:
+        url = f"{self.base_url}{Routes.BASE_PROMPTS_ENDPOINT}"
+        payload = UpdatePromptClusterIdParams(prompt_id=prompt_id, cluster_id=cluster_id)
+        async with httpx.AsyncClient() as client:
+            res = await client.patch(url, params=payload.model_dump())
+            res.raise_for_status() 
+            return res.json().get("updated_cluster_id")
 
-    async def get_cluster_metadata(self, cluster_id: str) -> Optional[ClusterMetadata]:
-        url = f"{self.base_url}{ReveliumClient.GET_CLUSTER_META_ENDPOINT}"
-        params = ClusterIdParam(cluster_id=cluster_id)
+
+    async def get_clusters(self, cluster_id: Optional[str] = None, limit: Optional[str] = None, offset: Optional[str] = None ) ->List[ClusterNoEmbeddings]:
+        url = f"{self.base_url}{Routes.BASE_CLUSTER_ENDPOINT}"
+        params = GetClusterRequestParams(cluster_id=cluster_id, limit=limit, offset=offset)
 
         async with httpx.AsyncClient() as client:
             res = await client.get(url, params=params.model_dump())
-            if res.status_code != 200:
-                raise Exception(f"Error getting metadata: {res.text}")
-            return res.json().get("metadata")
-
+            res.raise_for_status() 
+            return res.json().get("clusters", [])
    
+
+    async def update_cluster_label(self, cluster_id: str, label: str) -> str:
+        url = f"{self.base_url}{Routes.BASE_CLUSTER_ENDPOINT}"
+        params = UpdateLabelParams(cluster_id=cluster_id, label=label)
+
+        async with httpx.AsyncClient() as client:
+            res = await client.patch(url, params=params.model_dump())
+            res.raise_for_status() 
+            return res.json().get("updated_label")
+        
     async def count_prompts(self) -> int:
-        url = f"{self.base_url}{ReveliumClient.GET_PROMPTS_COUNT_ENDPOINT}"
+        url = f"{self.base_url}{Routes.COUNT_PROMPTS_ENDPOINT}"
         async with httpx.AsyncClient() as client:
             res = await client.get(url)
-            if res.status_code != 200:
-                raise Exception(f"Error counting prompts: {res.text}")
+            res.raise_for_status() 
             return res.json().get("count", 0)
 
    
     async def count_clusters(self) -> int:
-        url = f"{self.base_url}{ReveliumClient.GET_CLUSTER_COUNT_ENDPOINT}"
+        url = f"{self.base_url}{Routes.COUNT_CLUSTERS_ENDPOINT}"
         async with httpx.AsyncClient() as client:
             res = await client.get(url)
-            if res.status_code != 200:
-                raise Exception(f"Error counting clusters: {res.text}")
+            res.raise_for_status() 
             return res.json().get("count", 0)
 
     async def get_existing_labels(self) -> list[str]:
-        url = f"{self.base_url}{ReveliumClient.GET_LABELS_ENDPOINT}"
+        url = f"{self.base_url}{Routes.GET_CLUSTER_LABELS_ENDPOINT}"
         async with httpx.AsyncClient() as client:
             res = await client.get(url)
-            if res.status_code != 200:
-                raise Exception(f"Error getting labels: {res.text}")
+            res.raise_for_status() 
             return res.json().get("labels", [])
+        
+    async def get_cluster_accuracy(self) -> ClusterAccuracy:
+        url = f"{self.base_url}{Routes.GET_CLUSTER_ACCURACY_ENDPOINT}"
+        async with httpx.AsyncClient() as client:
+            res = await client.get(url)
+            res.raise_for_status() 
+            return res.json().get("accuracy")
+        
+    async def get_cluster_plot(self) -> Optional[bytes]:
+        url = f"{self.base_url}{Routes.GET_CLUSTER_PLOT_ENDPOINT}"
+        # params = {"method": method}
+
+        async with httpx.AsyncClient() as client:
+            res = await client.get(url)
+            print(res.status_code)
+            if res.status_code == 204:
+                return None
+
+            res.raise_for_status()
+            return res.content 
+        
+    async def track_prompts_index_progress(self, job_id: str):
+        url = f"{self.base_url}/{Routes.SSE_PROMPTS_INDEX_PROGRESS}?job_id={job_id}"
+
+        async with httpx.AsyncClient(timeout=None) as client:
+            async with client.stream("GET", url) as response:
+                async for line in response.aiter_lines():
+                    line = line.strip()
+                    if not line:
+                        continue
+                    if line.startswith("data:"):
+                        data_str = line[len("data:"):].strip()
+                        yield json.loads(data_str)

@@ -36,13 +36,33 @@ class ChromaDBEmbeddingStore(EmbeddingStore[str, chromadb.CollectionMetadata]):
         else:
             self.chroma_colletion.update(ids, metadatas=metadatas)
 
+    def upsert(self, items):
+        ids, embeddings, metadatas = [], [], []
+        has_any_embedding = any(item.embedding is not None for item in items)
+
+        for item in items:
+            ids.append(item.item_id)
+            metadatas.append(item.metadata)
+            if has_any_embedding:
+                embeddings.append(item.embedding)
+        
+        if has_any_embedding:
+            self.chroma_colletion.upsert(ids, embeddings, metadatas)
+        else:
+            self.chroma_colletion.upsert(ids, metadatas=metadatas)
+
     
     def delete(self, ids = None, filter = None):
         return self.chroma_colletion.delete(ids,filter)
     
     def query(self, query_embeds, filter = None, limit = 10, include = ["metadatas", "embeddings"]) -> QueryResult[str, chromadb.CollectionMetadata]:
         result = self.chroma_colletion.query(query_embeddings=query_embeds, where=filter, include=include, n_results=limit)
-        return QueryResult(ids=result["ids"], embeddings=result['embeddings'], metadatas=result['metadatas'], sims=result['distances'], datas=result['documents'])
-    
+        return QueryResult(
+            ids=result["ids"][0] if result.get("ids") else [],
+            embeddings=result["embeddings"][0] if result.get("embeddings") else None,
+            metadatas=result["metadatas"][0] if result.get("metadatas") else [],
+            datas=result["documents"][0] if result.get("documents") else [],
+            sims=result["distances"][0] if result.get("distances") else None,
+        )    
     def count(self, filter = None):
         return self.chroma_colletion.count()      
