@@ -12,8 +12,15 @@ services:
       - REVELIUM_BASE_DIR=/data
     depends_on:
       - redis
+      - chromadb
     restart: unless-stopped
-
+  chromadb:
+    image: chromadb/chroma
+    volumes:
+      - chroma_data:/data/chroma
+    ports:
+      - "127.0.0.1:8001:8000"
+    restart: unless-stopped
   dramatiq_worker:
     build: .
     command: dramatiq api.tasks --processes 1 --threads 1
@@ -59,3 +66,4 @@ volumes:
   # caddy_data:
   # caddy_config:
   shared_data:
+  chroma_data:
