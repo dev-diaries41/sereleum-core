@@ -3,7 +3,7 @@ from pydantic import BaseModel, Field
 from typing import Literal
 
 class PromptMetadata(BaseModel):
-    UNCLUSTERED: str = "Unclustered"
+    UNCLUSTERED: str = "unclustered"
     cluster_id: str = UNCLUSTERED
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
