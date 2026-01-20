@@ -8,7 +8,7 @@ from smartscan import TextEmbeddingProvider
 from smartscan.providers import  MiniLmTextEmbedder
 
 from revelium.providers.types import LocalTextEmbeddingModel
-from revelium.constants import BASE_DIR
+from revelium.constants import DEFAULT_MODEL_DIR
 from revelium.constants.models import MODEL_REGISTRY
 from revelium.providers.types import TextEmbeddingModel
 from revelium.providers.embeddings.openai import OpenAITextEmbedder
@@ -17,8 +17,6 @@ from revelium.errors import ReveliumError, ErrorCode
 
 
 class ModelManager:
-    DEFAULT_MODEL_DIR = BASE_DIR / "models"
-
     def __init__(self, root_dir: str = DEFAULT_MODEL_DIR):
         self.root_dir = Path(root_dir).expanduser().resolve()
         self.root_dir.mkdir(parents=True, exist_ok=True)
