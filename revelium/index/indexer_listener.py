@@ -1,11 +1,12 @@
+from tqdm import tqdm
+from redis import Redis
+
 from smartscan import ItemEmbedding
 from smartscan.processor import ProcessorListener
-from revelium.types import Prompt
-from tqdm import tqdm
+
+from revelium.types import Prompt, Status
 from revelium.cluster import cluster_prompts
 from revelium.prompts_manager import PromptsManager
-from redis import Redis
-from revelium.types import Status
 
 class DefaultIndexerListener(ProcessorListener[Prompt, ItemEmbedding]):
     def on_error(self, e, item):
@@ -45,8 +46,7 @@ class PromptIndexListenerWithProgressBar(ProgressBarIndexerListener):
 
 
 class PromptIndexListener(ProcessorListener[Prompt, ItemEmbedding]):
-    def __init__(self, prompts_manager: PromptsManager, job_id: str, redis_client: Redis):
-        self.prompts_manager = prompts_manager
+    def __init__(self, job_id: str, redis_client: Redis):
         self.job_id = job_id
         self.redis = redis_client
 
@@ -55,7 +55,6 @@ class PromptIndexListener(ProcessorListener[Prompt, ItemEmbedding]):
 
     async def on_complete(self, result):
         self._update_status('complete')
-        await cluster_prompts(self.prompts_manager)
         # print(f"Job complete - status: {self.redis.get(self._get_status_key())} | progress: {self.redis.get(self._get_progres_key())}")
 
     async def on_progress(self, progress):

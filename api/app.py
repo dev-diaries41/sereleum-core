@@ -11,13 +11,13 @@ from sse_starlette import EventSourceResponse
 from typing import Optional
 from tempfile import NamedTemporaryFile
 
-from api.tasks import index_prompts
+from api.tasks import index_prompts_task
 from api.redis import redis_client
 
 from revelium.constants.models import OPENAI_API_KEY, DEFAULT_SYSTEM_PROMPT, DEFAULT_OPENAI_MODEL
 from revelium.constants import DEFAULT_CHROMADB_PATH, UPLOAD_DIR
 from revelium.constants.api import Routes
-from revelium.cluster import cluster_prompts, get_cluster_plot
+from revelium.cluster import  get_cluster_plot
 from revelium.schemas.llm import LLMClientConfig
 from revelium.schemas.api import FailMessage, CompleteMessage, ProgressMessage
 from revelium.prompts_manager import PromptsManager
@@ -109,7 +109,7 @@ async def add_prompts_file(file: UploadFile = File(...)):
     with NamedTemporaryFile(dir=UPLOAD_DIR, delete=False, suffix=".json") as tmp:
         tmp.write(await file.read())
         tmp.flush()
-        job = index_prompts.send(tmp.name)
+        job = index_prompts_task.send(tmp.name)
     return AddPromptsResponse(status='queued', job_id=job.message_id )
 
 @app.post(Routes.BASE_PROMPTS_ENDPOINT)

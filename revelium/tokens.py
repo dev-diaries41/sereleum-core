@@ -2,9 +2,10 @@ import tiktoken
 from revelium.providers.types import TextEmbeddingModel
 from smartscan.providers import MiniLmTextEmbedder
 from revelium.constants.models import MINILM_MODEL_PATH
+from openai.types import ResponsesModel
 
 
-def count_tokens_embedding(text: str, model: TextEmbeddingModel) -> int:
+def count_tokens_embedding(text: str, model: TextEmbeddingModel | ResponsesModel) -> int:
     if model == "all-minilm-l6-v2":
         text_embedder = MiniLmTextEmbedder(MINILM_MODEL_PATH)
         padded_tkns = text_embedder._tokenize(text)
