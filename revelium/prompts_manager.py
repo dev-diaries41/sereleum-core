@@ -1,3 +1,5 @@
+import asyncio 
+
 from numpy import ndarray
 from datetime import datetime
 from typing import List, Dict, Optional, Iterable
@@ -15,6 +17,8 @@ from revelium.utils import  paginated_read, paginated_read_until_empty
 from revelium.tokens import embedding_token_cost
 from revelium.errors import ReveliumError, ErrorCode
 
+
+
 class PromptsManager():
     CLUSTER_TYPE = "cluster"
     PROMPT_TYPE = "prompt"
@@ -29,15 +33,14 @@ class PromptsManager():
         self.prompt_embedding_store = prompt_embedding_store
         
 
-    def label_prompts(self, cluster_id: str, sample_size: int) -> LLMClassificationResult:
+    def label_prompts(self, cluster_id: str, sample_size: int, existing_labels: list[str]) -> LLMClassificationResult:
         if not self._has_llm_client():
             raise ReveliumError("No LLM client exists", code=ErrorCode.MISSING_LLM_CLIENT)
-        existing_labels = self.get_existing_labels()
         prompts = self.prompt_embedding_store.get(filter={"cluster_id": cluster_id},  limit=sample_size, include=['documents'])
         sample_prompts = [content for content in prompts.datas]
         input_prompt = self._get_labelling_prompt(cluster_id, existing_labels, sample_prompts)
         return self.llm.generate_json(input_prompt, LLMClassificationResult)
-            
+                
              
     def update_prompts(self, assignments: Assignments, merges: ClusterMerges) -> None:
         prompt_ids = [str(k) for k in assignments.keys()]
@@ -71,7 +74,7 @@ class PromptsManager():
         self.prompt_embedding_store.update(updated_prompts)
 
 
-    def update_clusters(self, clusters: Dict[str, Cluster], merges: ClusterMerges) -> None:
+    async def update_clusters(self, clusters: Dict[str, Cluster], merges: ClusterMerges, label_confidence_threshold: float = 0.8) -> None:
         """
         Update the embedding store with clusters, applying merges if provided.
         Old clusters that have been merged are removed from the store.
@@ -82,20 +85,45 @@ class PromptsManager():
             merged_ids = {cid for targets in merges.values() for cid in targets}
             for mid in merged_ids:
                 effective_clusters.pop(mid, None)
+        
+        existing_labels = self.get_existing_labels()
 
-        cluster_embeddings = [
-            ItemEmbedding[None, ClusterMetadata](
-                c.prototype_id,
-                c.embedding,
-                metadata={**c.metadata.model_dump()} 
+        sem = asyncio.Semaphore(8)
+
+        async def async_label_prompts(cluster_id):
+            async with sem:
+                return await asyncio.to_thread(self.label_prompts, cluster_id, 10, existing_labels)
+
+        label_tasks = {
+            cluster_id: async_label_prompts(cluster_id)
+            for cluster_id, cluster in effective_clusters.items()
+            if cluster.label == Cluster.UNLABELLED
+        }
+        label_results = {}
+        if label_tasks:
+            results = await asyncio.gather(*label_tasks.values(), return_exceptions=True)
+            label_results = dict(zip(label_tasks.keys(), results))
+
+        updates: list[ItemEmbedding[None, ClusterMetadata]] = []
+        
+        for cluster in effective_clusters.values():
+            updated_cluster = ItemEmbedding[None, ClusterMetadata](
+                cluster.prototype_id,
+                cluster.embedding,
+                metadata={**cluster.metadata.model_dump()} 
             )
-            for c in effective_clusters.values()
-        ]
+            if cluster.prototype_id in label_results:
+                result = label_results[cluster.prototype_id]
+                if (not isinstance(result, Exception) and result.confidence >= label_confidence_threshold):                    
+                    updated_cluster.metadata['label'] = result.label
+                updates.append(updated_cluster)
+            else:
+                updates.append(updated_cluster)
 
         if merges:
             self.cluster_embedding_store.delete(list(merged_ids))
 
-        self.cluster_embedding_store.upsert(cluster_embeddings)
+        self.cluster_embedding_store.upsert(updates)
 
 
     def update_cluster_label(self, cluster_id: str, label: str) -> bool:
