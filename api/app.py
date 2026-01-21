@@ -158,12 +158,19 @@ async def update_prompt_cluster(prompt_id: str, cluster_id: str):
 
 
 @app.get(Routes.BASE_CLUSTER_ENDPOINT)
-async def get_clusters(cluster_id: Optional[str] = Query(None), limit: Optional[str] = Query(None), offset: Optional[str] = Query(None)):
+async def get_clusters(cluster_id: Optional[str] = None, limit: Optional[str] = None, offset: Optional[str] = None):
     limit_int = int(limit) if limit not in (None, "") else None
     offset_int = int(offset) if offset not in (None, "") else None
     prompts_manager = get_prompt_manager()
     clusters = await run_in_threadpool(prompts_manager.get_clusters, cluster_id, limit_int, offset_int, ['metadatas'])
     return JSONResponse(GetClustersResponse(clusters=list(clusters.values())).model_dump())
+
+
+@app.get(Routes.GET_TOP_CLUSTER_ENDPOINT)
+async def get_top_clusters(n: int = 5):
+    prompts_manager = get_prompt_manager()
+    top_clusters = await run_in_threadpool(prompts_manager.get_top_clusters, n)
+    return JSONResponse({cluster_id: metadata.model_dump() for cluster_id, metadata in top_clusters.items()})
 
 
 @app.patch(Routes.BASE_CLUSTER_ENDPOINT)

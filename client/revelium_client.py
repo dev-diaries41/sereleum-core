@@ -1,8 +1,8 @@
-from typing import List, Optional
+from typing import List, Optional, Dict
 import httpx
 import json
 
-from smartscan import ClusterAccuracy
+from smartscan import ClusterAccuracy, ClusterMetadata
 from revelium.constants.api import Routes
 from revelium.types import Prompt, PromptsOverviewInfo
 from revelium.schemas.api import AddPromptsRequest, GetPromptsRequest, GetClusterRequestParams, ClusterNoEmbeddings, UpdateLabelParams, QueryPromptsRequest, UpdatePromptClusterIdParams, AddPromptsResponse
@@ -79,7 +79,16 @@ class ReveliumClient:
             res = await client.get(url, params=params.model_dump())
             res.raise_for_status() 
             return res.json().get("clusters", [])
-   
+        
+    async def get_top_clusters(self, n: int = 5) -> Dict[str, ClusterMetadata]:
+        url = f"{self.base_url}{Routes.GET_TOP_CLUSTER_ENDPOINT}"
+
+        async with httpx.AsyncClient() as client:
+            res = await client.get(url, params={"n": n})
+            res.raise_for_status()
+            data = res.json()
+        return {cluster_id: ClusterMetadata(**metadata) for cluster_id, metadata in data.items()}
+
 
     async def update_cluster_label(self, cluster_id: str, label: str) -> str:
         url = f"{self.base_url}{Routes.BASE_CLUSTER_ENDPOINT}"
