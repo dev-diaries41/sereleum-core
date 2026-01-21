@@ -167,10 +167,10 @@ async def get_clusters(cluster_id: Optional[str] = None, limit: Optional[str] = 
 
 
 @app.get(Routes.GET_TOP_CLUSTER_ENDPOINT)
-async def get_top_clusters(n: int = 5):
+async def get_top_clusters():
     prompts_manager = get_prompt_manager()
-    top_clusters = await run_in_threadpool(prompts_manager.get_top_clusters, n)
-    return JSONResponse({cluster_id: metadata.model_dump() for cluster_id, metadata in top_clusters.items()})
+    top_clusters = await run_in_threadpool(prompts_manager.get_top_clusters, 5)
+    return JSONResponse(GetClustersResponse(clusters=list(top_clusters.values())).model_dump())
 
 
 @app.patch(Routes.BASE_CLUSTER_ENDPOINT)

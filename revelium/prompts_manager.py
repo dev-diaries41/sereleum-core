@@ -282,12 +282,12 @@ class PromptsManager():
                 clusters[cluster_id] = Cluster(cluster_id, embedding, ClusterMetadata(**metadata), label=metadata.get("label"))
         return clusters
     
-    def get_top_clusters(self, n: int) -> Dict[ClusterId, ClusterMetadata]:
-        top_clusters: Dict[ClusterId, ClusterMetadata] = {}
+    def get_top_clusters(self, n: int) -> Dict[ClusterId, ClusterNoEmbeddings]:
+        top_clusters: Dict[ClusterId, ClusterNoEmbeddings] = {}
 
         while True:
             max_prototype_size = max(
-                (cm.prototype_size for cm in top_clusters.values()),
+                (cluster.metadata.prototype_size for cluster in top_clusters.values()),
                 default=0,
             )
 
@@ -302,18 +302,18 @@ class PromptsManager():
 
             if len(result.metadatas) == n:
                 top_clusters = {
-                    cluster_id: ClusterMetadata(**metadata)
+                    cluster_id: ClusterNoEmbeddings(cluster_id, ClusterMetadata(**metadata), label = metadata.get('label')) 
                     for cluster_id, metadata in zip(result.ids, result.metadatas)
                 }
             else:
                 for cluster_id, metadata in zip(result.ids, result.metadatas):
-                    top_clusters[cluster_id] = ClusterMetadata(**metadata)
+                    top_clusters[cluster_id] = ClusterNoEmbeddings(prototype_id=cluster_id, metadata=ClusterMetadata(**metadata), label = metadata.get("label")) 
 
                 if len(top_clusters) > n:
                     top_clusters = dict(
                         sorted(
                             top_clusters.items(),
-                            key=lambda x: x[1].prototype_size,
+                            key=lambda x: x[1].metadata.prototype_size,
                             reverse=True,
                         )[:n]
                     )
