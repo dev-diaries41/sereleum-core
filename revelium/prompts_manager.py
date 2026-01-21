@@ -302,7 +302,7 @@ class PromptsManager():
 
             if len(result.metadatas) == n:
                 top_clusters = {
-                    cluster_id: ClusterNoEmbeddings(cluster_id, ClusterMetadata(**metadata), label = metadata.get('label')) 
+                    cluster_id: ClusterNoEmbeddings(prototype_id=cluster_id, metadata=ClusterMetadata(**metadata), label = metadata.get("label")) 
                     for cluster_id, metadata in zip(result.ids, result.metadatas)
                 }
             else:
