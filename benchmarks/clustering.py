@@ -1,6 +1,7 @@
 import random
 import json
 import os
+import asyncio
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -28,7 +29,7 @@ def cluster(clusterer: IncrementalClusterer, ids, embeddings) -> tuple[ClusterRe
 
 # `prompt_id` must be prefixed with label e.g promptlabel_123
 # this is only for benchmarking
-def run(prompts_manager: PromptsManager, model:TextEmbeddingModel, plot_output: str):
+async def run(prompts_manager: PromptsManager, model:TextEmbeddingModel, plot_output: str):
     results = {}
     ## NOTE: IncrementalClusterer uses random numbers internally. Running multiple models sequentially 
     # without reseeding causes non-deterministic clustering and lower accuracy. Reseed Python and 
@@ -48,11 +49,11 @@ def run(prompts_manager: PromptsManager, model:TextEmbeddingModel, plot_output: 
     bench = {"accuracy": asdict(acc_info), "clustering_speed": time}
     results[model] = bench
  
-    if result.clusters:
-        prompts_manager.update_clusters(result.clusters, result.merges)
-
     if result.assignments:
         prompts_manager.update_prompts(result.assignments, result.merges)
+    if result.clusters:
+        await prompts_manager.update_clusters(result.clusters, result.merges)
+
     print(results)
 
     with open(BENCHMARK_OUTPUT_PATH, "a") as f:
@@ -63,11 +64,11 @@ def run(prompts_manager: PromptsManager, model:TextEmbeddingModel, plot_output: 
         json.dump(result.assignments, f, indent=1, sort_keys=True)
 
 
-def main():
+async def main():
     prompt_embedding_store =  get_embedding_store(BENCHMARK_CHROMADB_PATH, PromptsManager.PROMPT_TYPE, 'all-minilm-l6-v2', 384) 
     cluster_embedding_store =  get_embedding_store(BENCHMARK_CHROMADB_PATH, PromptsManager.CLUSTER_TYPE, 'all-minilm-l6-v2', 384) 
     prompts_manager = PromptsManager(prompt_embedding_store=prompt_embedding_store, cluster_embedding_store=cluster_embedding_store)
     plot_output = get_new_filename(BENCHMARK_PLOTS_DIR, BENCHMARK_CLUSTERS_PLOT, ".png")
     run(prompts_manager, 'all-minilm-l6-v2', plot_output)
 
-main()
+asyncio.run(main())

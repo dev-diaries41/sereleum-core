@@ -54,15 +54,19 @@ class PromptIndexListener(ProcessorListener[Prompt, ItemEmbedding]):
         self._update_status('active')
 
     async def on_complete(self, result):
-        cluster_prompts(self.prompts_manager)
         self._update_status('complete')
+        await cluster_prompts(self.prompts_manager)
         # print(f"Job complete - status: {self.redis.get(self._get_status_key())} | progress: {self.redis.get(self._get_progres_key())}")
 
     async def on_progress(self, progress):
         self.redis.set(self._get_progres_key(), progress, ex=86400)
 
     async def on_fail(self, result):
+        print(f"Indexing failed: {result.error}")
         self._update_status('failed')
+
+    async def on_error(self, e, item):
+        print(f"Error processing prompt: {item.prompt_id}. Details: {e}")
 
     def _get_progres_key(self):
         return f"progress_{self.job_id}"
