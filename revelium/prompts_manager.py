@@ -281,7 +281,46 @@ class PromptsManager():
             for cluster_id, embedding, metadata in zip(batch.ids, batch.embeddings, batch.metadatas):
                 clusters[cluster_id] = Cluster(cluster_id, embedding, ClusterMetadata(**metadata), label=metadata.get("label"))
         return clusters
-        
+    
+    def get_top_clusters(self, n: int) -> Dict[ClusterId, ClusterNoEmbeddings]:
+        top_clusters: Dict[ClusterId, ClusterNoEmbeddings] = {}
+
+        while True:
+            max_prototype_size = max(
+                (cluster.metadata.prototype_size for cluster in top_clusters.values()),
+                default=0,
+            )
+
+            result = self.cluster_embedding_store.get(
+                include=["metadatas"],
+                limit=n,
+                filter={"prototype_size": {"$gt": max_prototype_size + 1}},
+            )
+
+            if len(result.metadatas) == 0:
+                break
+
+            if len(result.metadatas) == n:
+                top_clusters = {
+                    cluster_id: ClusterNoEmbeddings(cluster_id, ClusterMetadata(**metadata), label = metadata.get('label')) 
+                    for cluster_id, metadata in zip(result.ids, result.metadatas)
+                }
+            else:
+                for cluster_id, metadata in zip(result.ids, result.metadatas):
+                    top_clusters[cluster_id] = ClusterNoEmbeddings(prototype_id=cluster_id, metadata=ClusterMetadata(**metadata), label = metadata.get("label")) 
+
+                if len(top_clusters) > n:
+                    top_clusters = dict(
+                        sorted(
+                            top_clusters.items(),
+                            key=lambda x: x[1].metadata.prototype_size,
+                            reverse=True,
+                        )[:n]
+                    )
+
+        return top_clusters
+
+            
     def _get_labelling_prompt(self, cluster_id: str, existing_labels: list[str], sample_prompts: list[str]) -> str:
         return f"""## ClusterId: {cluster_id}\n\n##Existing labels {existing_labels} Cluster sample_prompts \n\n {sample_prompts}"""
     
