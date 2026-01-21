@@ -8,8 +8,6 @@ from revelium.types import Prompt, Status
 from revelium.cluster import cluster_prompts
 from revelium.prompts_manager import PromptsManager
 
-from api.tasks import cluster_prompts_task
-
 class DefaultIndexerListener(ProcessorListener[Prompt, ItemEmbedding]):
     def on_error(self, e, item):
         print(e)
@@ -57,7 +55,6 @@ class PromptIndexListener(ProcessorListener[Prompt, ItemEmbedding]):
 
     async def on_complete(self, result):
         self._update_status('complete')
-        cluster_prompts_task.send()
         # print(f"Job complete - status: {self.redis.get(self._get_status_key())} | progress: {self.redis.get(self._get_progres_key())}")
 
     async def on_progress(self, progress):

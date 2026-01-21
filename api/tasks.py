@@ -41,6 +41,7 @@ async def index_prompts_task(file_path: str):
         prompt_embedding_store = get_embedding_store( PromptsManager.PROMPT_TYPE, 'all-minilm-l6-v2', text_embedder.embedding_dim) 
         indexer = PromptIndexer(text_embedder, prompt_embedding_store, listener=PromptIndexListener(msg.message_id, redis_client))
         await indexer.run(prompts)
+        cluster_prompts_task.send()
     finally:
         os.remove(file_path)
 
