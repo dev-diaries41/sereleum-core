@@ -255,7 +255,7 @@ class PromptsManager():
         cluster_count = self.cluster_embedding_store.count()
         top_clusters = self.get_top_clusters(5)
         token_counts: dict[ClusterId, int] = {}
-        for cluster_id in top_clusters.keys:
+        for cluster_id in top_clusters.keys():
             avg_tokens = self.calculate_avg_tokens_for_cluster(cluster_id, 1000)
             token_counts[cluster_id] = avg_tokens
         return PromptsOverviewInfo(total_prompts=prompt_count, total_clusters=cluster_count, top_cluster_token_counts=token_counts, top_clusters=top_clusters.values())
