@@ -1,28 +1,16 @@
-from typing import List, Optional, Dict
+from typing import List, Optional
 import httpx
 import json
 
 from smartscan import ClusterAccuracy, ClusterNoEmbeddings
-from sereleum.constants.api import Routes
+
 from sereleum.types import Prompt, PromptsOverviewInfo
-from sereleum.schemas.api import AddPromptsRequest, GetPromptsRequest, GetClusterRequestParams, UpdateLabelParams, QueryPromptsRequest, UpdatePromptClusterIdParams, AddPromptsResponse
+from sereleum.constants.api import Routes
+from sereleum.schemas.api import  GetPromptsRequest, GetClusterRequestParams, UpdateLabelParams, QueryPromptsRequest, UpdatePromptClusterIdParams, AddPromptsResponse
 
 class ReveliumClient:
     def __init__(self, base_url: str):
         self.base_url = base_url.rstrip("/")
-
-
-    async def add_prompts(self, prompts: List[Prompt]) -> AddPromptsResponse:
-        url = f"{self.base_url}{Routes.ADD_PROMPTS_ENDPOINT}"
-        # Convert dataclasses to dicts
-        # TODD: chane prompts to pydantic basemodel
-        payload = AddPromptsRequest(prompts=prompts)
-
-        async with httpx.AsyncClient() as client:
-            res = await client.post(url, json=payload.model_dump())
-            res.raise_for_status() 
-            return res.json()
-        
     
     async def add_prompts_file(self, file_path: str) -> AddPromptsResponse:
         """
@@ -34,7 +22,7 @@ class ReveliumClient:
                 files = {"file": (file_path, f, "application/json")}
                 res = await client.post(url, files=files)
             res.raise_for_status() 
-            return res.json()
+            return AddPromptsResponse(**res.json())
         
     async def get_prompts(self, ids: Optional[List[str]] = None, cluster_id: Optional[str] = None, limit: Optional[int] = None, offset: Optional[int] = None) -> List[Prompt]:
         url = f"{self.base_url}{Routes.BASE_PROMPTS_ENDPOINT}"
@@ -43,7 +31,7 @@ class ReveliumClient:
         async with httpx.AsyncClient() as client:
             res = await client.post(url, json=payload.model_dump())
             res.raise_for_status() 
-            return res.json().get('prompts', [])
+            return [Prompt(**p) for p in res.json().get('prompts', [])]
         
     async def query_prompts(self, query: str, cluster_id: Optional[str] = None, limit: Optional[int] = None) -> List[Prompt]:
         url = f"{self.base_url}{Routes.QUERY_PROMPTS_ENDPOINT}"
@@ -52,7 +40,7 @@ class ReveliumClient:
         async with httpx.AsyncClient() as client:
             res = await client.post(url, json=payload.model_dump())
             res.raise_for_status() 
-            return res.json().get('prompts', [])
+            return [Prompt(**p) for p in res.json().get('prompts', [])]
         
         
     async def get_prompts_overview(self) -> PromptsOverviewInfo:
@@ -60,7 +48,7 @@ class ReveliumClient:
         async with httpx.AsyncClient() as client:
             res = await client.get(url)
             res.raise_for_status() 
-            return res.json()
+            return PromptsOverviewInfo(**res.json())
 
     async def update_prompt_cluster_id(self, prompt_id: str, cluster_id: str) -> str:
         url = f"{self.base_url}{Routes.BASE_PROMPTS_ENDPOINT}"
@@ -78,7 +66,7 @@ class ReveliumClient:
         async with httpx.AsyncClient() as client:
             res = await client.get(url, params=params.model_dump())
             res.raise_for_status() 
-            return res.json().get("clusters", [])
+            return [ClusterNoEmbeddings(**c) for c in res.json().get('clusters', [])]
         
 
     async def update_cluster_label(self, cluster_id: str, label: str) -> str:
@@ -105,7 +93,7 @@ class ReveliumClient:
             res.raise_for_status() 
             return res.json().get("count", 0)
 
-    async def get_existing_labels(self) -> list[str]:
+    async def get_existing_labels(self) -> List[str]:
         url = f"{self.base_url}{Routes.GET_CLUSTER_LABELS_ENDPOINT}"
         async with httpx.AsyncClient() as client:
             res = await client.get(url)
@@ -117,7 +105,7 @@ class ReveliumClient:
         async with httpx.AsyncClient() as client:
             res = await client.get(url)
             res.raise_for_status() 
-            return res.json().get("accuracy")
+            return ClusterAccuracy(**res.json().get("accuracy"))
         
     async def get_cluster_plot(self) -> Optional[bytes]:
         url = f"{self.base_url}{Routes.GET_CLUSTER_PLOT_ENDPOINT}"
