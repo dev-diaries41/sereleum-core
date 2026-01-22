@@ -7,7 +7,7 @@ from sklearn.manifold import TSNE
 from sklearn.decomposition import PCA
 from smartscan import Assignments
 from smartscan.classify import IncrementalClusterer
-from revelium.prompts_manager import PromptsManager
+from sereleum.prompts_manager import PromptsManager
 
 
 async def cluster_prompts(prompts_manager: PromptsManager):

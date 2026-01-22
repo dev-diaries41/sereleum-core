@@ -8,11 +8,11 @@ from smartscan import ItemEmbedding, Cluster, ClusterNoEmbeddings, ClusterMetada
 from smartscan.classify import  calculate_cluster_accuracy
 from smartscan.embeds import EmbeddingStore
 
-from revelium.types import Prompt, PromptMetadata, PromptsOverviewInfo
-from revelium.schemas.llm import LLMClassificationResult
-from revelium.providers.llm.llm_client import LLMClient
-from revelium.utils import  paginated_read, paginated_read_until_empty
-from revelium.errors import ReveliumError, ErrorCode
+from sereleum.types import Prompt, PromptMetadata, PromptsOverviewInfo
+from sereleum.schemas.llm import LLMClassificationResult
+from sereleum.providers.llm.llm_client import LLMClient
+from sereleum.utils import  paginated_read, paginated_read_until_empty
+from sereleum.errors import ReveliumError, ErrorCode
 
 
 class PromptsManager():

@@ -1,8 +1,8 @@
 import random
 import string
 from placeholder_data import physics_sentences, quantum_mechanics_sentences, btc_analysis, forex_analysis, long_physics_sentences, long_btc_analysis, long_forex_analysis
-from revelium.types import Prompt
-from revelium.providers.llm.llm_client import LLMClient
+from sereleum.types import Prompt
+from sereleum.providers.llm.llm_client import LLMClient
 
 
 from pydantic import BaseModel

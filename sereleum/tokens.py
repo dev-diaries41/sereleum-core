@@ -1,7 +1,7 @@
 import tiktoken
-from revelium.providers.types import TextEmbeddingModel
+from sereleum.providers.types import TextEmbeddingModel
 from smartscan.providers import MiniLmTextEmbedder
-from revelium.constants.models import MINILM_MODEL_PATH
+from sereleum.constants.models import MINILM_MODEL_PATH
 from openai.types import ResponsesModel
 
 

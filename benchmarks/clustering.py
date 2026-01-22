@@ -9,12 +9,12 @@ load_dotenv()
 from dataclasses import asdict
 from smartscan import ClusterResult
 from smartscan.classify import IncrementalClusterer
-from revelium.utils import with_time, get_new_filename
-from revelium.prompts_manager import PromptsManager
-from revelium.cluster import plot_clusters
+from sereleum.utils import with_time, get_new_filename
+from sereleum.prompts_manager import PromptsManager
+from sereleum.cluster import plot_clusters
 from benchmarks.constants import BENCHMARK_CHROMADB_PATH, BENCHMARK_DIR
-from revelium.embeddings.helpers import get_embedding_store
-from revelium.providers.types import TextEmbeddingModel
+from sereleum.embeddings.helpers import get_embedding_store
+from sereleum.providers.types import TextEmbeddingModel
 
 BENCHMARK_OUTPUT_PATH = os.path.join(BENCHMARK_DIR, "clustering_benchmarks.jsonl")
 BENCHMARK_ASSIGNMENTS_PATH = os.path.join(BENCHMARK_DIR, "assignments_clustering_benchmarks.jsonl")

@@ -1,6 +1,6 @@
-# Revelium
+# Sereleum
 
-Revelium is a business-focused LLM analytics platform that turns real user prompts into actionable insights, optimized templates, cost analysis, and compliance monitoring.
+Sereleum is a business-focused LLM analytics platform that turns real user prompts into actionable insights, optimized templates, cost analysis, and compliance monitoring.
 
 
 ## Core Features

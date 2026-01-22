@@ -3,8 +3,8 @@ from smartscan.media import chunk_text
 from smartscan.embeds import generate_prototype_embedding, EmbeddingStore
 from smartscan.processor import BatchProcessor
 from smartscan.providers import TextEmbeddingProvider
-from revelium.types import Prompt, PromptMetadata
-from revelium.utils import count_tokens_embedding
+from sereleum.types import Prompt, PromptMetadata
+from sereleum.utils import count_tokens_embedding
 
 class PromptIndexer(BatchProcessor[Prompt, ItemEmbedding[None, PromptMetadata]]):
     def __init__(self, 

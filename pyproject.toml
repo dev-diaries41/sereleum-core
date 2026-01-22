@@ -3,9 +3,9 @@ requires = ["setuptools>=64", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "revelium"
+name = "sereleum"
 version = "0.1.0"
-description = "Revelium app"
+description = "Sereleum backend"
 requires-python = ">=3.10"
 
 dependencies = [
@@ -28,4 +28,4 @@ api = [
 ]
 
 [tool.setuptools]
-packages = ["revelium", "api"]
+packages = ["sereleum", "api"]

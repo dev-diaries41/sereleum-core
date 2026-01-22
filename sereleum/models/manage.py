@@ -7,13 +7,13 @@ from pathlib import Path
 from smartscan import TextEmbeddingProvider
 from smartscan.providers import  MiniLmTextEmbedder
 
-from revelium.providers.types import LocalTextEmbeddingModel
-from revelium.constants import DEFAULT_MODEL_DIR
-from revelium.constants.models import MODEL_REGISTRY
-from revelium.providers.types import TextEmbeddingModel
-from revelium.providers.embeddings.openai import OpenAITextEmbedder
-from revelium.constants.models import MINILM_MAX_TOKENS
-from revelium.errors import ReveliumError, ErrorCode
+from sereleum.providers.types import LocalTextEmbeddingModel
+from sereleum.constants import DEFAULT_MODEL_DIR
+from sereleum.constants.models import MODEL_REGISTRY
+from sereleum.providers.types import TextEmbeddingModel
+from sereleum.providers.embeddings.openai import OpenAITextEmbedder
+from sereleum.constants.models import MINILM_MAX_TOKENS
+from sereleum.errors import ReveliumError, ErrorCode
 
 
 class ModelManager:

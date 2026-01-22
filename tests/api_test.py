@@ -1,8 +1,8 @@
 import pytest
 import pytest_asyncio
-from revelium.data import get_dummy_data
+from sereleum.data import get_dummy_data
 from client.revelium_client import ReveliumClient
-from revelium.types import Prompt
+from sereleum.types import Prompt
 from httpx import HTTPStatusError
 
 @pytest_asyncio.fixture

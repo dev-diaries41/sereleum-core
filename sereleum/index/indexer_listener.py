@@ -4,9 +4,9 @@ from redis import Redis
 from smartscan import ItemEmbedding
 from smartscan.processor import ProcessorListener
 
-from revelium.types import Prompt, Status
-from revelium.cluster import cluster_prompts
-from revelium.prompts_manager import PromptsManager
+from sereleum.types import Prompt, Status
+from sereleum.cluster import cluster_prompts
+from sereleum.prompts_manager import PromptsManager
 
 class DefaultIndexerListener(ProcessorListener[Prompt, ItemEmbedding]):
     def on_error(self, e, item):

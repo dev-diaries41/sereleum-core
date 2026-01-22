@@ -3,7 +3,7 @@ from typing import List, Optional
 
 from smartscan import  ClusterAccuracy, ClusterNoEmbeddings
 
-from revelium.types import Prompt, PromptsOverviewInfo, Status
+from sereleum.types import Prompt, PromptsOverviewInfo, Status
 
 # Websocksets / SSE
     

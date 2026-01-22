@@ -1,4 +1,4 @@
-from revelium.models.manage import ModelManager
+from sereleum.models.manage import ModelManager
 from pathlib import Path
 
 def test_model_manager():

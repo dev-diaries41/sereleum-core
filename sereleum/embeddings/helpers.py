@@ -1,6 +1,6 @@
 
-from revelium.providers.types import TextEmbeddingModel
-from revelium.embeddings.chroma_store import ChromaDBEmbeddingStore
+from sereleum.providers.types import TextEmbeddingModel
+from sereleum.embeddings.chroma_store import ChromaDBEmbeddingStore
 import chromadb
 
 # helps ensure each collection get embeddings of the right size

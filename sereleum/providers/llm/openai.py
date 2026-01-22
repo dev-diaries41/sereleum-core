@@ -1,7 +1,7 @@
 from typing import Optional, List
-from revelium.providers.llm.llm_client import LLMClient
+from sereleum.providers.llm.llm_client import LLMClient
 from openai import OpenAI
-from revelium.schemas.llm import LLMClientConfig, Message
+from sereleum.schemas.llm import LLMClientConfig, Message
 
 class OpenAIClient(LLMClient):
     def __init__(self, api_key: str, config: LLMClientConfig):

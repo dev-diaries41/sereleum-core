@@ -5,16 +5,16 @@ import os
 from dramatiq.middleware import AsyncIO, CurrentMessage
 from dramatiq.brokers.redis import RedisBroker
 
-from revelium.types import Prompt
-from revelium.embeddings.helpers import get_embedding_store
-from revelium.index.indexer import PromptIndexer
-from revelium.index.indexer_listener import PromptIndexListener
-from revelium.providers.llm.openai import OpenAIClient
-from revelium.models.manage import ModelManager
-from revelium.schemas.llm import LLMClientConfig
-from revelium.prompts_manager import PromptsManager
-from revelium.constants.models import OPENAI_API_KEY, DEFAULT_SYSTEM_PROMPT, DEFAULT_OPENAI_MODEL
-from revelium.cluster import cluster_prompts
+from sereleum.types import Prompt
+from sereleum.embeddings.helpers import get_embedding_store
+from sereleum.index.indexer import PromptIndexer
+from sereleum.index.indexer_listener import PromptIndexListener
+from sereleum.providers.llm.openai import OpenAIClient
+from sereleum.models.manage import ModelManager
+from sereleum.schemas.llm import LLMClientConfig
+from sereleum.prompts_manager import PromptsManager
+from sereleum.constants.models import OPENAI_API_KEY, DEFAULT_SYSTEM_PROMPT, DEFAULT_OPENAI_MODEL
+from sereleum.cluster import cluster_prompts
 
 from api.redis import REDIS_HOST, REDIS_PASSWORD, REDIS_PORT, redis_client
 

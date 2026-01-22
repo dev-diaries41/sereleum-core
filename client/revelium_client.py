@@ -3,9 +3,9 @@ import httpx
 import json
 
 from smartscan import ClusterAccuracy, ClusterNoEmbeddings
-from revelium.constants.api import Routes
-from revelium.types import Prompt, PromptsOverviewInfo
-from revelium.schemas.api import AddPromptsRequest, GetPromptsRequest, GetClusterRequestParams, UpdateLabelParams, QueryPromptsRequest, UpdatePromptClusterIdParams, AddPromptsResponse
+from sereleum.constants.api import Routes
+from sereleum.types import Prompt, PromptsOverviewInfo
+from sereleum.schemas.api import AddPromptsRequest, GetPromptsRequest, GetClusterRequestParams, UpdateLabelParams, QueryPromptsRequest, UpdatePromptClusterIdParams, AddPromptsResponse
 
 class ReveliumClient:
     def __init__(self, base_url: str):

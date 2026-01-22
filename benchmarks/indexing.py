@@ -7,21 +7,21 @@ from dotenv import load_dotenv
 
 load_dotenv()
 from dataclasses import asdict
-from revelium.types import Prompt
-from revelium.index.indexer import PromptIndexer
-from revelium.index.indexer_listener import ProgressBarIndexerListener, PromptIndexListenerWithProgressBar
-from revelium.data import get_dummy_data, get_placeholder_prompts
-from revelium.prompts_manager import PromptsManager
-from revelium.models.manage import ModelManager
-from revelium.embeddings.helpers import get_embedding_store
+from sereleum.types import Prompt
+from sereleum.index.indexer import PromptIndexer
+from sereleum.index.indexer_listener import ProgressBarIndexerListener, PromptIndexListenerWithProgressBar
+from sereleum.data import get_dummy_data, get_placeholder_prompts
+from sereleum.prompts_manager import PromptsManager
+from sereleum.models.manage import ModelManager
+from sereleum.embeddings.helpers import get_embedding_store
 from benchmarks.constants import BENCHMARK_CHROMADB_PATH, BENCHMARK_DIR
-from revelium.constants.api import Routes
-from revelium.constants.models import OPENAI_API_KEY, DEFAULT_SYSTEM_PROMPT, DEFAULT_OPENAI_MODEL
-from revelium.constants import DEFAULT_CHROMADB_PATH
-from revelium.cluster import cluster_prompts, get_cluster_plot
-from revelium.models.manage import ModelManager
-from revelium.embeddings.helpers import get_embedding_store
-from revelium.index.indexer import PromptIndexer
+from sereleum.constants.api import Routes
+from sereleum.constants.models import OPENAI_API_KEY, DEFAULT_SYSTEM_PROMPT, DEFAULT_OPENAI_MODEL
+from sereleum.constants import DEFAULT_CHROMADB_PATH
+from sereleum.cluster import cluster_prompts, get_cluster_plot
+from sereleum.models.manage import ModelManager
+from sereleum.embeddings.helpers import get_embedding_store
+from sereleum.index.indexer import PromptIndexer
 from dotenv import load_dotenv
 
 load_dotenv()

@@ -2,7 +2,7 @@ from fastapi import WebSocket
 
 from smartscan.processor import ProcessorListener
 from smartscan.processor.types import Input, Output
-from revelium.schemas.api import FailMessage, ErrorMessage, ProgressMessage, CompleteMessage, ActiveMessage
+from sereleum.schemas.api import FailMessage, ErrorMessage, ProgressMessage, CompleteMessage, ActiveMessage
 
 
 class BaseWebSocketListener(ProcessorListener[Input, Output]):

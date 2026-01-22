@@ -1,7 +1,7 @@
 import os
 
 from typing import Dict
-from revelium.providers.types import LocalTextEmbeddingModel, ModelInfo
+from sereleum.providers.types import LocalTextEmbeddingModel, ModelInfo
 from dotenv import load_dotenv
 
 load_dotenv()

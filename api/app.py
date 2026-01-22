@@ -14,18 +14,18 @@ from tempfile import NamedTemporaryFile
 from api.tasks import index_prompts_task
 from api.redis import redis_client
 
-from revelium.constants.models import OPENAI_API_KEY, DEFAULT_SYSTEM_PROMPT, DEFAULT_OPENAI_MODEL
-from revelium.constants import DEFAULT_CHROMADB_PATH, UPLOAD_DIR
-from revelium.constants.api import Routes
-from revelium.cluster import  get_cluster_plot
-from revelium.schemas.llm import LLMClientConfig
-from revelium.schemas.api import FailMessage, CompleteMessage, ProgressMessage
-from revelium.prompts_manager import PromptsManager
-from revelium.embeddings.helpers import get_embedding_store
-from revelium.providers.llm.openai import OpenAIClient
-from revelium.models.manage import ModelManager
-from revelium.errors import ReveliumError, ErrorCode
-from revelium.schemas.api import (
+from sereleum.constants.models import OPENAI_API_KEY, DEFAULT_SYSTEM_PROMPT, DEFAULT_OPENAI_MODEL
+from sereleum.constants import DEFAULT_CHROMADB_PATH, UPLOAD_DIR
+from sereleum.constants.api import Routes
+from sereleum.cluster import  get_cluster_plot
+from sereleum.schemas.llm import LLMClientConfig
+from sereleum.schemas.api import FailMessage, CompleteMessage, ProgressMessage
+from sereleum.prompts_manager import PromptsManager
+from sereleum.embeddings.helpers import get_embedding_store
+from sereleum.providers.llm.openai import OpenAIClient
+from sereleum.models.manage import ModelManager
+from sereleum.errors import ReveliumError, ErrorCode
+from sereleum.schemas.api import (
     GetPromptsRequest, 
     GetPromptsResponse, 
     GetCountResponse, 
