@@ -344,7 +344,7 @@ class PromptsManager():
 
         return top_clusters
     
-    def calculate_avg_tokens_for_cluster(self, cluster_id: str, sample_size: int) -> float:
+    def calculate_avg_tokens_for_cluster(self, cluster_id: str, sample_size: int) -> int:
         total_tokens = 0
         prompts_count = 0
 
@@ -353,7 +353,7 @@ class PromptsManager():
                 break
             total_tokens += (metadata.tokens or 0)
             prompts_count += (1 if metadata.tokens else 0)
-        return total_tokens / max(1, prompts_count)
+        return int(total_tokens / max(1, prompts_count))
             
     def _get_labelling_prompt(self, cluster_id: str, existing_labels: list[str], sample_prompts: list[str]) -> str:
         return f"""## ClusterId: {cluster_id}\n\n##Existing labels {existing_labels} Cluster sample_prompts \n\n {sample_prompts}"""
