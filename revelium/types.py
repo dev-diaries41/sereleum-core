@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from pydantic import BaseModel, Field
 from typing import Literal, Optional, Dict, List
-from revelium.schemas.api import ClusterNoEmbeddings
+from smartscan import ClusterNoEmbeddings
 
 class PromptMetadata(BaseModel):
     UNCLUSTERED: str = "unclustered"

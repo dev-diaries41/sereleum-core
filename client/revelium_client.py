@@ -2,10 +2,10 @@ from typing import List, Optional, Dict
 import httpx
 import json
 
-from smartscan import ClusterAccuracy, ClusterMetadata
+from smartscan import ClusterAccuracy, ClusterNoEmbeddings
 from revelium.constants.api import Routes
 from revelium.types import Prompt, PromptsOverviewInfo
-from revelium.schemas.api import AddPromptsRequest, GetPromptsRequest, GetClusterRequestParams, ClusterNoEmbeddings, UpdateLabelParams, QueryPromptsRequest, UpdatePromptClusterIdParams, AddPromptsResponse
+from revelium.schemas.api import AddPromptsRequest, GetPromptsRequest, GetClusterRequestParams, UpdateLabelParams, QueryPromptsRequest, UpdatePromptClusterIdParams, AddPromptsResponse
 
 class ReveliumClient:
     def __init__(self, base_url: str):

@@ -1,7 +1,7 @@
 from pydantic import BaseModel
-from typing import List, Optional, Literal, ClassVar
+from typing import List, Optional
 
-from smartscan import  ClusterMetadata, ClusterAccuracy
+from smartscan import  ClusterAccuracy, ClusterNoEmbeddings
 
 from revelium.types import Prompt, PromptsOverviewInfo, Status
 
@@ -64,12 +64,6 @@ class GetClusterRequestParams(BaseModel):
     limit: Optional[int] = None
     offset: Optional[int] = None
 
-
-class ClusterNoEmbeddings(BaseModel):
-    UNLABELLED:ClassVar[str] = "unlabelled"
-    prototype_id: str
-    metadata: ClusterMetadata
-    label: str
     
 class GetClustersResponse(BaseModel):
     clusters: List[ClusterNoEmbeddings]

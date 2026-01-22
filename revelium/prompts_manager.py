@@ -4,12 +4,11 @@ from numpy import ndarray
 from datetime import datetime
 from typing import List, Dict, Optional, Iterable, Tuple
 
-from smartscan import ItemEmbedding, Cluster, ClusterMetadata, Assignments, ClusterMerges, ItemId, TextEmbeddingProvider, ClusterId, ClusterAccuracy, ItemEmbeddingUpdate, Include, GetResult, QueryResult
+from smartscan import ItemEmbedding, Cluster, ClusterNoEmbeddings, ClusterMetadata, Assignments, ClusterMerges, ItemId, TextEmbeddingProvider, ClusterId, ClusterAccuracy, ItemEmbeddingUpdate, Include, GetResult, QueryResult
 from smartscan.classify import  calculate_cluster_accuracy
 from smartscan.embeds import EmbeddingStore
 
 from revelium.types import Prompt, PromptMetadata, PromptsOverviewInfo
-from revelium.schemas.api import ClusterNoEmbeddings
 from revelium.schemas.llm import LLMClassificationResult
 from revelium.providers.llm.llm_client import LLMClient
 from revelium.utils import  paginated_read, paginated_read_until_empty
