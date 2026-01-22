@@ -1,8 +1,11 @@
-from typing import Iterator, Callable, TypeVar
 import tracemalloc
 import time
 import os 
-from revelium.providers.types import TextEmbeddingModel
+import tiktoken
+
+from typing import Iterator, Callable, TypeVar
+from openai.types import ResponsesModel
+
 
 T = TypeVar("T")
 
@@ -69,3 +72,10 @@ def get_new_filename(dir_path: str, prefix: str, ext):
         n = int(os.path.splitext(f)[0].strip(prefix))
         highest = n if n > highest else highest
     return os.path.join(dir_path, prefix + str(highest + 1) + ext)
+
+
+
+def count_tokens_embedding(text: str, model: ResponsesModel) -> int:
+    enc = tiktoken.encoding_for_model(model)
+    return len(enc.encode(text))
+

@@ -8,15 +8,12 @@ from smartscan import ItemEmbedding, Cluster, ClusterMetadata, Assignments, Clus
 from smartscan.classify import  calculate_cluster_accuracy
 from smartscan.embeds import EmbeddingStore
 
-from revelium.schemas.api import ClusterNoEmbeddings
 from revelium.types import Prompt, PromptMetadata, PromptsOverviewInfo
-from revelium.providers.types import TextEmbeddingModel
+from revelium.schemas.api import ClusterNoEmbeddings
 from revelium.schemas.llm import LLMClassificationResult
 from revelium.providers.llm.llm_client import LLMClient
 from revelium.utils import  paginated_read, paginated_read_until_empty
-from revelium.tokens import embedding_token_cost
 from revelium.errors import ReveliumError, ErrorCode
-
 
 
 class PromptsManager():
@@ -155,8 +152,6 @@ class PromptsManager():
             true_labels[p.prompt_id] = label
         return calculate_cluster_accuracy(true_labels, assignments)
     
-    def calculate_prompt_cost(self, prompt_content, price_per_1m_tokens: float, model:  TextEmbeddingModel) -> float:
-        return embedding_token_cost(prompt_content, price_per_1m_tokens, model)
 
     def get_all_prompt_embeddings(self) -> tuple[List[ItemId], List[ndarray], List[ClusterId]]:
         ids, embeddings, cluster_ids = [], [], []
