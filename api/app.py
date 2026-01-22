@@ -166,13 +166,6 @@ async def get_clusters(cluster_id: Optional[str] = None, limit: Optional[str] = 
     return JSONResponse(GetClustersResponse(clusters=list(clusters.values())).model_dump())
 
 
-@app.get(Routes.GET_TOP_CLUSTER_ENDPOINT)
-async def get_top_clusters():
-    prompts_manager = get_prompt_manager()
-    top_clusters = await run_in_threadpool(prompts_manager.get_top_clusters, 5)
-    return JSONResponse(GetClustersResponse(clusters=list(top_clusters.values())).model_dump())
-
-
 @app.patch(Routes.BASE_CLUSTER_ENDPOINT)
 async def update_cluster_label(cluster_id: str, label: str):
     prompts_manager = get_prompt_manager()

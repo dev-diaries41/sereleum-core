@@ -149,7 +149,7 @@ class PromptsManager():
         return calculate_cluster_accuracy(true_labels, assignments)
     
 
-    def get_all_prompt_embeddings(self) -> tuple[List[ItemId], List[ndarray], List[ClusterId]]:
+    def get_all_prompt_embeddings(self) -> Tuple[List[ItemId], List[ndarray], List[ClusterId]]:
         ids, embeddings, cluster_ids = [], [], []
         for id_, emb, cluster_id in self.stream_all_prompt_embeddings():
             ids.append(id_)
@@ -157,7 +157,7 @@ class PromptsManager():
             cluster_ids.append(cluster_id)
         return ids, embeddings, cluster_ids
     
-    def stream_all_prompt_embeddings(self, batch_size: Optional[int] = None) -> Iterable[tuple[ItemId, ndarray, ClusterId]]:
+    def stream_all_prompt_embeddings(self, batch_size: Optional[int] = None) -> Iterable[Tuple[ItemId, ndarray, ClusterId]]:
         count = self.prompt_embedding_store.count()
         for batch in paginated_read(
             lambda offset, limit: self.prompt_embedding_store.get(
@@ -220,7 +220,7 @@ class PromptsManager():
             
     
     # Note: tokens in metadata shouldnt be none here
-    def stream_prompts_metadata_by_ids(self, ids: list[str], batch_size: int | None = None) -> Iterable[tuple[str, PromptMetadata]]:
+    def stream_prompts_metadata_by_ids(self, ids: list[str], batch_size: int | None = None) -> Iterable[Tuple[str, PromptMetadata]]:
         batch_size = batch_size or 100
         start = 0
 
@@ -254,8 +254,12 @@ class PromptsManager():
     def get_prompts_overview(self) -> PromptsOverviewInfo:
         prompt_count = self.prompt_embedding_store.count()
         cluster_count = self.cluster_embedding_store.count()
-        average_prompt_cost = 0 #TODO calculate avg prompt cost
-        return PromptsOverviewInfo(total_prompts=prompt_count, total_clusters=cluster_count, average_prompt_cost=average_prompt_cost)
+        top_clusters = self.get_top_clusters(5)
+        token_counts: dict[ClusterId, int] = {}
+        for cluster_id in top_clusters.keys:
+            avg_tokens = self.calculate_avg_tokens_for_cluster(cluster_id, 1000)
+            token_counts[cluster_id] = avg_tokens
+        return PromptsOverviewInfo(total_prompts=prompt_count, total_clusters=cluster_count, top_cluster_token_counts=token_counts, top_clusters=top_clusters.values())
 
     def get_existing_labels(self) -> list[str]:
         labels: list[str] = []
@@ -341,12 +345,16 @@ class PromptsManager():
 
         return top_clusters
     
-    def calculate_tokens_per_cluster(self, cluster_id: str):
+    def calculate_avg_tokens_for_cluster(self, cluster_id: str, sample_size: int) -> float:
         total_tokens = 0
         prompts_count = 0
 
-        for prompt in self.stream_prompts_metadata():
-            pass
+        for metadata in self.stream_prompts_metadata(cluster_id):
+            if prompts_count >= sample_size:
+                break
+            total_tokens += (metadata.tokens or 0)
+            prompts_count += (1 if metadata.tokens else 0)
+        return total_tokens / max(1, prompts_count)
             
     def _get_labelling_prompt(self, cluster_id: str, existing_labels: list[str], sample_prompts: list[str]) -> str:
         return f"""## ClusterId: {cluster_id}\n\n##Existing labels {existing_labels} Cluster sample_prompts \n\n {sample_prompts}"""

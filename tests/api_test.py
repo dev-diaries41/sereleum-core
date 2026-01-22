@@ -29,11 +29,6 @@ class TestReveliumClient:
         clusters = await client.get_clusters("fce4cfdc44b3ea3f")
         assert isinstance(clusters, list)
 
-    async def test_get_top_clusters(self, setup_client: tuple[ReveliumClient, list[Prompt]]):
-        client, _ = setup_client
-        clusters = await client.get_top_clusters()
-        assert isinstance(clusters, list)
-
 
     async def test_get_prompts(self, setup_client: tuple[ReveliumClient, list[Prompt]]):
         client, prompts = setup_client

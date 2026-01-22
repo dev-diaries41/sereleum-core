@@ -80,14 +80,6 @@ class ReveliumClient:
             res.raise_for_status() 
             return res.json().get("clusters", [])
         
-    async def get_top_clusters(self) -> List[ClusterNoEmbeddings]:
-        url = f"{self.base_url}{Routes.GET_TOP_CLUSTER_ENDPOINT}"
-
-        async with httpx.AsyncClient() as client:
-            res = await client.get(url)
-            res.raise_for_status()
-            return res.json().get("clusters", [])
-
 
     async def update_cluster_label(self, cluster_id: str, label: str) -> str:
         url = f"{self.base_url}{Routes.BASE_CLUSTER_ENDPOINT}"
