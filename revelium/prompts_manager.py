@@ -2,7 +2,7 @@ import asyncio
 
 from numpy import ndarray
 from datetime import datetime
-from typing import List, Dict, Optional, Iterable
+from typing import List, Dict, Optional, Iterable, Tuple
 
 from smartscan import ItemEmbedding, Cluster, ClusterMetadata, Assignments, ClusterMerges, ItemId, TextEmbeddingProvider, ClusterId, ClusterAccuracy, ItemEmbeddingUpdate, Include, GetResult, QueryResult
 from smartscan.classify import  calculate_cluster_accuracy
@@ -41,14 +41,10 @@ class PromptsManager():
              
     def update_prompts(self, assignments: Assignments, merges: ClusterMerges) -> None:
         prompt_ids = [str(k) for k in assignments.keys()]
-        metadatas = self.get_prompts_metadata(prompt_ids)
-        if not metadatas:
-            raise ReveliumError("No matching prompts found", code=ErrorCode.PROMPT_NOT_FOUND)
-        
         updated_at = datetime.now().isoformat()
         updated_prompts: list[ItemEmbedding] = []
 
-        for prompt_id, metadata in zip(prompt_ids, metadatas):
+        for prompt_id, metadata in self.stream_prompts_metadata_by_ids(prompt_ids):
             original_cluster = assignments[prompt_id]
 
             if not merges:
@@ -63,7 +59,7 @@ class PromptsManager():
             updated_prompts.append(
                 ItemEmbeddingUpdate(
                     prompt_id,
-                    metadata=PromptMetadata(cluster_id=new_cluster, created_at=metadata.created_at, updated_at=updated_at).model_dump()
+                    metadata=PromptMetadata(cluster_id=new_cluster, created_at=metadata.created_at, updated_at=updated_at, tokens=metadata.tokens).model_dump()
                 )
             )
         # print(f"length of updated: {len(updated_prompts)}")
@@ -142,7 +138,7 @@ class PromptsManager():
     def calculate_cluster_accuracy(self) -> ClusterAccuracy:
         true_labels: dict[ItemId, str] = {}
         assignments: Assignments = {}
-        for p in  self.stream_all_prompts():
+        for p in  self.stream_prompts():
             ## temp solution
             assignments[p.prompt_id] = p.metadata.cluster_id
             label = p.prompt_id.split("_")[0]
@@ -174,9 +170,7 @@ class PromptsManager():
             ):
             yield from zip(batch.ids, batch.embeddings, [m.get("cluster_id") for m in batch.metadatas])
 
-    def get_all_prompts(self, ids: Optional[List[str]], cluster_id: Optional[ClusterId] = None, batch_size: Optional[int] = None) -> Iterable[Prompt]:
-        return list(self.stream_all_prompts(ids, cluster_id, batch_size))
-    
+
     def get_prompts_paginate(self, ids: Optional[List[str]] = None, cluster_id: Optional[ClusterId] = None, limit: Optional[int] = None, offset: Optional[int] = None) -> List[Prompt]:
         result = self.prompt_embedding_store.get(
                 ids = ids,
@@ -193,11 +187,27 @@ class PromptsManager():
         result = self.prompt_embedding_store.query(query_embeds=[embed], limit=limit, filter={"cluster_id": cluster_id} if cluster_id else None, include=["metadatas", "documents"])
         return self._to_prompts(result)
     
-    def stream_all_prompts(self, ids: Optional[List[str]] = None, cluster_id: Optional[ClusterId] = None, limit: Optional[int] = None) -> Iterable[Prompt]:
+    # This handle cases where the number of ids may be very high
+    def get_prompts_by_id(self, ids: List[str], batch_size: Optional[int] = None) -> List[Prompt]:
+        batch_size = batch_size or 100
+        start = 0
+        prompts = []
+
+        while start < len(ids):
+            result = self.prompt_embedding_store.get(
+                ids = ids[start:start + batch_size],
+                include=["metadatas", "documents"],
+            )
+            if len(result.metadatas) == 0:
+                break
+            prompts.extend(self._to_prompts(result))
+            start += batch_size
+        return prompts
+    
+    def stream_prompts(self, cluster_id: Optional[ClusterId] = None, limit: Optional[int] = None) -> Iterable[Prompt]:
         limit = limit or 100
         for batch in paginated_read_until_empty(
             lambda offset, limit: self.prompt_embedding_store.get(
-                ids = ids,
                 filter={"cluster_id": cluster_id} if cluster_id else None,
                 include=["metadatas", "documents"],
                 offset=offset,
@@ -208,22 +218,38 @@ class PromptsManager():
             ):
             yield from self._to_prompts(batch)
             
-    def get_prompts_metadata(self, ids: list[str]) -> list[PromptMetadata]:
-        return list(self.stream_prompts_metadata(ids))
     
+    # Note: tokens in metadata shouldnt be none here
+    def stream_prompts_metadata_by_ids(self, ids: list[str], batch_size: int | None = None) -> Iterable[tuple[str, PromptMetadata]]:
+        batch_size = batch_size or 100
+        start = 0
 
-    def stream_prompts_metadata(self, ids: list[str]) -> Iterable[PromptMetadata]:
-        for batch in paginated_read(
+        while start < len(ids):
+            result = self.prompt_embedding_store.get(
+                ids=ids[start:start + batch_size],
+                include=["metadatas"],
+            )
+            if len(result.metadatas) == 0:
+                break
+            for prompt_id, metadata in zip(ids[start:start + batch_size], result.metadatas):
+                yield prompt_id, PromptMetadata(**metadata)
+            start += batch_size
+
+    
+    # Note: tokens in metadata shouldnt be none here
+    def stream_prompts_metadata(self, cluster_id: Optional[str] = None, batch_size: Optional[int] = None) -> Iterable[PromptMetadata]:
+        batch_size = batch_size or 100
+        for batch in paginated_read_until_empty(
             lambda offset, limit: self.prompt_embedding_store.get(
-                ids = ids,
+                filter={"cluster_id": cluster_id} if cluster_id else None,
                 include=["metadatas"],
                 offset=offset,
                 limit=limit,
             ),
-            total=len(ids),
-            limit=500,
+            break_fn= lambda batch: len(batch.metadatas) == 0,
+            limit=batch_size,
             ):
-            yield from [ PromptMetadata(**m) for m in batch.metadatas]   
+            yield from [ PromptMetadata(**m) for m in batch.metadatas]     
 
     def get_prompts_overview(self) -> PromptsOverviewInfo:
         prompt_count = self.prompt_embedding_store.count()
@@ -314,7 +340,13 @@ class PromptsManager():
                     )
 
         return top_clusters
+    
+    def calculate_tokens_per_cluster(self, cluster_id: str):
+        total_tokens = 0
+        prompts_count = 0
 
+        for prompt in self.stream_prompts_metadata():
+            pass
             
     def _get_labelling_prompt(self, cluster_id: str, existing_labels: list[str], sample_prompts: list[str]) -> str:
         return f"""## ClusterId: {cluster_id}\n\n##Existing labels {existing_labels} Cluster sample_prompts \n\n {sample_prompts}"""
