@@ -8,7 +8,7 @@ class PromptMetadata(BaseModel):
     cluster_id: str = UNCLUSTERED
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
-    tokens: Optional[int]
+    tokens: Optional[int] = None
 
 class Prompt(BaseModel):
     prompt_id: str
