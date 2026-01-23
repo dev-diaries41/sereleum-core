@@ -90,3 +90,7 @@ class MergeClustersRequest(BaseModel):
     merges: ClusterMerges
 
     
+class MergeResponse(BaseModel):
+    updated_clusters: List[ClusterNoEmbeddings]
+
+    

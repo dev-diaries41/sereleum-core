@@ -2,11 +2,11 @@ from typing import List, Optional
 import httpx
 import json
 
-from smartscan import ClusterAccuracy, ClusterNoEmbeddings
+from smartscan import ClusterAccuracy, ClusterNoEmbeddings, ClusterMerges
 
 from sereleum.types import Prompt, PromptsOverviewInfo
 from sereleum.constants.api import Routes
-from sereleum.schemas.api import  GetPromptsRequest, GetClusterRequestParams, UpdateLabelParams, QueryPromptsRequest, UpdatePromptClusterIdParams, AddPromptsResponse
+from sereleum.schemas.api import  GetPromptsRequest, GetClusterRequestParams, UpdateLabelParams, QueryPromptsRequest, UpdatePromptClusterIdParams, AddPromptsResponse, MergeClustersRequest
 
 class ReveliumClient:
     def __init__(self, base_url: str):
@@ -119,6 +119,16 @@ class ReveliumClient:
 
             res.raise_for_status()
             return res.content 
+        
+    async def merge_clusters(self, merges: ClusterMerges) -> List[ClusterNoEmbeddings]:
+        url = f"{self.base_url}{Routes.MERGE_CLUSTERS_ENDPOINT}"
+        payload = MergeClustersRequest(merges=merges)
+
+        async with httpx.AsyncClient() as client:
+            res = await client.post(url, json=payload.model_dump())
+            res.raise_for_status() 
+            return [ClusterNoEmbeddings(**c) for c in res.json().get('updated_clusters', [])]
+        
         
     async def track_prompts_index_progress(self, job_id: str):
         url = f"{self.base_url}/{Routes.SSE_PROMPTS_INDEX_PROGRESS}?job_id={job_id}"

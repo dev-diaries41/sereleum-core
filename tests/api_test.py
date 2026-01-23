@@ -71,7 +71,7 @@ class TestReveliumClient:
 
     async def test_add_prompts_file(self, setup_client: tuple[ReveliumClient, list[Prompt]]):
         client, _ = setup_client
-        add_file_result = await client.add_prompts_file("output/placeholder_prompts.json")
+        add_file_result = await client.add_prompts_file("output/test_prompts.json")
         assert isinstance(add_file_result, AddPromptsResponse)
         async for event in  client.track_prompts_index_progress( add_file_result.job_id):
             pass
@@ -101,3 +101,15 @@ class TestReveliumClient:
             assert img_bytes == None
         else:
             assert isinstance(img_bytes, bytes)
+
+    
+    async def test_merge_clusters(self, setup_client: tuple[ReveliumClient, list[Prompt]]):
+        client, _ = setup_client
+        try:
+            merges = {}
+            updated_clusters = await client.merge_clusters(merges)
+            assert isinstance(updated_clusters, list)
+        except HTTPStatusError as e:
+            assert e.response.status_code == 400
+            data = e.response.json() 
+            assert data["detail"] == "Merges cannot be empty"

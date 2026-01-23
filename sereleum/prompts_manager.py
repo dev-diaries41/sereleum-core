@@ -135,7 +135,7 @@ class PromptsManager():
         #     results = await asyncio.gather(*label_tasks.values(), return_exceptions=True)
         #     label_results = dict(zip(label_tasks.keys(), results))
 
-        updates: list[ItemEmbedding[None, ClusterMetadata]] = []
+        updated_clusters: list[ItemEmbedding[None, ClusterMetadata]] = []
         
         for cluster in effective_clusters.values():
             updated_cluster = ItemEmbedding[None, ClusterMetadata](
@@ -147,22 +147,26 @@ class PromptsManager():
                 result = label_results[cluster.prototype_id]
                 if (not isinstance(result, Exception) and result.confidence >= label_confidence_threshold):                    
                     updated_cluster.metadata['label'] = result.label
-                updates.append(updated_cluster)
+                updated_clusters.append(updated_cluster)
             else:
-                updates.append(updated_cluster)
+                updated_clusters.append(updated_cluster)
 
         if merges:
             self.cluster_embedding_store.delete(list(merged_ids))
 
-        self.cluster_embedding_store.upsert(updates)
+        self.cluster_embedding_store.upsert(updated_clusters)
 
     
-    def merge_clusters(self, merges: ClusterMerges):
+    def merge_clusters(self, merges: ClusterMerges) -> List[ClusterNoEmbeddings]:
         self.update_prompts(merges)
         merged_clustered_ids = {cid for targets in merges.values() for cid in targets}
         all_clusters = self.get_all_clusters()
-       
-        self.cluster_embedding_store.delete(list(merged_clustered_ids))
+
+       # MUST happen after get all clusters!!!
+        self.cluster_embedding_store.delete(list(merged_clustered_ids)) 
+
+        updated_clusters: List[ItemEmbedding[None, ClusterMetadata]] = []
+
         for merge_id in merges.keys():
             cluster = self.get_clusters(cluster_ids=[merge_id], include=['metadatas'])[merge_id]
             _, embeds, _  = self.get_prompt_embeddings(cluster_id=merge_id)
@@ -171,9 +175,11 @@ class PromptsManager():
             new_prototype_size = len(embeds)
             all_cluster_embeds = np.stack([c.embedding for cid, c in all_clusters.items() if cid != merge_id],axis=0)
             nearest_sim = float(np.max(np.dot(all_cluster_embeds, new_protoype_embed)))
-            updated_cluster = ItemEmbedding[None, ClusterMetadata](
-                cluster.prototype_id,
-                new_protoype_embed,
+            
+            updated_clusters.append(
+                ItemEmbedding[None, ClusterMetadata](
+                item_id = cluster.prototype_id,
+                embedding=new_protoype_embed,
                 metadata=ClusterMetadata(
                     prototype_size=new_prototype_size,
                     mean_similarity=new_mean_similarity,
@@ -181,8 +187,11 @@ class PromptsManager():
                     nearest_other_similarity=nearest_sim,
                     separation_margin=new_mean_similarity - nearest_sim
                     ).model_dump()
-            )
-            self.cluster_embedding_store.upsert([updated_cluster])
+                    )
+                )
+        self.cluster_embedding_store.upsert(updated_clusters)
+
+        return [ClusterNoEmbeddings(prototype_id=c.item_id, metadata=c.metadata, label=c.metadata.label) for c in updated_clusters]
 
 
     def update_cluster_label(self, cluster_id: str, label: str) -> bool:
