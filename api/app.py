@@ -245,5 +245,5 @@ async def get_clusters_plot():
 @app.post(Routes.MERGE_CLUSTERS_ENDPOINT)
 async def merge_clusters(req: MergeClustersRequest):
     prompts_manager = get_prompt_manager()
-    await run_in_threadpool(prompts_manager.merge_clusters,req.merges)
+    await prompts_manager.merge_clusters(req.merges)
     return {}
