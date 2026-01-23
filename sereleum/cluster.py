@@ -23,7 +23,7 @@ async def cluster_prompts(prompts_manager: PromptsManager):
     )
     result = clusterer.cluster(ids, embeddings)
     if result.assignments:
-        prompts_manager.update_prompts(result.assignments, result.merges)
+        prompts_manager.update_prompts_by_ids(result.assignments.keys(), result.merges)
     if result.clusters:
         await prompts_manager.update_clusters(result.clusters, result.merges)
     return result

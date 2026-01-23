@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from typing import List, Optional
 
-from smartscan import  ClusterAccuracy, ClusterNoEmbeddings
+from smartscan import  ClusterAccuracy, ClusterNoEmbeddings, ClusterMerges
 
 from sereleum.types import Prompt, PromptsOverviewInfo, Status
 
@@ -85,4 +85,8 @@ class UpdatePromptClusterIdResponse(BaseModel):
 class UpdatePromptClusterIdParams(BaseModel):
     prompt_id: str
     cluster_id: str
+
+class MergeClustersRequest(BaseModel):
+    merges: ClusterMerges
+
     

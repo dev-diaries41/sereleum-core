@@ -36,7 +36,8 @@ from sereleum.schemas.api import (
     GetClustersAccuracyResponse, 
     QueryPromptsRequest, 
     UpdatePromptClusterIdResponse, 
-    AddPromptsResponse
+    AddPromptsResponse,
+    MergeClustersRequest
     )
 
 MAX_UPLOAD_SIZE = 50 * 1024 * 1024  # 50MB
@@ -239,3 +240,10 @@ async def get_clusters_plot():
     prompts_manager = get_prompt_manager()
     img_bytes = await run_in_threadpool(get_cluster_plot, prompts_manager)
     return Response(status_code=200 if img_bytes else 204, content=img_bytes, media_type="image/png")
+
+
+@app.post(Routes.MERGE_CLUSTERS_ENDPOINT)
+async def merge_clusters(req: MergeClustersRequest):
+    prompts_manager = get_prompt_manager()
+    await run_in_threadpool(prompts_manager.merge_clusters,req.merges)
+    return {}

@@ -48,33 +48,52 @@ class PromptsManager():
         self.prompt_embedding_store.update([updated_metadata]) 
 
 
-    def update_prompts(self, assignments: Assignments, merges: ClusterMerges) -> None:
-        prompt_ids = [str(k) for k in assignments.keys()]
+    def _update_prompts(
+        self,
+        stream: Iterable[tuple[str, PromptMetadata]],
+        merges: ClusterMerges,
+    ) -> None:
         updated_at = datetime.now().isoformat()
         updated_prompts: list[ItemEmbedding] = []
 
-        for prompt_id, metadata in self.stream_prompts_metadata_by_ids(prompt_ids):
-            original_cluster = assignments[prompt_id]
-
-            if not merges:
-                new_cluster = original_cluster
-            else:
-                new_cluster = next(
-                    (mid for mid, clusters in merges.items()
-                    if original_cluster in clusters),
-                    original_cluster,
-                )
+        for prompt_id, metadata in stream:
+            original_cluster = metadata.cluster_id
+            new_cluster = next(
+                (mid for mid, clusters in merges.items()
+                if original_cluster in clusters),
+                original_cluster,
+            )
 
             updated_prompts.append(
                 ItemEmbeddingUpdate(
                     prompt_id,
-                    metadata=PromptMetadata(cluster_id=new_cluster, created_at=metadata.created_at, updated_at=updated_at, tokens=metadata.tokens).model_dump()
+                    metadata=PromptMetadata(
+                        cluster_id=new_cluster,
+                        created_at=metadata.created_at,
+                        updated_at=updated_at,
+                        tokens=metadata.tokens,
+                    ).model_dump(),
                 )
             )
-        # print(f"length of updated: {len(updated_prompts)}")
 
         self.prompt_embedding_store.update(updated_prompts)
 
+
+    def update_prompts_by_ids(self, prompt_ids: list[str], merges: ClusterMerges) -> None:
+        self._update_prompts(
+            self.stream_prompts_metadata_by_ids(prompt_ids),
+            merges,
+        )
+
+
+    def update_prompts(self, merges: ClusterMerges) -> None:
+        all_target_cluster_ids = [
+            cid for targets in merges.values() for cid in targets
+        ]
+        self._update_prompts(
+            self.stream_prompts_metadata(cluster_ids=all_target_cluster_ids),
+            merges,
+        )
 
     async def update_clusters(self, clusters: Dict[str, Cluster], merges: ClusterMerges, label_confidence_threshold: float = 0.8) -> None:
         """
@@ -102,9 +121,9 @@ class PromptsManager():
             if cluster.label == Cluster.UNLABELLED
         }
         label_results = {}
-        if label_tasks:
-            results = await asyncio.gather(*label_tasks.values(), return_exceptions=True)
-            label_results = dict(zip(label_tasks.keys(), results))
+        # if label_tasks:
+        #     results = await asyncio.gather(*label_tasks.values(), return_exceptions=True)
+        #     label_results = dict(zip(label_tasks.keys(), results))
 
         updates: list[ItemEmbedding[None, ClusterMetadata]] = []
         
@@ -126,6 +145,13 @@ class PromptsManager():
             self.cluster_embedding_store.delete(list(merged_ids))
 
         self.cluster_embedding_store.upsert(updates)
+
+    
+    async def merge_clusters(self, merges: ClusterMerges):
+        self.update_prompts(merges)
+        merged_ids = {cid for targets in merges.values() for cid in targets}
+        self.cluster_embedding_store.delete(list(merged_ids))
+        await self.update_clusters()
 
 
     def update_cluster_label(self, cluster_id: str, label: str) -> bool:
@@ -246,11 +272,11 @@ class PromptsManager():
 
     
     # Note: tokens in metadata shouldnt be none here
-    def stream_prompts_metadata(self, cluster_id: Optional[str] = None, batch_size: Optional[int] = None) -> Iterable[Tuple[str, PromptMetadata]]:
+    def stream_prompts_metadata(self, cluster_ids: Optional[List[str]] = None, batch_size: Optional[int] = None) -> Iterable[Tuple[str, PromptMetadata]]:
         batch_size = batch_size or 100
         for batch in paginated_read_until_empty(
             lambda offset, limit: self.prompt_embedding_store.get(
-                filter={"cluster_id": cluster_id} if cluster_id else None,
+                filter={"cluster_id": {"$in": cluster_ids}} if cluster_ids else None,
                 include=["metadatas"],
                 offset=offset,
                 limit=limit,
@@ -359,7 +385,7 @@ class PromptsManager():
         total_tokens = 0
         prompts_count = 0
 
-        for _, metadata in self.stream_prompts_metadata(cluster_id):
+        for _, metadata in self.stream_prompts_metadata([cluster_id]):
             if prompts_count >= sample_size:
                 break
             total_tokens += (metadata.tokens or 0)

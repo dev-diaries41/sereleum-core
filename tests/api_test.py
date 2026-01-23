@@ -2,8 +2,12 @@ import pytest
 import pytest_asyncio
 from sereleum.data import get_dummy_data
 from client.revelium_client import ReveliumClient
-from sereleum.types import Prompt
 from httpx import HTTPStatusError
+from smartscan import ClusterAccuracy, ClusterNoEmbeddings
+
+from sereleum.types import Prompt, PromptsOverviewInfo
+from sereleum.constants.api import Routes
+from sereleum.schemas.api import  GetPromptsRequest, GetClusterRequestParams, UpdateLabelParams, QueryPromptsRequest, UpdatePromptClusterIdParams, AddPromptsResponse
 
 @pytest_asyncio.fixture
 async def setup_client():
@@ -63,20 +67,19 @@ class TestReveliumClient:
     async def test_prompts_overview(self, setup_client: tuple[ReveliumClient, list[Prompt]]):
         client, _ = setup_client
         overview = await client.get_prompts_overview()
-        assert isinstance(overview, dict)
+        assert isinstance(overview, PromptsOverviewInfo)
 
     async def test_add_prompts_file(self, setup_client: tuple[ReveliumClient, list[Prompt]]):
         client, _ = setup_client
         add_file_result = await client.add_prompts_file("output/placeholder_prompts.json")
-        assert add_file_result is not None
-        async for event in  client.track_prompts_index_progress( add_file_result['job_id']):
+        assert isinstance(add_file_result, AddPromptsResponse)
+        async for event in  client.track_prompts_index_progress( add_file_result.job_id):
             pass
         
     async def test_prompts_overview(self, setup_client: tuple[ReveliumClient, list[Prompt]]):
         client, _ = setup_client
         accuracy = await client.get_cluster_accuracy()
-        print(accuracy)
-        assert isinstance(accuracy, dict)
+        assert isinstance(accuracy, ClusterAccuracy)
 
 
     async def test_updated_prompt_cluster(self, setup_client: tuple[ReveliumClient, list[Prompt]]):
