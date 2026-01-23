@@ -191,7 +191,7 @@ class PromptsManager():
                 )
         self.cluster_embedding_store.upsert(updated_clusters)
 
-        return [ClusterNoEmbeddings(prototype_id=c.item_id, metadata=c.metadata, label=c.metadata.label) for c in updated_clusters]
+        return [ClusterNoEmbeddings(prototype_id=c.item_id, metadata=c.metadata, label=c.metadata['label']) for c in updated_clusters]
 
 
     def update_cluster_label(self, cluster_id: str, label: str) -> bool:
