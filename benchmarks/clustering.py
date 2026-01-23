@@ -50,7 +50,7 @@ async def run(prompts_manager: PromptsManager, model:TextEmbeddingModel, plot_ou
     results[model] = bench
  
     if result.assignments:
-        prompts_manager.update_prompts_by_ids(result.assignments.keys(), result.merges)
+        prompts_manager.update_prompts_by_ids(list(result.assignments.keys()), result.merges)
     if result.clusters:
         await prompts_manager.update_clusters(result.clusters, result.merges)
 
