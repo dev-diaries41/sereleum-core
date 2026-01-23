@@ -236,7 +236,7 @@ class PromptsManager():
 
     
     # Note: tokens in metadata shouldnt be none here
-    def stream_prompts_metadata(self, cluster_id: Optional[str] = None, batch_size: Optional[int] = None) -> Iterable[PromptMetadata]:
+    def stream_prompts_metadata(self, cluster_id: Optional[str] = None, batch_size: Optional[int] = None) -> Iterable[Tuple[str, PromptMetadata]]:
         batch_size = batch_size or 100
         for batch in paginated_read_until_empty(
             lambda offset, limit: self.prompt_embedding_store.get(
@@ -248,7 +248,8 @@ class PromptsManager():
             break_fn= lambda batch: len(batch.metadatas) == 0,
             limit=batch_size,
             ):
-            yield from [ PromptMetadata(**m) for m in batch.metadatas]     
+            for prompt_id, metadata in zip(batch.ids, batch.metadatas):
+                yield prompt_id, PromptMetadata(**metadata)    
 
     def get_prompts_overview(self) -> PromptsOverviewInfo:
         prompt_count = self.prompt_embedding_store.count()
@@ -348,7 +349,7 @@ class PromptsManager():
         total_tokens = 0
         prompts_count = 0
 
-        for metadata in self.stream_prompts_metadata(cluster_id):
+        for _, metadata in self.stream_prompts_metadata(cluster_id):
             if prompts_count >= sample_size:
                 break
             total_tokens += (metadata.tokens or 0)
