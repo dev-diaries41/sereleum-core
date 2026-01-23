@@ -9,9 +9,10 @@ Sereleum is a business-focused LLM analytics platform that turns real user promp
 
    * Automatically groups similar prompts and labels them to reveal the **most popular business use cases**.
 
-2. **Token Usage by Cluster (only for top 5 clusters)**
+2. **Token Usage by Cluster (only for top 5 clusters for)**
 
    * Tracks **token consumption and cost per use case**, helping teams identify expensive workflows and optimize budgets.
+   * Only the top 5 clusters are shown, as these represent the most significant, high-impact use cases and focusing on them reduces computational load while highlighting what matters most.
 
 ## Design choices
 * Model: MiniLM-6 quant onnxruntime model
