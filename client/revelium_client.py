@@ -132,3 +132,17 @@ class ReveliumClient:
                     if line.startswith("data:"):
                         data_str = line[len("data:"):].strip()
                         yield json.loads(data_str)
+
+    async def track_prompts_cluster_status(self, job_id: str):
+        url = f"{self.base_url}/{Routes.SSE_PROMPTS_CLUSTER_STATUS}?job_id={job_id}"
+
+        async with httpx.AsyncClient(timeout=None) as client:
+            async with client.stream("GET", url) as response:
+                async for line in response.aiter_lines():
+                    line = line.strip()
+                    if not line:
+                        continue
+                    if line.startswith("data:"):
+                        data_str = line[len("data:"):].strip()
+                        yield json.loads(data_str)
+
