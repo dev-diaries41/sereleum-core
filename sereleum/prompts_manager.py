@@ -37,7 +37,17 @@ class PromptsManager():
         input_prompt = self._get_labelling_prompt(cluster_id, existing_labels, sample_prompts)
         return self.llm.generate_json(input_prompt, LLMClassificationResult)
                 
-             
+
+    def update_prompt_cluster(self, prompt_id: str, new_cluster_id: str) -> None:
+        updated_at = datetime.now().isoformat()
+        prompt = self.get_prompts_by_id([prompt_id])[0]
+        updated_metadata = ItemEmbeddingUpdate(
+                    prompt_id,
+                    metadata=PromptMetadata(cluster_id=new_cluster_id, created_at=prompt.metadata.created_at, updated_at=updated_at, tokens=prompt.metadata.tokens).model_dump()
+                )
+        self.prompt_embedding_store.update([updated_metadata]) 
+
+
     def update_prompts(self, assignments: Assignments, merges: ClusterMerges) -> None:
         prompt_ids = [str(k) for k in assignments.keys()]
         updated_at = datetime.now().isoformat()
