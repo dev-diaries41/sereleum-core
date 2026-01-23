@@ -1,7 +1,7 @@
 import os
 import asyncio
 
-from fastapi import FastAPI, HTTPException, UploadFile, File, Query, Response, Request
+from fastapi import FastAPI, HTTPException, UploadFile, File, Response, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.concurrency import run_in_threadpool
@@ -15,7 +15,7 @@ from api.tasks import index_prompts_task
 from api.redis import redis_client
 
 from sereleum.constants.models import OPENAI_API_KEY, DEFAULT_SYSTEM_PROMPT, DEFAULT_OPENAI_MODEL
-from sereleum.constants import DEFAULT_CHROMADB_PATH, UPLOAD_DIR
+from sereleum.constants import  UPLOAD_DIR
 from sereleum.constants.api import Routes
 from sereleum.cluster import  get_cluster_plot
 from sereleum.schemas.llm import LLMClientConfig
@@ -51,7 +51,21 @@ app.add_middleware(
 )
 
 
-@app.get("/sse/prompts/index/progress")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+model_manager = ModelManager()
+text_embedder = model_manager.get_text_embedder('all-minilm-l6-v2')
+text_embedder.init()
+
+# TODO: pass client id to get unique collections per client
+def get_prompt_manager():
+    prompt_embedding_store = get_embedding_store( PromptsManager.PROMPT_TYPE, 'all-minilm-l6-v2', text_embedder.embedding_dim) 
+    cluster_embedding_store = get_embedding_store( PromptsManager.CLUSTER_TYPE, 'all-minilm-l6-v2', text_embedder.embedding_dim) 
+    llm = OpenAIClient(OPENAI_API_KEY, LLMClientConfig(model_name=DEFAULT_OPENAI_MODEL, system_prompt=DEFAULT_SYSTEM_PROMPT))
+    return  PromptsManager(llm_client=llm, prompt_embedding_store=prompt_embedding_store, cluster_embedding_store=cluster_embedding_store)
+
+
+@app.get(Routes.SSE_PROMPTS_INDEX_PROGRESS)
 async def track_prompts_index_progress(request: Request, job_id: str | None = None):
     if not job_id:
         return EventSourceResponse(
@@ -78,31 +92,53 @@ async def track_prompts_index_progress(request: Request, job_id: str | None = No
                     raise RuntimeError("Job failed")
 
                 if progress:
-                    if float(progress) == 1 or status == 'completed':
+                    if float(progress) == 1 or status == 'complete':
                         yield {"event": "progress", "data": ProgressMessage(progress=float(progress)).model_dump_json()}
                         yield {"event": "complete", "data": {}}
                         break
                     yield {"event": "progress", "data": ProgressMessage(progress=float(progress)).model_dump_json()}
-                await asyncio.sleep(1)
+                await asyncio.sleep(0.5)
         except RuntimeError:
-            yield {"event": "failed", "data": FailMessage(error="error processing job").model_dump_json()}
+            yield {"event": "failed", "data": FailMessage(error="error indexing prompts").model_dump_json()}
             return
 
     return EventSourceResponse(event_generator())
 
 
-os.makedirs(UPLOAD_DIR, exist_ok=True)
+@app.get(Routes.SSE_PROMPTS_CLUSTER_STATUS)
+async def track_prompts_cluster_status(request: Request, job_id: str | None = None):
+    if not job_id:
+        return EventSourceResponse(
+            [{"event": "failed", "data": FailMessage(error="invalid job id").model_dump_json()}],
+            status_code=400,
+        )
 
-model_manager = ModelManager()
-text_embedder = model_manager.get_text_embedder('all-minilm-l6-v2')
-text_embedder.init()
+    async def event_generator():
+        sent_active_msg = False
+        try:
+            while True:
+                if await request.is_disconnected():
+                    break
 
-# TODO: pass client id to get unique collections per client
-def get_prompt_manager():
-    prompt_embedding_store = get_embedding_store( PromptsManager.PROMPT_TYPE, 'all-minilm-l6-v2', text_embedder.embedding_dim) 
-    cluster_embedding_store = get_embedding_store( PromptsManager.CLUSTER_TYPE, 'all-minilm-l6-v2', text_embedder.embedding_dim) 
-    llm = OpenAIClient(OPENAI_API_KEY, LLMClientConfig(model_name=DEFAULT_OPENAI_MODEL, system_prompt=DEFAULT_SYSTEM_PROMPT))
-    return  PromptsManager(llm_client=llm, prompt_embedding_store=prompt_embedding_store, cluster_embedding_store=cluster_embedding_store)
+                status = redis_client.get(f"{job_id}")
+
+                if status == 'active':
+                    if not sent_active_msg:
+                        yield {"event": "active", "data": {}}
+                        sent_active_msg = True
+
+                if status == 'failed':
+                    raise RuntimeError("Job failed")
+
+                if status == 'complete':
+                    yield {"event": "complete", "data": {}}
+                    break
+                await asyncio.sleep(0.5)
+        except RuntimeError:
+            yield {"event": "failed", "data": FailMessage(error="error clustering prompts").model_dump_json()}
+            return
+
+    return EventSourceResponse(event_generator())
 
 @app.post(Routes.ADD_PROMPTS_FILE_ENDPOINT)
 async def add_prompts_file(file: UploadFile = File(...)):

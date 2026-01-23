@@ -46,10 +46,13 @@ async def index_prompts_task(file_path: str):
         os.remove(file_path)
 
 
+# Note: in prod client_id will be passed instead of just using "cluster_job_status"
 @dramatiq.actor
 async def cluster_prompts_task():
+    redis_client.set("cluster_job_status", "active", ex=86400)
     prompt_embedding_store = get_embedding_store( PromptsManager.PROMPT_TYPE, 'all-minilm-l6-v2', text_embedder.embedding_dim) 
     cluster_embedding_store = get_embedding_store( PromptsManager.CLUSTER_TYPE, 'all-minilm-l6-v2', text_embedder.embedding_dim) 
     llm = OpenAIClient(OPENAI_API_KEY, LLMClientConfig(model_name=DEFAULT_OPENAI_MODEL, system_prompt=DEFAULT_SYSTEM_PROMPT))
     prompts_manager = PromptsManager(llm_client=llm, prompt_embedding_store=prompt_embedding_store, cluster_embedding_store=cluster_embedding_store)
     await cluster_prompts(prompts_manager)
+    redis_client.set("cluster_job_status", "complete", ex=86400)
