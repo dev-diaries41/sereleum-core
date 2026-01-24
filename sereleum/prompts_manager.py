@@ -14,7 +14,7 @@ from smartscan.embeds import EmbeddingStore, generate_prototype_embedding
 from sereleum.types import Prompt, PromptMetadata, PromptsOverviewInfo
 from sereleum.schemas.llm import LLMClassificationResult
 from sereleum.providers.llm.llm_client import LLMClient
-from sereleum.utils import  paginated_read, paginated_read_until_empty
+from sereleum.utils import  paginate_until_total, paginate_until
 from sereleum.errors import ReveliumError, ErrorCode
 
 
@@ -259,7 +259,7 @@ class PromptsManager():
         batch_size = batch_size or 100
         initial_offset = initial_offset or 0
 
-        for batch in paginated_read_until_empty(
+        for batch in paginate_until(
             lambda offset, limit: self.prompt_embedding_store.get(
                 include=["embeddings", "metadatas"],
                 filter={"cluster_id": {"$in": cluster_ids}} if cluster_ids else None,
@@ -317,7 +317,7 @@ class PromptsManager():
         batch_size = batch_size or 100
         initial_offset = initial_offset or 0
 
-        for batch in paginated_read_until_empty(
+        for batch in paginate_until(
             lambda offset, batch_size: self.prompt_embedding_store.get(
                 filter={"cluster_id": {"$in": cluster_ids}} if cluster_ids else None,
                 include=["metadatas", "documents"],
@@ -353,7 +353,7 @@ class PromptsManager():
         batch_size = batch_size or 100
         initial_offset = initial_offset or 0
 
-        for batch in paginated_read_until_empty(
+        for batch in paginate_until(
             lambda offset, limit: self.prompt_embedding_store.get(
                 filter={"cluster_id": {"$in": cluster_ids}} if cluster_ids else None,
                 include=["metadatas"],
@@ -379,7 +379,7 @@ class PromptsManager():
 
     def get_existing_labels(self) -> list[str]:
         labels: list[str] = []
-        for batch in paginated_read_until_empty(
+        for batch in paginate_until(
             fetch_fn=lambda offset, limit: self.cluster_embedding_store.get(
                 include=['metadatas'], filter={"label": {"$ne": Cluster.UNLABELLED}},
                 limit=limit,
@@ -410,7 +410,7 @@ class PromptsManager():
     
     def get_all_clusters(self) -> dict[ClusterId, Cluster]:
         clusters: Dict[ClusterId, Cluster] = {}
-        for batch in paginated_read_until_empty(
+        for batch in paginate_until(
             fetch_fn=lambda offset, limit: self.cluster_embedding_store.get(
                 include=['metadatas', 'embeddings'],
                 limit=limit,
