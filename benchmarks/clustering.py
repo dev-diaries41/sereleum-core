@@ -37,7 +37,7 @@ async def run(prompts_manager: PromptsManager, model:TextEmbeddingModel, plot_ou
 
     random.seed(32)
 
-    ids, embeddings, cluster_ids = prompts_manager.get_prompt_embeddings()
+    ids, embeddings, cluster_ids = prompts_manager.get_prompt_sample_embeddings(1e5)
     existing_clusters = prompts_manager.get_all_clusters()
     existing_assignments = dict(zip(ids, cluster_ids))
     clusterer = IncrementalClusterer(default_threshold=0.55, sim_factor=0.9, merge_threshold=0.9, existing_assignments=existing_assignments, existing_clusters=existing_clusters, benchmarking=True)  

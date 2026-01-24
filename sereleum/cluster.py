@@ -11,7 +11,7 @@ from sereleum.prompts_manager import PromptsManager
 
 
 async def cluster_prompts(prompts_manager: PromptsManager):
-    ids, embeddings, cluster_ids = prompts_manager.get_prompt_embeddings()
+    ids, embeddings, cluster_ids = prompts_manager.get_prompt_sample_embeddings(1e5)
     existing_clusters = prompts_manager.get_all_clusters()
     existing_assignments = dict(zip(ids, cluster_ids))
     clusterer = IncrementalClusterer(
@@ -29,7 +29,7 @@ async def cluster_prompts(prompts_manager: PromptsManager):
     return result
 
 def get_cluster_plot(prompts_manager: PromptsManager) -> Optional[bytes]:
-    ids, embeddings, cluster_ids = prompts_manager.get_prompt_embeddings()
+    ids, embeddings, cluster_ids = prompts_manager.get_prompt_sample_embeddings(1e5)
     if not ids:
         return None
     existing_assignments = dict(zip(ids, cluster_ids))

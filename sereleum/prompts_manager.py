@@ -1,4 +1,5 @@
 import asyncio 
+import random
 
 import numpy as np
 from numpy import ndarray
@@ -169,7 +170,7 @@ class PromptsManager():
 
         for merge_id in merges.keys():
             cluster = self.get_clusters(cluster_ids=[merge_id], include=['metadatas'])[merge_id]
-            _, embeds, _  = self.get_prompt_embeddings(cluster_id=merge_id)
+            _, embeds, _  = self.get_prompt_sample_embeddings(1e5, cluster_ids=[merge_id])
             new_protoype_embed = generate_prototype_embedding(embeds)
             new_mean_similarity = np.mean(np.dot(embeds, new_protoype_embed))
             new_prototype_size = len(embeds)
@@ -224,19 +225,21 @@ class PromptsManager():
         return calculate_cluster_accuracy(true_labels, assignments)
     
 
-    def get_prompt_embeddings(self, cluster_id: Optional[str] = None, batch_size: Optional[int] = None) -> Tuple[List[ItemId], List[ndarray], List[ClusterId]]:
+    def get_prompt_sample_embeddings(self, sample_size: int, cluster_ids: Optional[List[str]] = None, batch_size: Optional[int] = None,) -> Tuple[List[ItemId], List[ndarray], List[ClusterId]]:
         ids, embeddings, cluster_ids = [], [], []
-        for id_, emb, _cluster_id in self.stream_prompt_embeddings(cluster_id=cluster_id, batch_size=batch_size):
+        for id_, emb, _cluster_id in self.stream_prompt_embeddings(cluster_ids=cluster_ids, batch_size=batch_size):
+            if len(ids) >= sample_size:
+                break
             ids.append(id_)
             embeddings.append(emb)
             cluster_ids.append(_cluster_id)
         return ids, embeddings, cluster_ids
     
-    def stream_prompt_embeddings(self, cluster_id: Optional[str] = None, batch_size: Optional[int] = None) -> Iterable[Tuple[ItemId, ndarray, ClusterId]]:
+    def stream_prompt_embeddings(self, cluster_ids: Optional[List[str]] = None, batch_size: Optional[int] = None) -> Iterable[Tuple[ItemId, ndarray, ClusterId]]:
         for batch in paginated_read_until_empty(
             lambda offset, limit: self.prompt_embedding_store.get(
                 include=["embeddings", "metadatas"],
-                filter={"cluster_id": cluster_id} if cluster_id else None,
+                filter={"cluster_id": {"$in": cluster_ids}} if cluster_ids else None,
                 offset=offset,
                 limit=limit,
             ),
