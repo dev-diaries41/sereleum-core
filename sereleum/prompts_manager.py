@@ -235,7 +235,10 @@ class PromptsManager():
             cluster_ids.append(_cluster_id)
         return ids, embeddings, cluster_ids
     
-    def stream_prompt_embeddings(self, cluster_ids: Optional[List[str]] = None, batch_size: Optional[int] = None) -> Iterable[Tuple[ItemId, ndarray, ClusterId]]:
+    def stream_prompt_embeddings(self, cluster_ids: Optional[List[str]] = None, batch_size: Optional[int] = None, initial_offset: Optional[int] = None) -> Iterable[Tuple[ItemId, ndarray, ClusterId]]:
+        batch_size = batch_size or 100
+        initial_offset = initial_offset or 0
+
         for batch in paginated_read_until_empty(
             lambda offset, limit: self.prompt_embedding_store.get(
                 include=["embeddings", "metadatas"],
@@ -244,7 +247,8 @@ class PromptsManager():
                 limit=limit,
             ),
             break_fn= lambda batch: len(batch.embeddings) == 0,
-            limit=batch_size or 500,
+            batch_size=batch_size,
+            initial_offset = initial_offset
             ):
             yield from zip(batch.ids, batch.embeddings, [m.get("cluster_id") for m in batch.metadatas])
 
@@ -282,23 +286,26 @@ class PromptsManager():
             start += batch_size
         return prompts
     
-    def stream_prompts(self, cluster_id: Optional[ClusterId] = None, limit: Optional[int] = None) -> Iterable[Prompt]:
-        limit = limit or 100
+    def stream_prompts(self, cluster_ids: Optional[List[str]] = None, batch_size: Optional[int] = None, initial_offset: Optional[int] = None) -> Iterable[Prompt]:
+        batch_size = batch_size or 100
+        initial_offset = initial_offset or 0
+
         for batch in paginated_read_until_empty(
-            lambda offset, limit: self.prompt_embedding_store.get(
-                filter={"cluster_id": cluster_id} if cluster_id else None,
+            lambda offset, batch_size: self.prompt_embedding_store.get(
+                filter={"cluster_id": {"$in": cluster_ids}} if cluster_ids else None,
                 include=["metadatas", "documents"],
                 offset=offset,
-                limit=limit,
+                limit=batch_size,
             ),
             break_fn= lambda batch: len(batch.metadatas) == 0,
-            limit=limit,
+            batch_size=batch_size,
+            initial_offset = initial_offset
             ):
             yield from self._to_prompts(batch)
             
     
     # Note: tokens in metadata shouldnt be none here
-    def stream_prompts_metadata_by_ids(self, ids: list[str], batch_size: int | None = None) -> Iterable[Tuple[str, PromptMetadata]]:
+    def stream_prompts_metadata_by_ids(self, ids: list[str], batch_size: Optional[int] = None) -> Iterable[Tuple[str, PromptMetadata]]:
         batch_size = batch_size or 100
         start = 0
 
@@ -315,8 +322,10 @@ class PromptsManager():
 
     
     # Note: tokens in metadata shouldnt be none here
-    def stream_prompts_metadata(self, cluster_ids: Optional[List[str]] = None, batch_size: Optional[int] = None) -> Iterable[Tuple[str, PromptMetadata]]:
+    def stream_prompts_metadata(self, cluster_ids: Optional[List[str]] = None, batch_size: Optional[int] = None, initial_offset: Optional[int] = None) -> Iterable[Tuple[str, PromptMetadata]]:
         batch_size = batch_size or 100
+        initial_offset = initial_offset or 0
+
         for batch in paginated_read_until_empty(
             lambda offset, limit: self.prompt_embedding_store.get(
                 filter={"cluster_id": {"$in": cluster_ids}} if cluster_ids else None,
@@ -325,8 +334,9 @@ class PromptsManager():
                 limit=limit,
             ),
             break_fn= lambda batch: len(batch.metadatas) == 0,
-            limit=batch_size,
-            ):
+            batch_size=batch_size,
+            initial_offset = initial_offset   
+                              ):
             for prompt_id, metadata in zip(batch.ids, batch.metadatas):
                 yield prompt_id, PromptMetadata(**metadata)    
 
