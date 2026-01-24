@@ -386,7 +386,7 @@ class PromptsManager():
                 offset=offset
                 ),
             break_fn=lambda batch: len(batch.metadatas) == 0,
-            limit=500,
+            batch_size=500,
             ):
             labels.extend([m.get("label") for m in batch.metadatas])
         return labels
@@ -417,7 +417,7 @@ class PromptsManager():
                 offset=offset
                 ),
             break_fn=lambda batch: len(batch.metadatas) == 0,
-            limit=500
+            batch_size=500
             ):
             for cluster_id, embedding, metadata in zip(batch.ids, batch.embeddings, batch.metadatas):
                 clusters[cluster_id] = Cluster(cluster_id, embedding, ClusterMetadata(**metadata), label=metadata.get("label"))
