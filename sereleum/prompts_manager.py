@@ -265,10 +265,15 @@ class PromptsManager():
             )
         return self._to_prompts(result)
 
-    def query_prompts(self, text_embedder: TextEmbeddingProvider, query: str, cluster_id: Optional[ClusterId] = None, limit: Optional[int] = None) -> List[Prompt]:
+    def query_prompts(self, text_embedder: TextEmbeddingProvider, query: str, cluster_ids: Optional[List[str]] = None, limit: Optional[int] = None) -> List[Prompt]:
         embed = text_embedder.embed(query)
         limit = limit or 10
-        result = self.prompt_embedding_store.query(query_embeds=[embed], limit=limit, filter={"cluster_id": cluster_id} if cluster_id else None, include=["metadatas", "documents"])
+        result = self.prompt_embedding_store.query(
+            query_embeds=[embed], 
+            limit=limit, 
+                filter={"cluster_id": {"$in": cluster_ids}} if cluster_ids else None,
+            include=["metadatas", "documents"]
+            )
         return self._to_prompts(result)
     
     # This handle cases where the number of ids may be very high
