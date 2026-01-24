@@ -1,5 +1,6 @@
 import asyncio 
 import random
+import math
 
 import numpy as np
 from numpy import ndarray
@@ -226,14 +227,33 @@ class PromptsManager():
     
 
     def get_prompt_sample_embeddings(self, sample_size: int, cluster_ids: Optional[List[str]] = None, batch_size: Optional[int] = None,) -> Tuple[List[ItemId], List[ndarray], List[ClusterId]]:
-        ids, embeddings, cluster_ids = [], [], []
+        id_list, embedding_list, cluster_id_list = [], [], []
+        total_prompts = self.prompt_embedding_store.count()
+        sample_size = sample_size if total_prompts >= sample_size else total_prompts
+
         for id_, emb, _cluster_id in self.stream_prompt_embeddings(cluster_ids=cluster_ids, batch_size=batch_size):
-            if len(ids) >= sample_size:
-                break
-            ids.append(id_)
-            embeddings.append(emb)
-            cluster_ids.append(_cluster_id)
-        return ids, embeddings, cluster_ids
+            if len(id_list) < sample_size:
+                id_list.append(id_)
+                embedding_list.append(emb)
+                cluster_id_list.append(_cluster_id)
+            else:
+                scale = sample_size / total_prompts # ensure step size is scaled to sample size
+                n_sections = 5
+                step_size =  total_prompts // n_sections
+                scaled_step_size =  math.floor(scale * step_size)
+                initial_offset = step_size
+                
+                while initial_offset < total_prompts:
+                    for idx, (id_, emb, _cluster_id) in enumerate(self.stream_prompt_embeddings(cluster_ids=cluster_ids, batch_size=batch_size, initial_offset=initial_offset)):
+                        if idx >= scaled_step_size: # prevents excessive reads!!
+                            break
+                        # randomly keep or replace with a unique item
+                        if random.random() > 0.5:
+                            id_list[idx] = id_
+                            embedding_list[idx] = emb
+                            cluster_id_list[idx] = _cluster_id
+                    initial_offset += step_size # increase in real step size to enusre the entire db is passed in n_sections
+        return id_list, embedding_list, cluster_id_list
     
     def stream_prompt_embeddings(self, cluster_ids: Optional[List[str]] = None, batch_size: Optional[int] = None, initial_offset: Optional[int] = None) -> Iterable[Tuple[ItemId, ndarray, ClusterId]]:
         batch_size = batch_size or 100
