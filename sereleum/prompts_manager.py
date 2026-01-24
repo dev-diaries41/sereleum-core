@@ -253,9 +253,11 @@ class PromptsManager():
             yield from zip(batch.ids, batch.embeddings, [m.get("cluster_id") for m in batch.metadatas])
 
 
-    def get_prompts_paginate(self, ids: Optional[List[str]] = None, cluster_id: Optional[ClusterId] = None, limit: Optional[int] = None, offset: Optional[int] = None) -> List[Prompt]:
+    def get_prompts(self, ids: Optional[List[str]] = None, cluster_id: Optional[ClusterId] = None, limit: Optional[int] = None, offset: Optional[int] = None) -> List[Prompt]:
+        if ids:
+            return self.get_prompts_by_id(ids, batch_size=limit)
+        
         result = self.prompt_embedding_store.get(
-                ids = ids,
                 filter={"cluster_id": cluster_id} if cluster_id else None,
                 include=["metadatas", "documents"],
                 offset=offset,

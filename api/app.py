@@ -155,7 +155,7 @@ async def get_prompts(req: GetPromptsRequest):
     if req.prompt_ids and req.limit:
         raise HTTPException(status_code=400, detail="Prompt ids and limit filtering must be used seperately")
     prompts_manager = get_prompt_manager()
-    prompts = await run_in_threadpool(prompts_manager.get_prompts_paginate, req.prompt_ids, req.cluster_id, req.limit, req.offset)
+    prompts = await run_in_threadpool(prompts_manager.get_prompts, req.prompt_ids, req.cluster_id, req.limit, req.offset)
     return JSONResponse(GetPromptsResponse(prompts=prompts).model_dump())
 
 
