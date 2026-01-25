@@ -91,6 +91,20 @@ class ClustersManager():
 
         return len(labelled_clusters)
     
+
+    def update_cluster_label(self, cluster_id: str, label: str) -> bool:
+        """
+        Update the embedding store with clusters, applying merges if provided.
+        Old clusters that have been merged are removed from the store.
+        """
+        result = self.get_clusters(cluster_ids=[cluster_id], include=['metadatas'])
+        if(len(result)) == 0: return False
+        updated_meta=result[cluster_id].metadata
+        updated_meta.label = label
+        updated_cluster = ItemEmbeddingUpdate(item_id=cluster_id, metadata=updated_meta.model_dump())
+        self.embedding_store.update([updated_cluster])
+        return True
+
     def merge_clusters(self, merges: ClusterMerges) -> List[ClusterNoEmbeddings]:
         self.prompts_manager.update_prompts(merges)
         merged_clustered_ids = {cid for targets in merges.values() for cid in targets}
@@ -125,40 +139,19 @@ class ClustersManager():
                 )
         self.embedding_store.upsert(updated_clusters)
 
-        return [ClusterNoEmbeddings(prototype_id=c.item_id, metadata=c.metadata, label=c.metadata['label']) for c in updated_clusters]
-
-
-    def update_cluster_label(self, cluster_id: str, label: str) -> bool:
-        """
-        Update the embedding store with clusters, applying merges if provided.
-        Old clusters that have been merged are removed from the store.
-        """
-        result = self.get_clusters(cluster_ids=[cluster_id], include=['metadatas'])
-        if(len(result)) == 0: return False
-        updated_meta=result[cluster_id].metadata
-        updated_meta.label = label
-        updated_cluster = ItemEmbeddingUpdate(item_id=cluster_id, metadata=updated_meta.model_dump())
-        self.embedding_store.update([updated_cluster])
-        return True
-
-
-    # TODO: accept prompt_ids that are lablled and fetch label from meta
-    #args: ids and label
-    def calculate_cluster_accuracy(self) -> ClusterAccuracy:
-        true_labels: dict[ItemId, str] = {}
-        assignments: Assignments = {}
-        for p in  self.prompts_manager.stream_prompts():
-            ## temp solution
-            assignments[p.prompt_id] = p.metadata.cluster_id
-            label = p.prompt_id.split("_")[0]
-            if not label: 
-                print(f"[WARNING] {p.prompt_id} is not a valid labelled item.")
-                continue
-            true_labels[p.prompt_id] = label
-        return calculate_cluster_accuracy(true_labels, assignments)
-
+        return self._to_clusters_from_item_embeddings(updated_clusters, with_embeddings=False)
     
-    def get_existing_labels(self) -> list[str]:
+    def query_clusters(self, text_embedder: TextEmbeddingProvider, query: str, cluster_ids: Optional[List[str]] = None, limit: int = 10) -> (Dict[ClusterId, Cluster] | Dict[ClusterId, ClusterNoEmbeddings]):
+        embed = text_embedder.embed(query)
+        result = self.embedding_store.query(
+            query_embeds=[embed], 
+            limit=limit, 
+                filter={"cluster_id": {"$in": cluster_ids}} if cluster_ids else None,
+            include=["metadatas"]
+            )
+        return self._to_clusters_dict(result)
+    
+    def get_existing_labels(self, batch_size: int = 100) -> list[str]:
         labels: list[str] = []
         for batch in paginate_until(
             fetch_fn=lambda offset, limit: self.embedding_store.get(
@@ -167,14 +160,13 @@ class ClustersManager():
                 offset=offset
                 ),
             break_fn=lambda batch: len(batch.metadatas) == 0,
-            batch_size=500,
+            batch_size=batch_size,
             ):
             labels.extend([m.get("label") for m in batch.metadatas])
         return labels
     
 
     def get_clusters(self, cluster_ids: Optional[List[str]] = None, limit: Optional[int] = None, offset: Optional[int] = None, include: Include = ['metadatas', 'embeddings']) -> dict[ClusterId, Cluster | ClusterNoEmbeddings]:
-        clusters: Dict[ClusterId, Cluster] = {}
         results = self.embedding_store.get(
                 ids = cluster_ids if cluster_ids else None,
                 include=include,
@@ -182,12 +174,10 @@ class ClustersManager():
                 offset=offset
                 )
         if "embeddings" in include:
-            for cluster_id, embedding, metadata in zip(results.ids, results.embeddings, results.metadatas):
-                clusters[cluster_id] = Cluster(cluster_id, embedding, ClusterMetadata(**metadata), label=metadata.get("label"))
+            return self._to_clusters_dict(results, with_embeddings=True)
         else:
-            for cluster_id, metadata in zip(results.ids, results.metadatas):
-                clusters[cluster_id] = ClusterNoEmbeddings(prototype_id=cluster_id, metadata=ClusterMetadata(**metadata), label=metadata.get("label"))
-        return clusters
+            return self._to_clusters_dict(results, with_embeddings=False)
+
     
     def get_all_clusters(self) -> dict[ClusterId, Cluster]:
         clusters: Dict[ClusterId, Cluster] = {}
@@ -200,8 +190,7 @@ class ClustersManager():
             break_fn=lambda batch: len(batch.metadatas) == 0,
             batch_size=500
             ):
-            for cluster_id, embedding, metadata in zip(batch.ids, batch.embeddings, batch.metadatas):
-                clusters[cluster_id] = Cluster(cluster_id, embedding, ClusterMetadata(**metadata), label=metadata.get("label"))
+            clusters.update(self._to_clusters_dict(batch, with_embeddings=True))
         return clusters
     
     def get_top_clusters(self, n: int) -> Dict[ClusterId, ClusterNoEmbeddings]:
@@ -223,13 +212,9 @@ class ClustersManager():
                 break
 
             if len(result.metadatas) == n:
-                top_clusters = {
-                    cluster_id: ClusterNoEmbeddings(prototype_id=cluster_id, metadata=ClusterMetadata(**metadata), label = metadata.get("label")) 
-                    for cluster_id, metadata in zip(result.ids, result.metadatas)
-                }
+                top_clusters = self._to_clusters_dict(result)
             else:
-                for cluster_id, metadata in zip(result.ids, result.metadatas):
-                    top_clusters[cluster_id] = ClusterNoEmbeddings(prototype_id=cluster_id, metadata=ClusterMetadata(**metadata), label = metadata.get("label")) 
+                top_clusters.update(self._to_clusters_dict(result))
 
                 if len(top_clusters) > n:
                     top_clusters = dict(
@@ -239,7 +224,6 @@ class ClustersManager():
                             reverse=True,
                         )[:n]
                     )
-
         return top_clusters
     
     def calculate_avg_tokens_for_cluster(self, cluster_id: str, sample_size: int) -> int:
@@ -253,3 +237,31 @@ class ClustersManager():
             prompts_count += (1 if metadata.tokens else 0)
         return int(total_tokens / max(1, prompts_count))
     
+
+    # TODO: accept prompt_ids that are lablled and fetch label from meta
+    #args: ids and label
+    def calculate_cluster_accuracy(self) -> ClusterAccuracy:
+        true_labels: dict[ItemId, str] = {}
+        assignments: Assignments = {}
+        for p in  self.prompts_manager.stream_prompts():
+            ## temp solution
+            assignments[p.prompt_id] = p.metadata.cluster_id
+            label = p.prompt_id.split("_")[0]
+            if not label: 
+                print(f"[WARNING] {p.prompt_id} is not a valid labelled item.")
+                continue
+            true_labels[p.prompt_id] = label
+        return calculate_cluster_accuracy(true_labels, assignments)
+    
+    def _to_clusters_dict(self, results: QueryResult[None, ClusterMetadata] | GetResult[None, ClusterMetadata], with_embeddings: bool = False) -> (Dict[ClusterId, Cluster] | Dict[ClusterId, ClusterNoEmbeddings]):
+        if with_embeddings:
+           return { cluster_id: Cluster(cluster_id, embedding, ClusterMetadata(**metadata), label=metadata.get("label")) for cluster_id, embedding, metadata in zip(results.ids, results.embeddings, results.metadatas)}
+        else:
+            return { cluster_id: ClusterNoEmbeddings(prototype_id=cluster_id, metadata=ClusterMetadata(**metadata), label=metadata.get("label")) for cluster_id, metadata in zip(results.ids, results.metadatas)}
+        
+    def _to_clusters_from_item_embeddings(self, updated_clusters: List[ItemEmbedding[None, ClusterMetadata]] | List [ItemEmbeddingUpdate[None, ClusterMetadata]], with_embeddings: bool = False):
+        if with_embeddings:
+            return [Cluster(prototype_id=c.item_id, embedding=c.embedding, metadata=c.metadata, label=c.metadata['label']) for c in updated_clusters]
+        else:
+            return [ClusterNoEmbeddings(prototype_id=c.item_id, metadata=c.metadata, label=c.metadata['label']) for c in updated_clusters]
+
