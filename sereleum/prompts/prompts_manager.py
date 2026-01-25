@@ -88,6 +88,8 @@ class PromptsManager():
             )
         self.embedding_store.update(updated_prompts)
 
+    # Designed to limit reads whilst covering all "sections" of the db
+    # This helps prevents large number of reads for large number of prompts
     def get_prompt_sample_embeddings(self, sample_size: int, cluster_ids: Optional[List[str]] = None, batch_size: Optional[int] = None,) -> Tuple[List[ItemId], List[ndarray], List[ClusterId]]:
         id_list, embedding_list, cluster_id_list = [], [], []
         total_prompts = self.embedding_store.count()
