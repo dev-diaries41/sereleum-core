@@ -1,7 +1,7 @@
 import os
 import asyncio
 
-from fastapi import FastAPI, HTTPException, UploadFile, File, Response, Request
+from fastapi import FastAPI, HTTPException, UploadFile, File, Response, Request, Form
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.concurrency import run_in_threadpool
@@ -150,11 +150,11 @@ async def track_prompts_cluster_status(request: Request, job_id: str | None = No
     return EventSourceResponse(event_generator())
 
 @app.post(Routes.ADD_PROMPTS_FILE_ENDPOINT)
-async def add_prompts_file(file: UploadFile = File(...)):
+async def add_prompts_file(file: UploadFile = File(...), auto_label: bool = Form(False), auto_merge_threshold: float = Form(0.9), initial_threshold: float = Form(0.55)):
     with NamedTemporaryFile(dir=UPLOAD_DIR, delete=False, suffix=".json") as tmp:
         tmp.write(await file.read())
         tmp.flush()
-        job = index_prompts_task.send(tmp.name)
+        job = index_prompts_task.send(tmp.name, auto_label, auto_merge_threshold, initial_threshold)
     return AddPromptsResponse(status='queued', job_id=job.message_id )
 
 @app.post(Routes.BASE_PROMPTS_ENDPOINT)

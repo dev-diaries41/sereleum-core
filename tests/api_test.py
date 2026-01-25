@@ -69,9 +69,10 @@ class TestReveliumClient:
         overview = await client.get_prompts_overview()
         assert isinstance(overview, PromptsOverviewInfo)
 
+    
     async def test_add_prompts_file(self, setup_client: tuple[ReveliumClient, list[Prompt]]):
         client, _ = setup_client
-        add_file_result = await client.add_prompts_file("output/test_prompts.json")
+        add_file_result = await client.add_prompts_file("output/test_prompts.json", False)
         assert isinstance(add_file_result, AddPromptsResponse)
         async for event in  client.track_prompts_index_progress( add_file_result.job_id):
             pass

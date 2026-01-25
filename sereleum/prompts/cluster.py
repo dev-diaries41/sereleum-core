@@ -12,14 +12,14 @@ from sereleum.prompts.clusters_manager import ClustersManager
 
 
 ## TODO: return n_label
-async def cluster_prompts(prompts_manager: PromptsManager, cluster_manager: ClustersManager, auto_label: bool = True):
+async def cluster_prompts(prompts_manager: PromptsManager, cluster_manager: ClustersManager, auto_label: bool = True, auto_merge_threshold: float = 0.9, initial_threshold: float = 0.55):
     ids, embeddings, cluster_ids = prompts_manager.get_prompt_sample_embeddings(1e5)
     existing_clusters = cluster_manager.get_all_clusters()
     existing_assignments = dict(zip(ids, cluster_ids))
     clusterer = IncrementalClusterer(
-        default_threshold=0.55,
+        default_threshold=initial_threshold,
         sim_factor=0.9,
-        merge_threshold=0.9,
+        merge_threshold=auto_merge_threshold,
         existing_assignments=existing_assignments,
         existing_clusters=existing_clusters,
     )
