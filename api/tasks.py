@@ -44,7 +44,7 @@ def get_cluster_manager(prompt_manager: PromptsManager):
     cluster_embedding_store = get_embedding_store('cluster', 'all-minilm-l6-v2', text_embedder.embedding_dim) 
     return  ClustersManager(embedding_store=cluster_embedding_store, prompts_manager=prompt_manager, llm=llm)
 
-@dramatiq.actor
+@dramatiq.actor(max_retries = 2)
 async def index_prompts_task(file_path: str, auto_label: bool = True, auto_merge_threshold: float = 0.9, initial_threshold: float = 0.55):
     try:
         msg = CurrentMessage().get_current_message()
