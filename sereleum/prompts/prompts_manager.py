@@ -9,7 +9,6 @@ from smartscan import ItemEmbedding,Assignments, ClusterMerges, ItemId, TextEmbe
 from smartscan.embeds import EmbeddingStore
 
 from sereleum.types import Prompt, PromptMetadata
-from sereleum.providers.llm.llm_client import LLMClient
 from sereleum.utils import   paginate_until
 from sereleum.errors import ReveliumError, ErrorCode
 
@@ -17,12 +16,9 @@ from sereleum.errors import ReveliumError, ErrorCode
 class PromptsManager():
     def __init__(self, 
         embedding_store: EmbeddingStore,
-        llm_client: Optional[LLMClient] = None,
                  ): 
-        self.llm = llm_client
         self.embedding_store = embedding_store
         
-
     def update_prompt_cluster(self, prompt_id: str, new_cluster_id: str) -> None:
         updated_at = datetime.now().isoformat()
         prompts = self.get_prompts_by_id([prompt_id])
