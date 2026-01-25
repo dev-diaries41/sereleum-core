@@ -17,10 +17,13 @@ from api.redis import redis_client
 from sereleum.constants.models import OPENAI_API_KEY, DEFAULT_SYSTEM_PROMPT, DEFAULT_OPENAI_MODEL
 from sereleum.constants import  UPLOAD_DIR
 from sereleum.constants.api import Routes
-from sereleum.cluster import  get_cluster_plot
+from sereleum.prompts.cluster import  get_cluster_plot
 from sereleum.schemas.llm import LLMClientConfig
+from sereleum.providers.llm.llm_client import LLMClient
 from sereleum.schemas.api import FailMessage, CompleteMessage, ProgressMessage
-from sereleum.prompts_manager import PromptsManager
+from sereleum.prompts.helpers import get_prompts_overview
+from sereleum.prompts.prompts_manager import PromptsManager
+from sereleum.prompts.clusters_manager import ClustersManager
 from sereleum.embeddings.helpers import get_embedding_store
 from sereleum.providers.llm.openai import OpenAIClient
 from sereleum.models.manage import ModelManager
@@ -58,13 +61,17 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 model_manager = ModelManager()
 text_embedder = model_manager.get_text_embedder('all-minilm-l6-v2')
 text_embedder.init()
+llm = OpenAIClient(OPENAI_API_KEY, LLMClientConfig(model_name=DEFAULT_OPENAI_MODEL, system_prompt=DEFAULT_SYSTEM_PROMPT))
 
 # TODO: pass client id to get unique collections per client
 def get_prompt_manager():
-    prompt_embedding_store = get_embedding_store( PromptsManager.PROMPT_TYPE, 'all-minilm-l6-v2', text_embedder.embedding_dim) 
-    cluster_embedding_store = get_embedding_store( PromptsManager.CLUSTER_TYPE, 'all-minilm-l6-v2', text_embedder.embedding_dim) 
-    llm = OpenAIClient(OPENAI_API_KEY, LLMClientConfig(model_name=DEFAULT_OPENAI_MODEL, system_prompt=DEFAULT_SYSTEM_PROMPT))
-    return  PromptsManager(llm_client=llm, prompt_embedding_store=prompt_embedding_store, cluster_embedding_store=cluster_embedding_store)
+    prompt_embedding_store = get_embedding_store( 'prompt', 'all-minilm-l6-v2', text_embedder.embedding_dim) 
+    return  PromptsManager(embedding_store=prompt_embedding_store)
+
+
+def get_cluster_manager(prompt_manager: PromptsManager):
+    cluster_embedding_store = get_embedding_store('cluster', 'all-minilm-l6-v2', text_embedder.embedding_dim) 
+    return  ClustersManager(embedding_store=cluster_embedding_store, prompts_manager=prompt_manager, llm=llm)
 
 
 @app.get(Routes.SSE_PROMPTS_INDEX_PROGRESS)
@@ -155,28 +162,29 @@ async def get_prompts(req: GetPromptsRequest):
     if req.prompt_ids and req.limit:
         raise HTTPException(status_code=400, detail="Prompt ids and limit filtering must be used seperately")
     prompts_manager = get_prompt_manager()
-    prompts = await run_in_threadpool(prompts_manager.get_prompts_paginate, req.prompt_ids, req.cluster_id, req.limit, req.offset)
+    prompts = await run_in_threadpool(prompts_manager.get_prompts, req.prompt_ids, req.cluster_ids, req.limit, req.offset)
     return JSONResponse(GetPromptsResponse(prompts=prompts).model_dump())
 
 
 @app.post(Routes.QUERY_PROMPTS_ENDPOINT)
 async def query_prompts(req: QueryPromptsRequest):
     prompts_manager = get_prompt_manager()
-    prompts = await run_in_threadpool(prompts_manager.query_prompts, text_embedder, req.query, req.cluster_id, req.limit)
+    prompts = await run_in_threadpool(prompts_manager.query_prompts, text_embedder, req.query, req.cluster_ids, req.limit)
     return JSONResponse(GetPromptsResponse(prompts=prompts).model_dump())
 
 
 @app.get(Routes.COUNT_PROMPTS_ENDPOINT)
 async def count_prompts():
     prompts_manager = get_prompt_manager()
-    count = await run_in_threadpool( prompts_manager.prompt_embedding_store.count)
+    count = await run_in_threadpool( prompts_manager.embedding_store.count)
     return JSONResponse(GetCountResponse(count=count).model_dump())
 
 
 @app.get(Routes.GET_PROMPTS_OVERVIEW_ENDPOINT)
-async def get_prompts_overview():
+async def get_overview():
     prompts_manager = get_prompt_manager()
-    overview = await run_in_threadpool( prompts_manager.get_prompts_overview)
+    clusters_manager = get_cluster_manager(prompts_manager)
+    overview = await run_in_threadpool( get_prompts_overview, prompts_manager, clusters_manager)
     return JSONResponse(GetPromptsOverviewResponse(**overview.model_dump()).model_dump())
 
 
@@ -200,15 +208,17 @@ async def get_clusters(cluster_id: Optional[str] = None, limit: Optional[str] = 
     limit_int = int(limit) if limit not in (None, "") else None
     offset_int = int(offset) if offset not in (None, "") else None
     prompts_manager = get_prompt_manager()
-    clusters = await run_in_threadpool(prompts_manager.get_clusters, cluster_id, limit_int, offset_int, ['metadatas'])
+    clusters_manager = get_cluster_manager(prompts_manager)
+    clusters = await run_in_threadpool(clusters_manager.get_clusters, cluster_id, limit_int, offset_int, ['metadatas'])
     return JSONResponse(GetClustersResponse(clusters=list(clusters.values())).model_dump())
 
 
 @app.patch(Routes.BASE_CLUSTER_ENDPOINT)
 async def update_cluster_label(cluster_id: str, label: str):
     prompts_manager = get_prompt_manager()
+    clusters_manager = get_cluster_manager(prompts_manager)
     updated = await run_in_threadpool(
-        prompts_manager.update_cluster_label, cluster_id, label
+        clusters_manager.update_cluster_label, cluster_id, label
     )
     if not updated:
         raise HTTPException(status_code=404, detail="Label doesn't exist")
@@ -219,20 +229,23 @@ async def update_cluster_label(cluster_id: str, label: str):
 @app.get(Routes.COUNT_CLUSTERS_ENDPOINT)
 async def count_clusters():
     prompts_manager = get_prompt_manager()
-    count = await run_in_threadpool( prompts_manager.cluster_embedding_store.count)
+    clusters_manager = get_cluster_manager(prompts_manager)
+    count = await run_in_threadpool( clusters_manager.embedding_store.count)
     return JSONResponse(GetCountResponse(count=count).model_dump())
 
 @app.get(Routes.GET_CLUSTER_LABELS_ENDPOINT)
 async def get_existing_labels():
     prompts_manager = get_prompt_manager()
-    labels = await run_in_threadpool(prompts_manager.get_existing_labels)
+    clusters_manager = get_cluster_manager(prompts_manager)
+    labels = await run_in_threadpool(clusters_manager.get_existing_labels)
     return JSONResponse(GetLabelsResponse(labels=labels).model_dump())
 
 
 @app.get(Routes.GET_CLUSTER_ACCURACY_ENDPOINT)
 async def get_cluster_accuracy():
     prompts_manager = get_prompt_manager()
-    accuracy = await run_in_threadpool(prompts_manager.calculate_cluster_accuracy)
+    clusters_manager = get_cluster_manager(prompts_manager)
+    accuracy = await run_in_threadpool(clusters_manager.calculate_cluster_accuracy)
     return JSONResponse(GetClustersAccuracyResponse(accuracy=accuracy).model_dump())
 
 
@@ -248,5 +261,6 @@ async def merge_clusters(req: MergeClustersRequest):
     if not req.merges:
         raise HTTPException(status_code=400, detail="Merges cannot be empty")
     prompts_manager = get_prompt_manager()
-    updated_clusters = await run_in_threadpool(prompts_manager.merge_clusters,req.merges)
+    clusters_manager = get_cluster_manager(prompts_manager)
+    updated_clusters = await run_in_threadpool(clusters_manager.merge_clusters,req.merges)
     return JSONResponse(MergeResponse(updated_clusters=updated_clusters).model_dump())

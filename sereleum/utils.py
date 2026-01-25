@@ -9,22 +9,20 @@ from openai.types import ResponsesModel
 
 T = TypeVar("T")
 
-def paginated_read(fetch_fn: Callable[[int, int], T], total: int, limit: int = 500,) -> Iterator[T]:
-    offset = 0
+def paginate_until_total(fetch_fn: Callable[[int, int], T], total: int, batch_size: int = 500, initial_offset: int = 0) -> Iterator[T]:
+    offset = initial_offset
     while offset < total:
-        yield fetch_fn(offset, limit)
-        offset += limit
+        yield fetch_fn(offset, batch_size)
+        offset += batch_size
 
-
-
-def paginated_read_until_empty(fetch_fn: Callable[[int, int], T], break_fn: Callable[[T], bool], limit: int = 500,) -> Iterator[T]:
-    offset = 0
+def paginate_until(fetch_fn: Callable[[int, int], T], break_fn: Callable[[T], bool], batch_size: int = 500, initial_offset: int = 0) -> Iterator[T]:
+    offset = initial_offset
     while True:
-        batch = fetch_fn(offset, limit)
+        batch = fetch_fn(offset, batch_size)
         if break_fn(batch):
             break
         yield batch
-        offset += limit
+        offset += batch_size
 
 def with_mem_profile(func):
     def wrapper(*args, **kwargs):

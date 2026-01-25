@@ -5,8 +5,7 @@ from smartscan import ItemEmbedding
 from smartscan.processor import ProcessorListener
 
 from sereleum.types import Prompt, Status
-from sereleum.cluster import cluster_prompts
-from sereleum.prompts_manager import PromptsManager
+from sereleum.prompts.cluster import cluster_prompts
 
 class DefaultIndexerListener(ProcessorListener[Prompt, ItemEmbedding]):
     def on_error(self, e, item):
@@ -33,16 +32,6 @@ class ProgressBarIndexerListener(ProcessorListener[Prompt, ItemEmbedding]):
     async def on_complete(self, result):
         self.progress_bar.close()
         print(f"Results: {result.total_processed} | Time elapsed: {result.time_elapsed:.4f}s")
-
-
-class PromptIndexListenerWithProgressBar(ProgressBarIndexerListener):
-    def __init__(self, prompts_manager: PromptsManager):
-        super().__init__()
-        self.prompts_manager = prompts_manager
-
-    async def on_complete(self, result):
-        await super().on_complete(result)
-        cluster_prompts(self.prompts_manager)
 
 
 class PromptIndexListener(ProcessorListener[Prompt, ItemEmbedding]):

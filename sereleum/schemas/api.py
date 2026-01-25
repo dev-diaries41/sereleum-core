@@ -38,13 +38,13 @@ class AddPromptsResponse(JobReceipt):
  
 class GetPromptsRequest(BaseModel):
     prompt_ids: Optional[List[str]] = None
-    cluster_id: Optional[str] = None
+    cluster_ids: Optional[List[str]] = None
     limit: Optional[int] = None
     offset: Optional[int] = None
 
 class QueryPromptsRequest(BaseModel):
     query:str
-    cluster_id: Optional[str] = None
+    cluster_ids: Optional[List[str]] = None
     limit: Optional[int] = None
 
 class GetPromptsResponse(PromptsPayload):

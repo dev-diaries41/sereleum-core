@@ -42,7 +42,7 @@ class TestReveliumClient:
 
     async def test_query_prompts(self, setup_client: tuple[ReveliumClient, list[Prompt]]):
         client, _ = setup_client
-        retrieved_prompts = await client.query_prompts("facts about physics", limit=10, cluster_id=None)
+        retrieved_prompts = await client.query_prompts("facts about physics", limit=10, cluster_ids=None)
         assert isinstance(retrieved_prompts, list)
 
     async def test_labels(self, setup_client: tuple[ReveliumClient, list[Prompt]]):

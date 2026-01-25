@@ -24,18 +24,18 @@ class ReveliumClient:
             res.raise_for_status() 
             return AddPromptsResponse(**res.json())
         
-    async def get_prompts(self, ids: Optional[List[str]] = None, cluster_id: Optional[str] = None, limit: Optional[int] = None, offset: Optional[int] = None) -> List[Prompt]:
+    async def get_prompts(self, ids: Optional[List[str]] = None, cluster_ids: Optional[List[str]] = None, limit: Optional[int] = None, offset: Optional[int] = None) -> List[Prompt]:
         url = f"{self.base_url}{Routes.BASE_PROMPTS_ENDPOINT}"
-        payload = GetPromptsRequest(prompt_ids=ids, cluster_id=cluster_id, limit=limit, offset=offset)
+        payload = GetPromptsRequest(prompt_ids=ids, cluster_ids=cluster_ids, limit=limit, offset=offset)
 
         async with httpx.AsyncClient() as client:
             res = await client.post(url, json=payload.model_dump())
             res.raise_for_status() 
             return [Prompt(**p) for p in res.json().get('prompts', [])]
         
-    async def query_prompts(self, query: str, cluster_id: Optional[str] = None, limit: Optional[int] = None) -> List[Prompt]:
+    async def query_prompts(self, query: str, cluster_ids: Optional[List[str]] = None, limit: Optional[int] = None) -> List[Prompt]:
         url = f"{self.base_url}{Routes.QUERY_PROMPTS_ENDPOINT}"
-        payload = QueryPromptsRequest(query=query, cluster_id=cluster_id, limit=limit)
+        payload = QueryPromptsRequest(query=query, cluster_ids=cluster_ids, limit=limit)
 
         async with httpx.AsyncClient() as client:
             res = await client.post(url, json=payload.model_dump())

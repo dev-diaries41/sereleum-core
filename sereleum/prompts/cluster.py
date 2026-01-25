@@ -7,12 +7,14 @@ from sklearn.manifold import TSNE
 from sklearn.decomposition import PCA
 from smartscan import Assignments
 from smartscan.classify import IncrementalClusterer
-from sereleum.prompts_manager import PromptsManager
+from sereleum.prompts.prompts_manager import PromptsManager
+from sereleum.prompts.clusters_manager import ClustersManager
 
 
-async def cluster_prompts(prompts_manager: PromptsManager):
-    ids, embeddings, cluster_ids = prompts_manager.get_prompt_embeddings()
-    existing_clusters = prompts_manager.get_all_clusters()
+## TODO: return n_label
+async def cluster_prompts(prompts_manager: PromptsManager, cluster_manager: ClustersManager, auto_label: bool = True):
+    ids, embeddings, cluster_ids = prompts_manager.get_prompt_sample_embeddings(1e5)
+    existing_clusters = cluster_manager.get_all_clusters()
     existing_assignments = dict(zip(ids, cluster_ids))
     clusterer = IncrementalClusterer(
         default_threshold=0.55,
@@ -25,11 +27,13 @@ async def cluster_prompts(prompts_manager: PromptsManager):
     if result.assignments:
         prompts_manager.update_prompts_from_assignments(result.assignments, result.merges)
     if result.clusters:
-        await prompts_manager.update_clusters(result.clusters, result.merges)
+        unlabelled = await cluster_manager.update_clusters(result.clusters, result.merges)
+        if len(unlabelled) > 0 and auto_label:
+            n_labelled = await cluster_manager.label_and_update_clusters(unlabelled)
     return result
 
 def get_cluster_plot(prompts_manager: PromptsManager) -> Optional[bytes]:
-    ids, embeddings, cluster_ids = prompts_manager.get_prompt_embeddings()
+    ids, embeddings, cluster_ids = prompts_manager.get_prompt_sample_embeddings(1e5)
     if not ids:
         return None
     existing_assignments = dict(zip(ids, cluster_ids))
