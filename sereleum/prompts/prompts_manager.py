@@ -160,11 +160,13 @@ class PromptsManager():
             )
         return self._to_prompts(result)
     
-    # This handle cases where the number of ids may be very high
     def get_prompts_by_id(self, ids: List[str], batch_size: Optional[int] = None) -> List[Prompt]:
+        return list(self.stream_prompts_by_id(ids, batch_size))
+    
+    # This handle cases where the number of ids may be very high
+    def stream_prompts_by_id(self, ids: List[str], batch_size: Optional[int] = None) -> Iterable[Prompt]:
         batch_size = batch_size or 100
         start = 0
-        prompts = []
 
         while start < len(ids):
             result = self.embedding_store.get(
@@ -173,9 +175,8 @@ class PromptsManager():
             )
             if len(result.metadatas) == 0:
                 break
-            prompts.extend(self._to_prompts(result))
+            yield from self._to_prompts(result)
             start += batch_size
-        return prompts
     
     def stream_prompts(self, cluster_ids: Optional[List[str]] = None, batch_size: Optional[int] = None, initial_offset: Optional[int] = None) -> Iterable[Prompt]:
         batch_size = batch_size or 100
@@ -240,3 +241,4 @@ class PromptsManager():
             return [(prompt_id, PromptMetadata(**metadata), emb) for prompt_id, metadata, emb in zip(result.ids, result.metadatas, result.embeddings)]        
         else:
             raise ValueError("With embeddings is true but result has no embeddings")
+        
