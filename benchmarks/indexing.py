@@ -8,20 +8,16 @@ from dotenv import load_dotenv
 load_dotenv()
 from dataclasses import asdict
 from sereleum.types import Prompt
-from sereleum.index.indexer import PromptIndexer
-from sereleum.index.indexer_listener import ProgressBarIndexerListener, PromptIndexListenerWithProgressBar
+from sereleum.prompts.index.indexer import PromptIndexer
+from sereleum.prompts.index.indexer_listener import  ProgressBarIndexerListener
 from sereleum.data import get_dummy_data, get_placeholder_prompts
-from sereleum.prompts_manager import PromptsManager
+from sereleum.prompts.prompts_manager import PromptsManager
 from sereleum.models.manage import ModelManager
 from sereleum.embeddings.helpers import get_embedding_store
 from benchmarks.constants import BENCHMARK_CHROMADB_PATH, BENCHMARK_DIR
-from sereleum.constants.api import Routes
-from sereleum.constants.models import OPENAI_API_KEY, DEFAULT_SYSTEM_PROMPT, DEFAULT_OPENAI_MODEL
-from sereleum.constants import DEFAULT_CHROMADB_PATH
-from sereleum.cluster import cluster_prompts, get_cluster_plot
 from sereleum.models.manage import ModelManager
-from sereleum.embeddings.helpers import get_embedding_store
-from sereleum.index.indexer import PromptIndexer
+from sereleum.embeddings.helpers import get_embedding_store_persistent_file
+from sereleum.prompts.index.indexer import PromptIndexer
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -37,11 +33,8 @@ os.makedirs(BENCHMARK_DIR, exist_ok=True)
 async def main(labelled_prompts: list[Prompt]):
     text_embedder = ModelManager().get_text_embedder('all-minilm-l6-v2')
     text_embedder.init()
-    prompt_embedding_store =  get_embedding_store(BENCHMARK_CHROMADB_PATH, PromptsManager.PROMPT_TYPE, 'all-minilm-l6-v2', text_embedder.embedding_dim) 
-    cluster_embedding_store =  get_embedding_store(BENCHMARK_CHROMADB_PATH, PromptsManager.CLUSTER_TYPE, 'all-minilm-l6-v2', text_embedder.embedding_dim) 
-    prompts_manager = PromptsManager(prompt_embedding_store=prompt_embedding_store, cluster_embedding_store=cluster_embedding_store)
-
-    indexer =  PromptIndexer(text_embedder, listener=PromptIndexListenerWithProgressBar(prompts_manager), embeddings_store=prompt_embedding_store, batch_size=100, max_concurrency=4)
+    prompt_embedding_store =  get_embedding_store_persistent_file(BENCHMARK_CHROMADB_PATH, 'prompt', 'all-minilm-l6-v2', text_embedder.embedding_dim) 
+    indexer =  PromptIndexer(text_embedder, listener=ProgressBarIndexerListener(), embeddings_store=prompt_embedding_store, batch_size=100, max_concurrency=4)
     result =  await indexer.run(labelled_prompts)
     result_dict = {k: v for k, v in asdict(result).items() if k != "error"}
     print(f"result - time_elpased: {result.time_elapsed} | processed: {result.total_processed}")
