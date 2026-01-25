@@ -132,7 +132,7 @@ class PromptsManager():
 
     def get_prompts(self, ids: Optional[List[str]] = None, cluster_id: Optional[ClusterId] = None, limit: Optional[int] = None, offset: Optional[int] = None) -> List[Prompt]:
         if ids:
-            return self.get_prompts_by_id(ids, batch_size=limit)
+            return self.get_prompts_by_id(ids)
         
         result = self.embedding_store.get(
                 filter={"cluster_id": cluster_id} if cluster_id else None,
@@ -222,7 +222,7 @@ class PromptsManager():
     def _to_prompt_metadata_tuples(self, result: GetResult | QueryResult, with_embeddings: bool = False)  -> Generator[tuple[str, PromptMetadata] | tuple[str, PromptMetadata, ndarray], Any, None]:
         if not with_embeddings:
             return [ (prompt_id, PromptMetadata(**metadata)) for prompt_id, metadata in zip(result.ids, result.metadatas)]
-        if result.embeddings and with_embeddings:
+        if len(result.embeddings) > 0 and with_embeddings:
             return [(prompt_id, PromptMetadata(**metadata), emb) for prompt_id, metadata, emb in zip(result.ids, result.metadatas, result.embeddings)]        
         else:
             raise ValueError("With embeddings is true but result has no embeddings")
