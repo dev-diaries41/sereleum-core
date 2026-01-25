@@ -14,7 +14,7 @@ from sereleum.prompts.prompts_manager import PromptsManager
 from sereleum.prompts.clusters_manager import ClustersManager
 from sereleum.providers.llm.openai import OpenAIClient
 from sereleum.schemas.llm import LLMClientConfig
-from sereleum.cluster import plot_clusters
+from sereleum.prompts.cluster import plot_clusters
 from benchmarks.constants import BENCHMARK_CHROMADB_PATH, BENCHMARK_DIR
 from sereleum.embeddings.helpers import get_embedding_store, get_embedding_store_persistent_file
 from sereleum.providers.types import TextEmbeddingModel
