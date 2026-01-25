@@ -117,7 +117,7 @@ class ClustersManager():
 
         for merge_id in merges.keys():
             cluster = self.get_clusters(cluster_ids=[merge_id], include=['metadatas'])[merge_id]
-            _, embeds, _  = self.get_prompt_sample_embeddings(1e5, cluster_ids=[merge_id])
+            _, _, embeds  = self.prompts_manager.get_prompt_metadata_samples(1e5, cluster_ids=[merge_id])
             new_protoype_embed = generate_prototype_embedding(embeds)
             new_mean_similarity = np.mean(np.dot(embeds, new_protoype_embed))
             new_prototype_size = len(embeds)

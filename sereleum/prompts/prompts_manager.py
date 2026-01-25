@@ -3,7 +3,7 @@ import math
 
 from numpy import ndarray
 from datetime import datetime
-from typing import List, Optional, Iterable, Tuple
+from typing import List, Optional, Iterable, Tuple, Any, Generator
 
 from smartscan import ItemEmbedding,Assignments, ClusterMerges, ItemId, TextEmbeddingProvider, ClusterId, ItemEmbeddingUpdate, GetResult, QueryResult
 from smartscan.embeds import EmbeddingStore
@@ -89,35 +89,35 @@ class PromptsManager():
         self.embedding_store.update(updated_prompts)
 
     # Designed to limit reads whilst covering all "sections" of the db
-    # This helps prevents large number of reads for large number of prompts
-    def get_prompt_sample_embeddings(self, sample_size: int, cluster_ids: Optional[List[str]] = None, batch_size: Optional[int] = None,) -> Tuple[List[ItemId], List[ndarray], List[ClusterId]]:
-        id_list, embedding_list, cluster_id_list = [], [], []
+    # This helps prevents large number of reads for large number of prompts or high meomry usage whehn plotting cluster plots
+    def get_prompt_metadata_samples(self, sample_size: int, cluster_ids: Optional[List[str]] = None, batch_size: Optional[int] = None,) -> Tuple[List[ItemId], List[PromptMetadata], List[ndarray]]:
+        id_list, metadata_list, embedding_list = [], [], []
         total_prompts = self.embedding_store.count()
-        sample_size = sample_size if total_prompts >= sample_size else total_prompts
+        max_sample_size = sample_size if total_prompts >= sample_size else total_prompts
 
-        for id_, emb, _cluster_id in self.stream_prompt_embeddings(cluster_ids=cluster_ids, batch_size=batch_size):
-            if len(id_list) < sample_size:
+        for id_, metadata, emb in self.stream_prompts_metadata(cluster_ids=cluster_ids, batch_size=batch_size, with_embeddings=True):
+            if len(id_list) < max_sample_size:
                 id_list.append(id_)
+                metadata_list.append(metadata)
                 embedding_list.append(emb)
-                cluster_id_list.append(_cluster_id)
             else:
-                scale = sample_size / total_prompts # ensure step size is scaled to sample size
+                scale = max_sample_size / total_prompts # ensure step size is scaled to sample size
                 n_sections = 5
                 step_size =  total_prompts // n_sections
                 scaled_step_size =  math.floor(scale * step_size)
                 initial_offset = step_size
                 
                 while initial_offset < total_prompts:
-                    for idx, (id_, emb, _cluster_id) in enumerate(self.stream_prompt_embeddings(cluster_ids=cluster_ids, batch_size=batch_size, initial_offset=initial_offset)):
+                    for idx, (id_, metadata, emb) in enumerate(self.stream_prompts_metadata(cluster_ids=cluster_ids, batch_size=batch_size, initial_offset=initial_offset, with_embeddings=True)):
                         if idx >= scaled_step_size: # prevents excessive reads!!
                             break
                         # randomly keep or replace with a unique item
                         if random.random() > 0.5:
                             id_list[idx] = id_
+                            metadata_list[idx] = metadata
                             embedding_list[idx] = emb
-                            cluster_id_list[idx] = _cluster_id
                     initial_offset += step_size # increase in real step size to enusre the entire db is passed in n_sections
-        return id_list, embedding_list, cluster_id_list
+        return id_list, metadata_list, embedding_list
     
     def stream_prompt_embeddings(self, cluster_ids: Optional[List[str]] = None, batch_size: Optional[int] = None, initial_offset: Optional[int] = None) -> Iterable[Tuple[ItemId, ndarray, ClusterId]]:
         batch_size = batch_size or 100
@@ -196,7 +196,7 @@ class PromptsManager():
             
     
     # Note: tokens in metadata shouldnt be none here
-    def stream_prompts_metadata_by_ids(self, ids: list[str], batch_size: Optional[int] = None) -> Iterable[Tuple[str, PromptMetadata]]:
+    def stream_prompts_metadata_by_ids(self, ids: list[str], batch_size: Optional[int] = None, with_embeddings: bool = False) -> Generator[tuple[str, PromptMetadata] | tuple[str, PromptMetadata, ndarray], Any, None]:
         batch_size = batch_size or 100
         start = 0
 
@@ -207,20 +207,19 @@ class PromptsManager():
             )
             if len(result.metadatas) == 0:
                 break
-            for prompt_id, metadata in zip(ids[start:start + batch_size], result.metadatas):
-                yield prompt_id, PromptMetadata(**metadata)
+            yield from self._to_prompt_metadata_tuples(result, with_embeddings=with_embeddings)
             start += batch_size
 
     
     # Note: tokens in metadata shouldnt be none here
-    def stream_prompts_metadata(self, cluster_ids: Optional[List[str]] = None, batch_size: Optional[int] = None, initial_offset: Optional[int] = None) -> Iterable[Tuple[str, PromptMetadata]]:
+    def stream_prompts_metadata(self, cluster_ids: Optional[List[str]] = None, batch_size: Optional[int] = None, initial_offset: Optional[int] = None,  with_embeddings: bool = False) -> Generator[tuple[str, PromptMetadata] | tuple[str, PromptMetadata, ndarray], Any, None]:
         batch_size = batch_size or 100
         initial_offset = initial_offset or 0
 
         for batch in paginate_until(
             lambda offset, limit: self.embedding_store.get(
                 filter={"cluster_id": {"$in": cluster_ids}} if cluster_ids else None,
-                include=["metadatas"],
+                include=["metadatas", "embeddings"] if with_embeddings else ["metadatas"],
                 offset=offset,
                 limit=limit,
             ),
@@ -228,9 +227,16 @@ class PromptsManager():
             batch_size=batch_size,
             initial_offset = initial_offset   
                               ):
-            for prompt_id, metadata in zip(batch.ids, batch.metadatas):
-                yield prompt_id, PromptMetadata(**metadata)    
+            yield from self._to_prompt_metadata_tuples(batch, with_embeddings=with_embeddings)
+
 
     def _to_prompts(self, result: GetResult | QueryResult) -> List[Prompt]:
         return [ Prompt(prompt_id=prompt_id, content=prompt_content,  metadata=PromptMetadata(**metadata)) for prompt_id, metadata, prompt_content in zip(result.ids, result.metadatas, result.datas) ]
     
+    def _to_prompt_metadata_tuples(self, result: GetResult | QueryResult, with_embeddings: bool = False)  -> Generator[tuple[str, PromptMetadata] | tuple[str, PromptMetadata, ndarray], Any, None]:
+        if not with_embeddings:
+            return [ (prompt_id, PromptMetadata(**metadata)) for prompt_id, metadata in zip(result.ids, result.metadatas)]
+        if result.embeddings and with_embeddings:
+            return [(prompt_id, PromptMetadata(**metadata), emb) for prompt_id, metadata, emb in zip(result.ids, result.metadatas, result.embeddings)]        
+        else:
+            raise ValueError("With embeddings is true but result has no embeddings")
