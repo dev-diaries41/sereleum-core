@@ -13,3 +13,8 @@ def get_embedding_store(type:EmbeddingStoreType, model: TextEmbeddingModel, embe
     return ChromaDBEmbeddingStore(client.get_or_create_collection(
                 get_embedding_collection_name(type, model, embedding_dim))
             ) 
+def get_embedding_store_persistent_file(path: str, type:EmbeddingStoreType, model: TextEmbeddingModel, embedding_dim: int ):
+    client = chromadb.PersistentClient(path=path, settings=chromadb.Settings(anonymized_telemetry=False))
+    return ChromaDBEmbeddingStore(client.get_or_create_collection(
+                get_embedding_collection_name(type, model, embedding_dim))
+            ) 

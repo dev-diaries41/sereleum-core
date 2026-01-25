@@ -10,11 +10,15 @@ from dataclasses import asdict
 from smartscan import ClusterResult
 from smartscan.classify import IncrementalClusterer
 from sereleum.utils import with_time, get_new_filename
-from sereleum.prompts_manager import PromptsManager
+from sereleum.prompts.prompts_manager import PromptsManager
+from sereleum.prompts.clusters_manager import ClustersManager
+from sereleum.providers.llm.openai import OpenAIClient
+from sereleum.schemas.llm import LLMClientConfig
 from sereleum.cluster import plot_clusters
 from benchmarks.constants import BENCHMARK_CHROMADB_PATH, BENCHMARK_DIR
-from sereleum.embeddings.helpers import get_embedding_store
+from sereleum.embeddings.helpers import get_embedding_store, get_embedding_store_persistent_file
 from sereleum.providers.types import TextEmbeddingModel
+from sereleum.constants.models import OPENAI_API_KEY, DEFAULT_SYSTEM_PROMPT, DEFAULT_OPENAI_MODEL
 
 BENCHMARK_OUTPUT_PATH = os.path.join(BENCHMARK_DIR, "clustering_benchmarks.jsonl")
 BENCHMARK_ASSIGNMENTS_PATH = os.path.join(BENCHMARK_DIR, "assignments_clustering_benchmarks.jsonl")
@@ -29,7 +33,7 @@ def cluster(clusterer: IncrementalClusterer, ids, embeddings) -> tuple[ClusterRe
 
 # `prompt_id` must be prefixed with label e.g promptlabel_123
 # this is only for benchmarking
-async def run(prompts_manager: PromptsManager, model:TextEmbeddingModel, plot_output: str):
+async def run(prompts_manager: PromptsManager, clusters_manager: ClustersManager, model:TextEmbeddingModel, plot_output: str):
     results = {}
     ## NOTE: IncrementalClusterer uses random numbers internally. Running multiple models sequentially 
     # without reseeding causes non-deterministic clustering and lower accuracy. Reseed Python and 
@@ -38,22 +42,25 @@ async def run(prompts_manager: PromptsManager, model:TextEmbeddingModel, plot_ou
     random.seed(32)
 
     ids, embeddings, cluster_ids = prompts_manager.get_prompt_sample_embeddings(1e5)
-    existing_clusters = prompts_manager.get_all_clusters()
+    existing_clusters = clusters_manager.get_all_clusters()
     existing_assignments = dict(zip(ids, cluster_ids))
     clusterer = IncrementalClusterer(default_threshold=0.55, sim_factor=0.9, merge_threshold=0.9, existing_assignments=existing_assignments, existing_clusters=existing_clusters, benchmarking=True)  
     result,time = cluster(clusterer, ids, embeddings)
     if ids and embeddings:
         # Plot to visualise prompt clusters
         plot_clusters(ids, embeddings, result.assignments, output_path=plot_output)
-    acc_info = prompts_manager.calculate_cluster_accuracy()
+    acc_info = clusters_manager.calculate_cluster_accuracy()
     bench = {"accuracy": asdict(acc_info), "clustering_speed": time}
     results[model] = bench
  
     if result.assignments:
         prompts_manager.update_prompts_from_assignments(result.assignments, result.merges)
     if result.clusters:
-        await prompts_manager.update_clusters(result.clusters, result.merges)
+        unlabelled =  await clusters_manager.update_clusters(result.clusters, result.merges)
+        print(f"Number unlabelled clusters: {unlabelled}")
 
+        # if len(unlabelled) > 0:
+        #    await clusters_manager.label_and_update_clusters(unlabelled)
     print(results)
 
     with open(BENCHMARK_OUTPUT_PATH, "a") as f:
@@ -64,11 +71,21 @@ async def run(prompts_manager: PromptsManager, model:TextEmbeddingModel, plot_ou
         json.dump(result.assignments, f, indent=1, sort_keys=True)
 
 
+
+def get_prompt_manager():
+    prompt_embedding_store = get_embedding_store_persistent_file(BENCHMARK_CHROMADB_PATH, 'prompt', 'all-minilm-l6-v2', 384) 
+    return  PromptsManager(embedding_store=prompt_embedding_store)
+
+
+def get_cluster_manager(prompt_manager: PromptsManager, llm):
+    cluster_embedding_store = get_embedding_store_persistent_file(BENCHMARK_CHROMADB_PATH, 'cluster', 'all-minilm-l6-v2', 384) 
+    return  ClustersManager(embedding_store=cluster_embedding_store, prompts_manager=prompt_manager, llm=llm)
+
 async def main():
-    prompt_embedding_store =  get_embedding_store(BENCHMARK_CHROMADB_PATH, PromptsManager.PROMPT_TYPE, 'all-minilm-l6-v2', 384) 
-    cluster_embedding_store =  get_embedding_store(BENCHMARK_CHROMADB_PATH, PromptsManager.CLUSTER_TYPE, 'all-minilm-l6-v2', 384) 
-    prompts_manager = PromptsManager(prompt_embedding_store=prompt_embedding_store, cluster_embedding_store=cluster_embedding_store)
+    llm = OpenAIClient(OPENAI_API_KEY, LLMClientConfig(model_name=DEFAULT_OPENAI_MODEL, system_prompt=DEFAULT_SYSTEM_PROMPT))
+    prompts_manager =get_prompt_manager()
+    clusters_manager = get_cluster_manager(prompts_manager, llm)
     plot_output = get_new_filename(BENCHMARK_PLOTS_DIR, BENCHMARK_CLUSTERS_PLOT, ".png")
-    run(prompts_manager, 'all-minilm-l6-v2', plot_output)
+    await run(prompts_manager, clusters_manager, 'all-minilm-l6-v2', plot_output)
 
 asyncio.run(main())
