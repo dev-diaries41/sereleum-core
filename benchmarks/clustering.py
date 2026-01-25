@@ -41,9 +41,9 @@ async def run(prompts_manager: PromptsManager, clusters_manager: ClustersManager
 
     random.seed(32)
 
-    ids, embeddings, cluster_ids = prompts_manager.get_prompt_sample_embeddings(1e5)
+    ids, metadatas, embeddings = prompts_manager.get_prompt_metadata_samples(1e5)
     existing_clusters = clusters_manager.get_all_clusters()
-    existing_assignments = dict(zip(ids, cluster_ids))
+    existing_assignments = {prompt_id : metadata.cluster_id for prompt_id, metadata in zip(ids, metadatas)}
     clusterer = IncrementalClusterer(default_threshold=0.55, sim_factor=0.9, merge_threshold=0.9, existing_assignments=existing_assignments, existing_clusters=existing_clusters, benchmarking=True)  
     result,time = cluster(clusterer, ids, embeddings)
     if ids and embeddings:

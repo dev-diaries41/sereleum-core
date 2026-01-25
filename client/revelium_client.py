@@ -6,13 +6,13 @@ from smartscan import ClusterAccuracy, ClusterNoEmbeddings, ClusterMerges
 
 from sereleum.types import Prompt, PromptsOverviewInfo
 from sereleum.constants.api import Routes
-from sereleum.schemas.api import  GetPromptsRequest, GetClusterRequestParams, UpdateLabelParams, QueryPromptsRequest, UpdatePromptClusterIdParams, AddPromptsResponse, MergeClustersRequest
+from sereleum.schemas.api import  GetPromptsRequest, GetClusterRequestParams, UpdateLabelParams, QueryPromptsRequest, UpdatePromptClusterIdParams, AddPromptsResponse, MergeClustersRequest, ClusterOptionsForm
 
 class ReveliumClient:
     def __init__(self, base_url: str):
         self.base_url = base_url.rstrip("/")
     
-    async def add_prompts_file(self, file_path: str) -> AddPromptsResponse:
+    async def add_prompts_file(self, file_path: str, auto_label: bool = True, auto_merge_threshold: float = 0.9, initial_threshold: float = 0.55) -> AddPromptsResponse:
         """
         Upload a JSON file containing prompts.
         """
@@ -20,7 +20,7 @@ class ReveliumClient:
         async with httpx.AsyncClient() as client:
             with open(file_path, "rb") as f:
                 files = {"file": (file_path, f, "application/json")}
-                res = await client.post(url, files=files)
+                res = await client.post(url, files=files, data=ClusterOptionsForm(auto_label=auto_label, auto_merge_threshold=auto_merge_threshold, initial_threshold=initial_threshold).model_dump())
             res.raise_for_status() 
             return AddPromptsResponse(**res.json())
         

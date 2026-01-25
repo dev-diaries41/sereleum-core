@@ -93,4 +93,8 @@ class MergeClustersRequest(BaseModel):
 class MergeResponse(BaseModel):
     updated_clusters: List[ClusterNoEmbeddings]
 
-    
+
+class ClusterOptionsForm(BaseModel):
+    auto_label: bool 
+    auto_merge_threshold: float
+    initial_threshold: float
