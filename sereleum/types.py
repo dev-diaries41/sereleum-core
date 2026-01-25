@@ -30,3 +30,5 @@ Status = Literal[
     "delayed",
     "queued",
 ]
+
+EmbeddingStoreType = Literal['cluster', 'prompt']
