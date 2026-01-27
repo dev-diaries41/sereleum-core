@@ -1,6 +1,6 @@
 import random
 import string
-from placeholder_data import physics_sentences, quantum_mechanics_sentences, btc_analysis, forex_analysis, long_physics_sentences, long_btc_analysis, long_forex_analysis
+from placeholder_data import quantum_mechanics_sentences, nextjs_prompts, ai_prompts, robot_prompts, android_prompts, long_physics_sentences, long_btc_analysis, long_forex_analysis
 from sereleum.types import Prompt
 from sereleum.providers.llm.llm_client import LLMClient
 
@@ -26,6 +26,14 @@ def get_placeholder_prompts(offset=0) -> list[Prompt]:
     all_data.extend(strings_to_prompts(quantum_mechanics_sentences, "quantum", offset))
     all_data.extend(strings_to_prompts(long_btc_analysis, "btc", offset))
     all_data.extend(strings_to_prompts(long_forex_analysis, "forex", offset))
+    return all_data
+
+def get_test_prompts(offset=0) -> list[Prompt]:
+    all_data: list[Prompt] = []
+    all_data.extend(strings_to_prompts(ai_prompts, "ai", offset))
+    all_data.extend(strings_to_prompts(android_prompts, "android", offset))
+    all_data.extend(strings_to_prompts(nextjs_prompts, "nextjs", offset))
+    all_data.extend(strings_to_prompts(robot_prompts, "robots", offset))
     return all_data
 
 def get_dummy_data(n: int = 100, offset = 0) -> list[Prompt]:
