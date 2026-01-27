@@ -41,26 +41,29 @@ async def run(prompts_manager: PromptsManager, clusters_manager: ClustersManager
 
     random.seed(32)
 
-    ids, metadatas, embeddings = prompts_manager.get_prompt_metadata_samples(1e5)
+    ids, metadatas, embeddings = prompts_manager.get_prompt_metadata_samples(1e5, exclude_clustered=True)
+    print(f"N ids: {len(ids)}")
     existing_clusters = clusters_manager.get_all_clusters()
     existing_assignments = {prompt_id : metadata.cluster_id for prompt_id, metadata in zip(ids, metadatas)}
-    clusterer = IncrementalClusterer(default_threshold=0.55, sim_factor=0.9, merge_threshold=0.9, existing_assignments=existing_assignments, existing_clusters=existing_clusters, benchmarking=True)  
+    clusterer = IncrementalClusterer(default_threshold=0.2, merge_threshold=0.9, top_k=5, existing_assignments=existing_assignments, existing_clusters=existing_clusters, benchmarking=True)  
     result,time = cluster(clusterer, ids, embeddings)
+    print(f"Number assignments: {len(result.assignments)} | Number clusters: {len(result.clusters)}")
+  
+    if result.assignments:
+        prompts_manager.update_prompts_from_assignments(result.assignments, result.merges)
+    if result.clusters:
+        unlabelled =  await clusters_manager.update_clusters(result.clusters, result.merges)
+        print(f"Number unlabelled clusters: {len(unlabelled)}")
+
+    # if len(unlabelled) > 0:
+    #    await clusters_manager.label_and_update_clusters(unlabelled)
+
     if ids and embeddings:
-        # Plot to visualise prompt clusters
         plot_clusters(ids, embeddings, result.assignments, output_path=plot_output)
     acc_info = clusters_manager.calculate_cluster_accuracy()
     bench = {"accuracy": asdict(acc_info), "clustering_speed": time}
     results[model] = bench
  
-    if result.assignments:
-        prompts_manager.update_prompts_from_assignments(result.assignments, result.merges)
-    if result.clusters:
-        unlabelled =  await clusters_manager.update_clusters(result.clusters, result.merges)
-        print(f"Number unlabelled clusters: {unlabelled}")
-
-        # if len(unlabelled) > 0:
-        #    await clusters_manager.label_and_update_clusters(unlabelled)
     print(results)
 
     with open(BENCHMARK_OUTPUT_PATH, "a") as f:

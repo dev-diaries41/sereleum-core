@@ -1,10 +1,10 @@
 from datetime import datetime, timezone
 from pydantic import BaseModel, Field
-from typing import Literal, Optional, Dict, List
+from typing import Literal, Optional, Dict, List, ClassVar
 from smartscan import ClusterNoEmbeddings
 
 class PromptMetadata(BaseModel):
-    UNCLUSTERED: str = "unclustered"
+    UNCLUSTERED: ClassVar = "unclustered"  # class constant
     cluster_id: str = UNCLUSTERED
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
