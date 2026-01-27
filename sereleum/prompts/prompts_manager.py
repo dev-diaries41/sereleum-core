@@ -3,7 +3,7 @@ import math
 
 from numpy import ndarray
 from datetime import datetime
-from typing import List, Optional, Iterable, Tuple, Any, Generator
+from typing import List, Optional, Tuple, Any, Generator
 
 from smartscan import ItemEmbedding,Assignments, ClusterMerges, ItemId, TextEmbeddingProvider, ClusterId, ItemEmbeddingUpdate, GetResult, QueryResult
 from smartscan.embeds import EmbeddingStore
@@ -115,20 +115,6 @@ class PromptsManager():
                     initial_offset += step_size # increase in real step size to enusre the entire db is passed in n_sections
         return id_list, metadata_list, embedding_list
     
-    def stream_prompt_embeddings(self, cluster_ids: Optional[List[str]] = None, batch_size: int= 100, initial_offset: int = 0) -> Iterable[Tuple[ItemId, ndarray, ClusterId]]:
-        for batch in paginate_until(
-            lambda offset, limit: self.embedding_store.get(
-                include=["embeddings", "metadatas"],
-                filter={"cluster_id": {"$in": cluster_ids}} if cluster_ids else None,
-                offset=offset,
-                limit=limit,
-            ),
-            break_fn= lambda batch: len(batch.embeddings) == 0,
-            batch_size=batch_size,
-            initial_offset = initial_offset
-            ):
-            yield from zip(batch.ids, batch.embeddings, [m.get("cluster_id") for m in batch.metadatas])
-
 
     def get_prompts(self, ids: Optional[List[str]] = None, cluster_id: Optional[ClusterId] = None, limit: Optional[int] = None, offset: Optional[int] = None) -> List[Prompt]:
         if ids:
@@ -157,7 +143,7 @@ class PromptsManager():
         return list(self.stream_prompts_by_id(ids, batch_size))
     
     # This handle cases where the number of ids may be very high
-    def stream_prompts_by_id(self, ids: List[str], batch_size: int= 100) -> Iterable[Prompt]:
+    def stream_prompts_by_id(self, ids: List[str], batch_size: int= 100) -> Generator[Prompt, Any, None]:
         start = 0
 
         while start < len(ids):
@@ -170,7 +156,7 @@ class PromptsManager():
             yield from self._to_prompts(result)
             start += batch_size
     
-    def stream_prompts(self, cluster_ids: Optional[List[str]] = None, batch_size: int= 100, initial_offset: int = 0) -> Iterable[Prompt]:
+    def stream_prompts(self, cluster_ids: Optional[List[str]] = None, batch_size: int= 100, initial_offset: int = 0) -> Generator[Prompt, Any, None]:
         for batch in paginate_until(
             lambda offset, batch_size: self.embedding_store.get(
                 filter={"cluster_id": {"$in": cluster_ids}} if cluster_ids else None,
