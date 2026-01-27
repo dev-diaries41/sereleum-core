@@ -16,7 +16,7 @@ from sereleum.providers.llm.openai import OpenAIClient
 from sereleum.schemas.llm import LLMClientConfig
 from sereleum.prompts.cluster import plot_clusters
 from benchmarks.constants import BENCHMARK_CHROMADB_PATH, BENCHMARK_DIR
-from sereleum.embeddings.helpers import get_embedding_store, get_embedding_store_persistent_file
+from sereleum.embeddings.helpers import get_embedding_store_persistent_file
 from sereleum.providers.types import TextEmbeddingModel
 from sereleum.constants.models import OPENAI_API_KEY, DEFAULT_SYSTEM_PROMPT, DEFAULT_OPENAI_MODEL
 
@@ -41,8 +41,10 @@ async def run(prompts_manager: PromptsManager, clusters_manager: ClustersManager
 
     random.seed(32)
 
-    ids, metadatas, embeddings = prompts_manager.get_prompt_metadata_samples(1e5, exclude_clustered=True)
-    print(f"N ids: {len(ids)}")
+    ids, metadatas, embeddings = prompts_manager.get_prompt_metadata_samples(1e5, exclude_clustered=False)
+    if not ids:
+        print("No prompts to cluster")
+        return
     existing_clusters = clusters_manager.get_all_clusters()
     existing_assignments = {prompt_id : metadata.cluster_id for prompt_id, metadata in zip(ids, metadatas)}
     clusterer = IncrementalClusterer(default_threshold=0.2, merge_threshold=0.9, top_k=5, existing_assignments=existing_assignments, existing_clusters=existing_clusters, benchmarking=True)  
@@ -63,7 +65,7 @@ async def run(prompts_manager: PromptsManager, clusters_manager: ClustersManager
     acc_info = clusters_manager.calculate_cluster_accuracy()
     bench = {"accuracy": asdict(acc_info), "clustering_speed": time}
     results[model] = bench
- 
+
     print(results)
 
     with open(BENCHMARK_OUTPUT_PATH, "a") as f:

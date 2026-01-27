@@ -10,7 +10,7 @@ from dataclasses import asdict
 from sereleum.types import Prompt
 from sereleum.prompts.index.indexer import PromptIndexer
 from sereleum.prompts.index.indexer_listener import  ProgressBarIndexerListener
-from sereleum.data import get_dummy_data, get_placeholder_prompts
+from sereleum.data import get_dummy_data, get_placeholder_prompts, get_test_prompts
 from sereleum.prompts.prompts_manager import PromptsManager
 from sereleum.models.manage import ModelManager
 from sereleum.embeddings.helpers import get_embedding_store
@@ -50,4 +50,4 @@ if __name__ == "__main__":
     if args.n and args.stress:
         asyncio.run(main(get_dummy_data(args.n)))
     else:
-        asyncio.run(main(get_placeholder_prompts()))
+        asyncio.run(main(get_test_prompts()))

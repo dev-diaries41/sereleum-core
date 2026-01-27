@@ -46,7 +46,6 @@ class IncrementalClusterer:
         items: Dict[str, np.ndarray] = {i: e for i, e in zip(ids, embeddings)}
         all_items = items.copy()
 
-        # --- Main clustering loop ---
         while items:
             iid = sorted(items.keys())[0]
             emb = items.pop(iid)
@@ -74,6 +73,7 @@ class IncrementalClusterer:
 
         for sid, small_cluster in small_clusters.items():
             reassigned_items = [item_id for item_id, cid in self.assignments.items() if cid == sid]
+            cluster_deleted = False  # flag to track deletion
 
             if large_clusters:
                 large_ids = list(large_clusters.keys())
@@ -88,11 +88,20 @@ class IncrementalClusterer:
 
                     if not other_ids:
                         self._update_and_assign(item_id, item_emb, target_cluster)
+                        cluster_deleted = True
                         continue
 
-                    other_embeds = [all_items[oid] for oid in other_ids]
-                    nn_dists = np.array([np.dot(item_emb, oemb) for oemb in other_embeds])
-                    nn_idx = np.argsort(-nn_dists)[:5]  # top 5 neighbors
+                    # partial sort for efficiency
+                    other_embeds = np.array([all_items[oid] for oid in other_ids])
+                    nn_dists = np.dot(other_embeds, item_emb)
+                    top_k = 5
+
+                    if len(nn_dists) > top_k:
+                        nn_idx = np.argpartition(-nn_dists, top_k - 1)[:top_k] 
+                        nn_idx = nn_idx[np.argsort(-nn_dists[nn_idx])]  # sort only top k
+                    else:
+                        nn_idx = np.argsort(-nn_dists)
+
 
                     votes = {}
                     sims = {}
@@ -103,12 +112,12 @@ class IncrementalClusterer:
                         if cid and cid in self.clusters:
                             votes[cid] = votes.get(cid, 0) + 1
                             sims.setdefault(cid, []).append(float(np.dot(item_emb, self.clusters[cid].embedding)))
-
+                    
+                    # keep in original cluster
                     if not votes:
                         self.assignments[item_id] = sid
                         continue
 
-                    # Hybrid selection: max votes
                     top_clusters = [cid for cid, v in votes.items() if v == max(votes.values())]
                     if len(top_clusters) == 1:
                         chosen_cid = top_clusters[0]
@@ -116,11 +125,18 @@ class IncrementalClusterer:
                         chosen_cid = max(top_clusters, key=lambda cid: np.mean(sims.get(cid, [0.0])))
                   
                     self._update_and_assign(item_id, item_emb, self.clusters[chosen_cid])
+                    
+                    # mark cluster as having been reassigned
+                    if chosen_cid != sid:
+                        cluster_deleted = True
+                # delete cluster only if at least one item was reassigned to another cluster
+                if cluster_deleted:
+                    del self.clusters[sid]
+
             else:
                 for item_id in reassigned_items:
                     self.assignments[item_id] = sid
 
-            del self.clusters[sid]
 
         cluster_merges = None
         if self.merge_threshold:
@@ -168,4 +184,3 @@ class IncrementalClusterer:
     # seed randomness during benchmarking for reproduceability
     def _generate_id(self):
         return random.randbytes(8).hex() if self.benchmarking else uuid.uuid4().hex
-
