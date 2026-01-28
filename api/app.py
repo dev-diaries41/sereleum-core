@@ -17,13 +17,13 @@ from api.redis import redis_client
 from sereleum.constants.models import OPENAI_API_KEY, DEFAULT_SYSTEM_PROMPT, DEFAULT_OPENAI_MODEL
 from sereleum.constants import  UPLOAD_DIR
 from sereleum.constants.api import Routes
-from sereleum.prompts.cluster import  get_cluster_plot
+from sereleum.clusters.cluster import  get_cluster_plot
 from sereleum.schemas.llm import LLMClientConfig
 from sereleum.providers.llm.llm_client import LLMClient
 from sereleum.schemas.api import FailMessage, CompleteMessage, ProgressMessage
-from sereleum.prompts.helpers import get_prompts_overview
+from sereleum.helpers import get_prompts_overview
 from sereleum.prompts.prompts_manager import PromptsManager
-from sereleum.prompts.clusters_manager import ClustersManager
+from sereleum.clusters.clusters_manager import ClustersManager
 from sereleum.embeddings.helpers import get_embedding_store
 from sereleum.providers.llm.openai import OpenAIClient
 from sereleum.models.manage import ModelManager

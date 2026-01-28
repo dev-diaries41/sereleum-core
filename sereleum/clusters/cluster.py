@@ -8,7 +8,7 @@ from sklearn.decomposition import PCA
 from smartscan import Assignments
 from smartscan.classify import IncrementalClusterer
 from sereleum.prompts.prompts_manager import PromptsManager
-from sereleum.prompts.clusters_manager import ClustersManager
+from sereleum.clusters.clusters_manager import ClustersManager
 
 
 ## TODO: return n_label

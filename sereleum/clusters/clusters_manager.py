@@ -10,7 +10,7 @@ from smartscan.embeds import EmbeddingStore, generate_prototype_embedding
 
 from sereleum.utils import   paginate_until
 from sereleum.prompts.prompts_manager import PromptsManager
-from sereleum.prompts.label import  async_label_prompts
+from sereleum.clusters.label import  async_label_prompts
 from sereleum.providers.llm.llm_client import LLMClient
 
 class ClustersManager():

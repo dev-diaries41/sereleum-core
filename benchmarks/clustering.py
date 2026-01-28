@@ -15,17 +15,17 @@ from dataclasses import asdict
 from smartscan import ClusterResult
 from smartscan.classify import IncrementalClusterer
 
-from benchmarks.vecotorized_clusterer import IncrementalClustererVectorized
+from sereleum.clusters.vecotorized_clusterer import IncrementalClustererVectorized
 from benchmarks.constants import BENCHMARK_CHROMADB_PATH, BENCHMARK_DIR
 
 from sereleum.constants.models import OPENAI_API_KEY, DEFAULT_SYSTEM_PROMPT, DEFAULT_OPENAI_MODEL
 from sereleum.providers.types import TextEmbeddingModel
 from sereleum.prompts.prompts_manager import PromptsManager
-from sereleum.prompts.clusters_manager import ClustersManager
+from sereleum.clusters.clusters_manager import ClustersManager
 from sereleum.providers.llm.openai import OpenAIClient
 from sereleum.schemas.llm import LLMClientConfig
 from sereleum.embeddings.helpers import get_embedding_store_persistent_file
-from sereleum.prompts.cluster import plot_clusters
+from sereleum.clusters.cluster import plot_clusters
 from sereleum.utils import with_time, get_new_filename
 
 from sereleum.logs import getLogger
