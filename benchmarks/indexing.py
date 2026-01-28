@@ -1,28 +1,22 @@
+from dotenv import load_dotenv
+load_dotenv()
+
 import json
 import asyncio
 import os
 import argparse
 
-from dotenv import load_dotenv
-
-load_dotenv()
 from dataclasses import asdict
+
+from benchmarks.constants import BENCHMARK_CHROMADB_PATH, BENCHMARK_DIR
+
 from sereleum.types import Prompt
 from sereleum.prompts.index.indexer import PromptIndexer
 from sereleum.prompts.index.indexer_listener import  ProgressBarIndexerListener
 from sereleum.data import get_dummy_data, get_placeholder_prompts, get_test_prompts
 from sereleum.prompts.prompts_manager import PromptsManager
 from sereleum.models.manage import ModelManager
-from sereleum.embeddings.helpers import get_embedding_store
-from benchmarks.constants import BENCHMARK_CHROMADB_PATH, BENCHMARK_DIR
-from sereleum.models.manage import ModelManager
 from sereleum.embeddings.helpers import get_embedding_store_persistent_file
-from sereleum.prompts.index.indexer import PromptIndexer
-from dotenv import load_dotenv
-
-load_dotenv()
-
-MAX_UPLOAD_SIZE = 50 * 1024 * 1024  # 50MB
 
 BENCHMARK_OUTPUT_PATH = os.path.join(BENCHMARK_DIR, "indexing_benchmarks.jsonl")
 
