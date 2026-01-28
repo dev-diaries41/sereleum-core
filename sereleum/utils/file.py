@@ -3,26 +3,37 @@ import os
 def get_new_dirname(dir_path: str, prefix: str):
     os.makedirs(dir_path, exist_ok=True)
     highest = -1
-    dirs = os.listdir(dir_path)
-    if len(dirs) == 0:
-        return os.path.join(dir_path, prefix + "0")
-    for d in dirs:
+
+    for d in os.listdir(dir_path):
         if not d.startswith(prefix):
             continue
-        n = int(d.strip(prefix))
-        highest = n if n > highest else highest
-    return os.path.join(dir_path, prefix + str(highest + 1))
 
+        num_part = d[len(prefix):]
+        if not num_part.isdigit():
+            continue
+
+        n = int(num_part)
+        if n > highest:
+            highest = n
+
+    return os.path.join(dir_path, f"{prefix}{highest + 1}")
 
 def get_new_filename(dir_path: str, prefix: str, ext):
     os.makedirs(dir_path, exist_ok=True)
     highest = -1
-    files = os.listdir(dir_path)
-    if len(files) == 0:
-        return os.path.join(dir_path,  prefix + "0" + ext)
-    for f in files:
-        if not f.startswith(prefix):
+
+    for f in os.listdir(dir_path):
+        if not f.startswith(prefix) or not f.endswith(ext):
             continue
-        n = int(os.path.splitext(f)[0].strip(prefix))
-        highest = n if n > highest else highest
-    return os.path.join(dir_path, prefix + str(highest + 1) + ext)
+
+        name = os.path.splitext(f)[0]
+        num_part = name[len(prefix):]
+
+        if not num_part.isdigit():
+            continue
+
+        n = int(num_part)
+        if n > highest:
+            highest = n
+
+    return os.path.join(dir_path, f"{prefix}{highest + 1}{ext}")
