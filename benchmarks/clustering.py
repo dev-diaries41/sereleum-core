@@ -33,7 +33,6 @@ from sereleum.logs import getLogger
 BENCHMARK_NAME = "clustering_benchmarks"
 LOG_FILE_PATH = f"logs/{BENCHMARK_NAME}.log"
 BENCHMARK_OUTPUT_PATH = os.path.join(BENCHMARK_DIR, f"{BENCHMARK_NAME}.jsonl")
-BENCHMARK_OUTPUT_PATH = os.path.join(BENCHMARK_DIR, f"{BENCHMARK_NAME}.jsonl")
 BENCHMARK_ASSIGNMENTS_PATH = os.path.join(BENCHMARK_DIR, f"assignments_{BENCHMARK_NAME}.jsonl")
 BENCHMARK_PLOTS_DIR = os.path.join(BENCHMARK_DIR, "plots")
 BENCHMARK_CLUSTERS_PLOT =  "prompt_clusters"
@@ -84,10 +83,6 @@ async def run(prompts_manager: PromptsManager, clusters_manager: ClustersManager
         cluster_ids = list(result.clusters.keys())
         if cluster_ids:
             clusters_manager.embedding_store.delete(cluster_ids)
-
-    with open(BENCHMARK_OUTPUT_PATH, "a") as f:
-        f.write(json.dumps(results, indent=None) + "\n")
-    # Save last result assignments
     with open(BENCHMARK_ASSIGNMENTS_PATH, "w") as f:
         json.dump(result.assignments, f, indent=1, sort_keys=True)
 

@@ -10,6 +10,7 @@ from dataclasses import asdict
 
 from benchmarks.constants import BENCHMARK_CHROMADB_PATH, BENCHMARK_DIR
 
+from sereleum.logs import getLogger
 from sereleum.types import Prompt
 from sereleum.prompts.index.indexer import PromptIndexer
 from sereleum.prompts.index.indexer_listener import  ProgressBarIndexerListener
@@ -17,9 +18,14 @@ from sereleum.data import get_dummy_data, get_placeholder_prompts, get_test_prom
 from sereleum.models.manage import ModelManager
 from sereleum.embeddings.helpers import get_embedding_store_persistent_file
 
-BENCHMARK_OUTPUT_PATH = os.path.join(BENCHMARK_DIR, "indexing_benchmarks.jsonl")
+BENCHMARK_NAME = "indexing_benchmarks"
+BENCHMARK_OUTPUT_PATH = os.path.join(BENCHMARK_DIR, f"{BENCHMARK_NAME}.jsonl")
+LOG_FILE_PATH = f"logs/{BENCHMARK_NAME}.log"
 
+os.makedirs("logs", exist_ok=True)
 os.makedirs(BENCHMARK_DIR, exist_ok=True)
+
+logger = getLogger(BENCHMARK_NAME, LOG_FILE_PATH)
 
 # `prompt_id` must be prefixed with label e.g promptlabel_123
 # this is only for benchmarking
@@ -30,7 +36,7 @@ async def main(labelled_prompts: list[Prompt]):
     indexer =  PromptIndexer(text_embedder, listener=ProgressBarIndexerListener(), embeddings_store=prompt_embedding_store, batch_size=100, max_concurrency=4)
     result =  await indexer.run(labelled_prompts)
     result_dict = {k: v for k, v in asdict(result).items() if k != "error"}
-    print(f"result - time_elpased: {result.time_elapsed} | processed: {result.total_processed}")
+    logger.info(f"time_elpased: {result.time_elapsed} | processed: {result.total_processed}")
     with open(BENCHMARK_OUTPUT_PATH, "a") as f:
         f.write(json.dumps(result_dict, indent=None) + "\n")
 
