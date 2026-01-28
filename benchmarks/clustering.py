@@ -24,7 +24,7 @@ from sereleum.clusters.clusters_manager import ClustersManager
 from sereleum.providers.llm.openai import OpenAIClient
 from sereleum.schemas.llm import LLMClientConfig
 from sereleum.embeddings.helpers import get_embedding_store_persistent_file
-from sereleum.clusters.cluster import plot_clusters
+from sereleum.clusters.cluster import plot_clusters, plot_clusters_with_prototypes
 from sereleum.utils.file import get_new_filename
 from benchmarks.utils import with_time
 
@@ -73,6 +73,14 @@ async def run(prompts_manager: PromptsManager, clusters_manager: ClustersManager
     #    await clusters_manager.label_and_update_clusters(unlabelled)
     if ids and embeddings:
         plot_clusters(ids, embeddings, result.assignments, output_path=plot_output)
+
+        cluster_ids = list(result.clusters.keys())
+        prototype_embeddings = np.stack([result.clusters[cid].embedding for cid in cluster_ids], axis=0)
+        name = os.path.basename(plot_output)
+        filename = f"{os.path.basename(plot_output)}_with_proto"
+        output = get_new_filename(BENCHMARK_PLOTS_DIR, filename, ".png")
+
+        plot_clusters_with_prototypes(ids=ids, embeddings=embeddings, assignments=result.assignments, prototype_embeddings=prototype_embeddings, prototype_ids=cluster_ids, output_path=output)
     acc_info = clusters_manager.calculate_cluster_accuracy()
     bench = {"accuracy": asdict(acc_info), "clustering_speed": time}
     results[model] = bench

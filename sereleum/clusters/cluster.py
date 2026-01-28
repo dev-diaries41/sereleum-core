@@ -118,3 +118,75 @@ def plot_clusters_bytes(ids: List[str], embeddings: List[np.ndarray], assignment
     plt.close(fig)
     buf.seek(0)
     return buf.read()
+
+
+def plot_clusters_with_prototypes(
+    ids: List[str],
+    embeddings: List[np.ndarray],
+    assignments: dict,
+    prototype_ids: List[str],
+    prototype_embeddings: List[np.ndarray],
+    method='tsne',
+    random_state=42,
+    output_path: Optional[str] = None
+):
+    """
+    Plots clusters with prototypes in 2D.
+
+    Args:
+        ids (List[str]): List of item IDs.
+        embeddings (List[np.ndarray]): Embeddings corresponding to IDs.
+        assignments (dict): Mapping from ID to cluster ID.
+        prototype_ids (List[str]): List of prototype IDs.
+        prototype_embeddings (List[np.ndarray]): Prototype embeddings.
+        method (str): 'tsne' or 'pca'.
+    """
+    import matplotlib.pyplot as plt
+    import numpy as np
+    from sklearn.manifold import TSNE
+    from sklearn.decomposition import PCA
+
+    all_embeddings = np.concatenate([np.stack(embeddings), prototype_embeddings], axis=0)
+
+    if method == 'tsne':
+        reduced = TSNE(n_components=2, random_state=random_state).fit_transform(all_embeddings)
+    elif method == 'pca':
+        reduced = PCA(n_components=2, random_state=random_state).fit_transform(all_embeddings)
+    else:
+        raise ValueError("method must be 'tsne' or 'pca'")
+
+    # Split reduced embeddings back
+    reduced_points = reduced[:len(embeddings)]
+    reduced_prototypes = reduced[len(embeddings):]
+
+    # Cluster IDs for items
+    cluster_ids = [assignments.get(i, "unassigned") for i in ids]
+
+    # Unique clusters and colors
+    unique_clusters = list(set(cluster_ids))
+    colors = plt.cm.tab20(np.linspace(0, 1, len(unique_clusters)))
+    color_map = {cid: c for cid, c in zip(unique_clusters, colors)}
+
+    plt.figure(figsize=(8, 6))
+
+    # Plot points
+    for cid in unique_clusters:
+        idxs = [i for i, c in enumerate(cluster_ids) if c == cid]
+        plt.scatter(reduced_points[idxs, 0], reduced_points[idxs, 1], 
+                    color=color_map[cid], label=cid, s=50, edgecolor='k', alpha=0.6)
+
+    # Plot prototypes
+    for i, pid in enumerate(prototype_ids):
+        cid = assignments.get(pid, "unassigned")
+        plt.scatter(reduced_prototypes[i, 0], reduced_prototypes[i, 1], 
+                    color=color_map.get(cid, 'black'), marker='X', s=200, edgecolor='k', linewidth=1.5)
+
+    plt.title("Clusters with Prototypes")
+    plt.xlabel("Dimension 1")
+    plt.ylabel("Dimension 2")
+    plt.legend(markerscale=2, bbox_to_anchor=(1.05, 1), loc='upper left')
+    plt.tight_layout()
+
+    if output_path:
+        plt.savefig(output_path)
+    plt.show()
