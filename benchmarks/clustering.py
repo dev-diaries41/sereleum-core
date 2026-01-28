@@ -49,7 +49,7 @@ def cluster(clusterer: IncrementalClusterer, ids, embeddings) -> tuple[ClusterRe
 
 # `prompt_id` must be prefixed with label e.g promptlabel_123
 # this is only for benchmarking
-async def run(prompts_manager: PromptsManager, clusters_manager: ClustersManager, model:TextEmbeddingModel, plot_output: str):
+async def run(prompts_manager: PromptsManager, clusters_manager: ClustersManager, model:TextEmbeddingModel, plot_output: str, clear_db: bool = False):
     results = {}
     ## NOTE: IncrementalClusterer uses random numbers internally. Running multiple models sequentially 
     # without reseeding causes non-deterministic clustering and lower accuracy. Reseed Python and 
@@ -79,6 +79,12 @@ async def run(prompts_manager: PromptsManager, clusters_manager: ClustersManager
     results[model] = bench
     logger.info(results)
 
+    if clear_db:
+        prompts_manager.embedding_store.delete(ids)
+        cluster_ids = list(result.clusters.keys())
+        if cluster_ids:
+            clusters_manager.embedding_store.delete(cluster_ids)
+
     with open(BENCHMARK_OUTPUT_PATH, "a") as f:
         f.write(json.dumps(results, indent=None) + "\n")
     # Save last result assignments
@@ -95,12 +101,12 @@ def get_cluster_manager(prompt_manager: PromptsManager, llm):
     embedding_store = get_embedding_store_persistent_file(BENCHMARK_CHROMADB_PATH, 'cluster', 'all-minilm-l6-v2', 384)
     return ClustersManager(embedding_store=embedding_store, prompts_manager=prompt_manager, llm=llm)
 
-async def run_real_benchmark():
+async def run_real_benchmark(clear_db: bool):
     llm = OpenAIClient(OPENAI_API_KEY, LLMClientConfig(model_name=DEFAULT_OPENAI_MODEL, system_prompt=DEFAULT_SYSTEM_PROMPT))
     prompts_manager = get_prompt_manager()
     clusters_manager = get_cluster_manager(prompts_manager, llm)
     plot_output = f"{BENCHMARK_PLOTS_DIR}/standard_clusters.png"
-    await run(prompts_manager, clusters_manager, 'all-minilm-l6-v2', plot_output)
+    await run(prompts_manager, clusters_manager, 'all-minilm-l6-v2', plot_output, clear_db)
 
 
 def benchmark_standard_clusterer(n_items=10000, dim=384):
@@ -140,11 +146,12 @@ def run_vectorized_benchmark(n_items=10000, dim=384):
 
 def main():
     parser = argparse.ArgumentParser(description="Run clustering benchmarks")
-    parser.add_argument("--standard", action="store_true", help="Run standard IncrementalClusterer benchmark")
-    parser.add_argument("--vectorized", action="store_true", help="Run vectorized IncrementalClusterer benchmark")
-    parser.add_argument("--items", type=int, default=10000, help="Number of items for benchmark")
-    parser.add_argument("--dim", type=int, default=384, help="Embedding dimension for benchmark")
-    parser.add_argument("--real", action="store_true", help="Run real prompt clustering benchmark with data")
+    parser.add_argument("--standard", "-s", action="store_true", help="Run standard IncrementalClusterer benchmark")
+    parser.add_argument("--vectorized", "-v", action="store_true", help="Run vectorized IncrementalClusterer benchmark")
+    parser.add_argument("--items", "-i", type=int, default=10000, help="Number of items for benchmark")
+    parser.add_argument("--dim", "-d", type=int, default=384, help="Embedding dimension for benchmark")
+    parser.add_argument("--real", "-r", action="store_true", help="Run real prompt clustering benchmark with data")
+    parser.add_argument("--clear", "-c", action="store_true", help="Clear db")
 
     args = parser.parse_args()
 
@@ -153,7 +160,7 @@ def main():
     if args.vectorized:
         benchmark_vectorized_clusterer(n_items=args.items, dim=args.dim)
     if args.real:
-        asyncio.run(run_real_benchmark())
+        asyncio.run(run_real_benchmark(args.clear))
     if not args.standard and not args.vectorized and not args.real:
         print("No benchmark selected. Use --standard, --vectorized, or --real.")
 
