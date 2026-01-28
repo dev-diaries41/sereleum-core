@@ -26,7 +26,7 @@ from sereleum.providers.llm.openai import OpenAIClient
 from sereleum.schemas.llm import LLMClientConfig
 from sereleum.embeddings.helpers import get_embedding_store_persistent_file
 from sereleum.prompts.cluster import plot_clusters
-from sereleum.utils import with_time
+from sereleum.utils import with_time, get_new_filename
 
 from sereleum.logs import getLogger
 
@@ -61,7 +61,7 @@ async def run(prompts_manager: PromptsManager, clusters_manager: ClustersManager
         return
     existing_clusters = clusters_manager.get_all_clusters()
     existing_assignments = {prompt_id : metadata.cluster_id for prompt_id, metadata in zip(ids, metadatas)}
-    clusterer = IncrementalClusterer(default_threshold=0.2, merge_threshold=0.9, top_k=5, existing_assignments=existing_assignments, existing_clusters=existing_clusters, benchmarking=True)  
+    clusterer = IncrementalClusterer(default_threshold=0.3, merge_threshold=0.9, top_k=5, existing_assignments=existing_assignments, existing_clusters=existing_clusters, benchmarking=True)  
     result,time = cluster(clusterer, ids, embeddings)
     logger.debug(f"Number assignments: {len(result.assignments)} | Number clusters: {len(result.clusters)}")
     if result.assignments:
@@ -100,7 +100,7 @@ async def run_real_benchmark(clear_db: bool):
     llm = OpenAIClient(OPENAI_API_KEY, LLMClientConfig(model_name=DEFAULT_OPENAI_MODEL, system_prompt=DEFAULT_SYSTEM_PROMPT))
     prompts_manager = get_prompt_manager()
     clusters_manager = get_cluster_manager(prompts_manager, llm)
-    plot_output = f"{BENCHMARK_PLOTS_DIR}/standard_clusters.png"
+    plot_output = get_new_filename(BENCHMARK_PLOTS_DIR, f"real_{BENCHMARK_CLUSTERS_PLOT}", ".png")
     await run(prompts_manager, clusters_manager, 'all-minilm-l6-v2', plot_output, clear_db)
 
 

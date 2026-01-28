@@ -12,7 +12,7 @@ from sereleum.prompts.clusters_manager import ClustersManager
 
 
 ## TODO: return n_label
-async def cluster_prompts(prompts_manager: PromptsManager, cluster_manager: ClustersManager, auto_label: bool = True, auto_merge_threshold: float = 0.9, initial_threshold: float = 0.2):
+async def cluster_prompts(prompts_manager: PromptsManager, cluster_manager: ClustersManager, auto_label: bool = True, auto_merge_threshold: float = 0.9, initial_threshold: float = 0.3):
     ids, metadatas, embeddings = prompts_manager.get_prompt_metadata_samples(1e5)
     existing_clusters = cluster_manager.get_all_clusters()
     existing_assignments = {prompt_id : metadata.cluster_id for prompt_id, metadata in zip(ids, metadatas)}
