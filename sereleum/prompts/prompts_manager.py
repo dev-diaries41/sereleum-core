@@ -8,7 +8,7 @@ from typing import List, Optional, Tuple, Any, Generator
 from smartscan import ItemEmbedding,Assignments, ClusterMerges, ItemId, TextEmbeddingProvider, ClusterId, ItemEmbeddingUpdate, GetResult, QueryResult
 from smartscan.embeds import EmbeddingStore
 
-from sereleum.types import Prompt, PromptMetadata
+from sereleum.prompts.types import Prompt, PromptMetadata
 from sereleum.helpers import   paginate_until
 from sereleum.errors import ReveliumError, ErrorCode
 
