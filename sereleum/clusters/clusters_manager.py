@@ -8,7 +8,7 @@ from smartscan import ItemEmbedding, Cluster, ClusterNoEmbeddings, ClusterMetada
 from smartscan.classify import  calculate_cluster_accuracy
 from smartscan.embeds import EmbeddingStore, generate_prototype_embedding
 
-from sereleum.helpers import   paginate_until
+from sereleum.utils.batch import   paginate_until
 from sereleum.prompts.prompts_manager import PromptsManager
 from sereleum.clusters.label import  async_label_prompts
 from sereleum.providers.llm.llm_client import LLMClient

@@ -19,11 +19,10 @@ from sereleum.constants import  UPLOAD_DIR
 from sereleum.constants.api import Routes
 from sereleum.clusters.cluster import  get_cluster_plot
 from sereleum.schemas.llm import LLMClientConfig
-from sereleum.providers.llm.llm_client import LLMClient
 from sereleum.schemas.api import FailMessage, CompleteMessage, ProgressMessage
-from sereleum.helpers import get_prompts_overview
 from sereleum.prompts.prompts_manager import PromptsManager
 from sereleum.clusters.clusters_manager import ClustersManager
+from sereleum.clusters.helpers import get_overview
 from sereleum.embeddings.helpers import get_embedding_store
 from sereleum.providers.llm.openai import OpenAIClient
 from sereleum.utils.model_manager import ModelManager
@@ -181,10 +180,10 @@ async def count_prompts():
 
 
 @app.get(Routes.GET_PROMPTS_OVERVIEW_ENDPOINT)
-async def get_overview():
+async def get_sereleum_overview():
     prompts_manager = get_prompt_manager()
     clusters_manager = get_cluster_manager(prompts_manager)
-    overview = await run_in_threadpool( get_prompts_overview, prompts_manager, clusters_manager)
+    overview = await run_in_threadpool( get_overview, prompts_manager, clusters_manager)
     return JSONResponse(GetPromptsOverviewResponse(**overview.model_dump()).model_dump())
 
 
