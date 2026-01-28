@@ -26,7 +26,7 @@ from sereleum.prompts.prompts_manager import PromptsManager
 from sereleum.clusters.clusters_manager import ClustersManager
 from sereleum.embeddings.helpers import get_embedding_store
 from sereleum.providers.llm.openai import OpenAIClient
-from sereleum.models.manage import ModelManager
+from sereleum.utils.model_manager import ModelManager
 from sereleum.errors import ReveliumError, ErrorCode
 from sereleum.schemas.api import (
     GetPromptsRequest, 

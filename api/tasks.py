@@ -10,7 +10,7 @@ from sereleum.embeddings.helpers import get_embedding_store
 from sereleum.index.indexer import PromptIndexer
 from sereleum.index.indexer_listener import PromptIndexListener
 from sereleum.providers.llm.openai import OpenAIClient
-from sereleum.models.manage import ModelManager
+from sereleum.utils.model_manager import ModelManager
 from sereleum.schemas.llm import LLMClientConfig
 from sereleum.prompts.prompts_manager import PromptsManager
 from sereleum.clusters.clusters_manager import ClustersManager

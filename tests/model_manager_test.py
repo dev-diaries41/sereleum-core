@@ -1,4 +1,4 @@
-from sereleum.models.manage import ModelManager
+from sereleum.utils.model_manager import ModelManager
 from pathlib import Path
 
 def test_model_manager():

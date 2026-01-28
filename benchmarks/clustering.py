@@ -26,7 +26,8 @@ from sereleum.providers.llm.openai import OpenAIClient
 from sereleum.schemas.llm import LLMClientConfig
 from sereleum.embeddings.helpers import get_embedding_store_persistent_file
 from sereleum.clusters.cluster import plot_clusters
-from sereleum.utils import with_time, get_new_filename
+from sereleum.utils.file import get_new_filename
+from benchmarks.utils import with_time
 
 from sereleum.logs import getLogger
 

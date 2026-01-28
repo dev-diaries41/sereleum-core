@@ -9,7 +9,7 @@ from smartscan import ItemEmbedding,Assignments, ClusterMerges, ItemId, TextEmbe
 from smartscan.embeds import EmbeddingStore
 
 from sereleum.types import Prompt, PromptMetadata
-from sereleum.utils import   paginate_until
+from sereleum.helpers import   paginate_until
 from sereleum.errors import ReveliumError, ErrorCode
 
 
