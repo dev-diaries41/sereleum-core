@@ -170,7 +170,7 @@ class IncrementalClusterer:
                             sims_map.setdefault(cid, []).append(float(np.dot(item_emb, self.clusters[cid].embedding)))
 
                     if not votes:
-                        self.assignments[item_id] = sid
+                        self._update_and_assign(item_id, item_emb, self.clusters[sid])
                         continue
 
                     top_clusters = [cid for cid, v in votes.items() if v == max(votes.values())]
@@ -209,6 +209,7 @@ class IncrementalClusterer:
             cluster_merges = merge_similar_clusters(self.clusters, self.merge_threshold)
 
         # Remove clusters with no assigned items after merges
+        # Note: may require sync to be compulsory at end
         if cluster_merges:
             self.clusters = {cid: c for cid, c in self.clusters.items() if cid in self.assignments.values()}
 
