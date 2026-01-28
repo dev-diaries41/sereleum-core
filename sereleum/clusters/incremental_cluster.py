@@ -28,6 +28,11 @@ class IncrementalClusterer:
         self.clusters: Dict[str, Cluster] = existing_clusters or {}
         self.assignments: Assignments = existing_assignments or {}
         
+        # incremental count map for cluster sizes
+        self._counts: Dict[str, int] = {cid: 0 for cid in self.clusters}
+        for cid in self.assignments.values():
+            if cid in self._counts:
+                self._counts[cid] += 1
         cohesions = [c.metadata.mean_similarity for c in self.clusters.values()]
         min_cohesion = np.percentile(cohesions, 1) if cohesions else 0.0
         self.default_threshold = max(default_threshold, min_cohesion)
@@ -65,11 +70,11 @@ class IncrementalClusterer:
         min_cluster_size = self._compute_min_cluster_size(len(all_items))
 
         while items:
-            iid = sorted(items.keys())[0]
-            emb = items.pop(iid)
+            item_id = sorted(items.keys())[0]
+            emb = items.pop(item_id)
 
             if not self.clusters:
-                self._set_and_assign(iid, emb)
+                self._set_and_assign(item_id, emb)
                 continue
 
             cluster_ids = list(self.clusters.keys())
@@ -88,9 +93,16 @@ class IncrementalClusterer:
             valid_idx = np.where(cos_sims >= thresholds)[0]
             if valid_idx.size > 0:
                 best_idx = valid_idx[np.argmax(cos_sims[valid_idx])]
-                self._update_and_assign(iid, emb, self.clusters[cluster_ids[best_idx]])
+                self._update_and_assign(item_id, emb, self.clusters[cluster_ids[best_idx]])
             else:
-                self._set_and_assign(iid, emb)
+                prev_cid = self.assignments.get(item_id)
+                if prev_cid and prev_cid in self.clusters:
+                    # DO NOT create new cluster if it is already in one
+                    pass
+                else:
+                    # truly new item
+                    self._set_and_assign(item_id, emb)
+
 
         def _current_avg_cohesion():
             cs = [c.metadata.mean_similarity for c in self.clusters.values() if c.metadata.prototype_size > 1]
@@ -109,7 +121,7 @@ class IncrementalClusterer:
             progressed = False
 
             for sid, cluster in list(candidate_clusters.items()):
-                other_item_ids = [iid for iid in all_items.keys() if iid not in self.assignments or self.assignments.get(iid) != sid]
+                other_item_ids = [item_id for item_id in all_items.keys() if item_id not in self.assignments or self.assignments.get(item_id) != sid]
                 if not other_item_ids:
                     continue
 
@@ -190,14 +202,14 @@ class IncrementalClusterer:
             cluster_embs = np.array([c.embedding for c in self.clusters.values()]) if self.clusters else np.array([])
             stable_all = True
             if cluster_embs.size > 0:
-                for iid, emb in all_items.items():
-                    if iid not in self.assignments:
+                for item_id, emb in all_items.items():
+                    if item_id not in self.assignments:
                         stable_all = False
                         break
                     sims = np.dot(cluster_embs, emb)
                     best_idx = int(np.argmax(sims))
                     best_cid = cluster_ids[best_idx]
-                    if self.assignments.get(iid) != best_cid:
+                    if self.assignments.get(item_id) != best_cid:
                         stable_all = False
                         break
 
@@ -208,16 +220,12 @@ class IncrementalClusterer:
         if self.merge_threshold:
             cluster_merges = merge_similar_clusters(self.clusters, self.merge_threshold)
 
-        # Remove clusters with no assigned items after merges
-        # Note: may require sync to be compulsory at end
-        if cluster_merges:
-            self.clusters = {cid: c for cid, c in self.clusters.items() if cid in self.assignments.values()}
-
         return ClusterResult(self.clusters, self.assignments, cluster_merges)
 
     def clear(self):
         self.clusters.clear()
         self.assignments.clear()
+        self._counts.clear()
 
     def _set_and_assign(self, item_id: str, embedding: np.ndarray):
         prototype_id = self._generate_id()
@@ -225,37 +233,24 @@ class IncrementalClusterer:
         cluster = Cluster(prototype_id, embedding, metadata, label=Cluster.UNLABELLED)
         self.clusters[prototype_id] = cluster
         self.assignments[item_id] = prototype_id
+        self._counts[prototype_id] = 1
 
     def _update_and_assign(self, item_id: str, embedding: np.ndarray, cluster: Cluster):
         target_cid = cluster.prototype_id
         prev_cid = self.assignments.get(item_id)
 
-        # If already assigned to the same cluster, do nothing
         if prev_cid == target_cid:
             return
 
-        # compute current size of the target cluster (before adding this item)
-        old_size = sum(1 for v in self.assignments.values() if v == target_cid)
-
+        old_size = self._counts.get(target_cid, 0)
         old_meta = cluster.metadata
-        old_mean = old_meta.mean_similarity
-        old_std = old_meta.std_similarity
-
-        # update prototype embedding using the current (pre-add) size
         new_embedding = update_prototype_embedding(cluster.embedding, embedding, old_size)
-
         sim_new = float(np.dot(new_embedding, embedding))
-        # compute new mean (handle old_size == 0)
-        new_mean = (old_mean * old_size + sim_new) / (old_size + 1) if old_size >= 1 else sim_new
-        # compute new std (fallback to 0.0 for small sizes)
-        new_std = (
-            np.sqrt(((old_size - 1) * old_std**2 + (sim_new - old_mean) * (sim_new - new_mean)) / old_size)
-            if old_size > 1
-            else 0.0
-        )
+        new_mean = (old_meta.mean_similarity * old_size + sim_new) / (old_size + 1) if old_size >= 1 else sim_new
+        new_std = (np.sqrt(((old_size - 1) * old_meta.std_similarity**2 + (sim_new - old_meta.mean_similarity) * (sim_new - new_mean)) / old_size)
+                   if old_size > 1 else 0.0)
 
-        # write updated target cluster (size = old_size + 1)
-        updated_target = Cluster(
+        self.clusters[target_cid] = Cluster(
             target_cid,
             new_embedding,
             metadata=ClusterMetadata(
@@ -266,28 +261,34 @@ class IncrementalClusterer:
             ),
             label=cluster.label,
         )
-        self.clusters[target_cid] = updated_target
 
-        # update assignment mapping
+        # update assignments
         self.assignments[item_id] = target_cid
 
-        # adjust previous cluster's prototype_size to reflect actual assignments (if moving between clusters)
-        if prev_cid and prev_cid in self.clusters and prev_cid != target_cid:
-            prev_count = sum(1 for v in self.assignments.values() if v == prev_cid)
-            prev_cluster = self.clusters[prev_cid]
-            prev_meta = prev_cluster.metadata
-            # keep mean/std as-is (can't recompute without member embeddings), but ensure size reflects reality
-            self.clusters[prev_cid] = Cluster(
-                prev_cluster.prototype_id,
-                prev_cluster.embedding,
-                metadata=ClusterMetadata(
-                    prototype_size=prev_count,
-                    mean_similarity=prev_meta.mean_similarity,
-                    std_similarity=prev_meta.std_similarity,
-                    label=prev_meta.label,
-                ),
-                label=prev_cluster.label,
-            )
+        # update incremental counts
+        self._counts[target_cid] = old_size + 1
+
+        if prev_cid and prev_cid != target_cid:
+            prev_count = self._counts.get(prev_cid, 0) - 1
+            if prev_count <= 0:
+                if prev_cid in self.clusters:
+                    del self.clusters[prev_cid]
+                self._counts.pop(prev_cid, None)
+            else:
+                self._counts[prev_cid] = prev_count
+                prev_cluster = self.clusters[prev_cid]
+                prev_meta = prev_cluster.metadata
+                self.clusters[prev_cid] = Cluster(
+                    prev_cluster.prototype_id,
+                    prev_cluster.embedding,
+                    metadata=ClusterMetadata(
+                        prototype_size=prev_count,
+                        mean_similarity=prev_meta.mean_similarity,
+                        std_similarity=prev_meta.std_similarity,
+                        label=prev_meta.label,
+                    ),
+                    label=prev_cluster.label,
+                )
 
 
     def _generate_id(self):
