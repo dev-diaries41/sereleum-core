@@ -14,7 +14,6 @@ from sereleum.types import Prompt
 from sereleum.prompts.index.indexer import PromptIndexer
 from sereleum.prompts.index.indexer_listener import  ProgressBarIndexerListener
 from sereleum.data import get_dummy_data, get_placeholder_prompts, get_test_prompts
-from sereleum.prompts.prompts_manager import PromptsManager
 from sereleum.models.manage import ModelManager
 from sereleum.embeddings.helpers import get_embedding_store_persistent_file
 
@@ -38,10 +37,14 @@ async def main(labelled_prompts: list[Prompt]):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-n", type=int, help="number of items to generate", default=100)
+    parser.add_argument("-o", type=int, help="dummy data offset", default=0)
     parser.add_argument("--stress", action="store_true", help="stress test")
+    parser.add_argument("--test", action="store_true", help="use test prompts")
 
     args = parser.parse_args()
     if args.n and args.stress:
-        asyncio.run(main(get_dummy_data(args.n)))
-    else:
+        asyncio.run(main(get_dummy_data(args.n, args.o)))
+    elif args.test:
         asyncio.run(main(get_test_prompts()))
+    else:
+        asyncio.run(main(get_placeholder_prompts()))
