@@ -244,7 +244,7 @@ class IncrementalClusterer:
 
         old_size = self._counts.get(target_cid, 0)
         old_meta = cluster.metadata
-        new_embedding = update_prototype_embedding(cluster.embedding, embedding, old_size)
+        new_embedding = self._update_prototype_embedding(cluster.embedding, embedding, old_size)
         sim_new = float(np.dot(new_embedding, embedding))
         new_mean = (old_meta.mean_similarity * old_size + sim_new) / (old_size + 1) if old_size >= 1 else sim_new
         new_std = (np.sqrt(((old_size - 1) * old_meta.std_similarity**2 + (sim_new - old_meta.mean_similarity) * (sim_new - new_mean)) / old_size)
@@ -280,7 +280,7 @@ class IncrementalClusterer:
                 prev_meta = prev_cluster.metadata
                 self.clusters[prev_cid] = Cluster(
                     prev_cluster.prototype_id,
-                    prev_cluster.embedding,
+                    self._update_prototype_embedding(prev_cluster.embedding, embedding, prev_count + 1, -1),
                     metadata=ClusterMetadata(
                         prototype_size=prev_count,
                         mean_similarity=prev_meta.mean_similarity,
@@ -289,6 +289,22 @@ class IncrementalClusterer:
                     ),
                     label=prev_cluster.label,
                 )
+    @staticmethod
+    def _update_prototype_embedding(current_prototype: np.ndarray, batch_embeddings: np.ndarray, current_n: int, sign: int = 1) -> np.ndarray:
+        if sign not in (1, -1):
+            raise ValueError("sign must be 1 (add) or -1 (remove)")
+        
+        batch_embeddings = np.asarray(batch_embeddings)
+        if batch_embeddings.ndim == 1:
+            batch_embeddings = batch_embeddings[np.newaxis, :]
+        
+        batch_sum = np.sum(batch_embeddings, axis=0) * sign
+        updated_n = current_n + batch_embeddings.shape[0] * sign
+        if updated_n <= 0:
+            raise ValueError("Prototype count cannot be <= 0")
+        
+        updated_prototype = (current_prototype * current_n + batch_sum) / updated_n
+        return updated_prototype / np.linalg.norm(updated_prototype)
 
 
     def _generate_id(self):
