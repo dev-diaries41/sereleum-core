@@ -83,7 +83,7 @@ class IncrementalClusterer:
                 if not other_item_ids:
                     continue
 
-                other_embeds = np.array([all_items[other_item_id] for other_item_id in other_item_ids])
+                other_embeds = np.stack([all_items[other_item_id] for other_item_id in other_item_ids])
                 nn_indices = self._get_top_k(cluster.embedding, other_embeds)
                 if len(nn_indices) == 0:
                     continue
@@ -103,7 +103,7 @@ class IncrementalClusterer:
                         progressed = True
                         continue
 
-                    other_embs = np.array([all_items[oid] for oid in other_ids])
+                    other_embs = np.stack([all_items[oid] for oid in other_ids])
                     nn_indices = self._get_top_k(item_emb, other_embs)
                     vote_counts, vote_sims = self._tally_votes([other_ids[idx] for idx in nn_indices], item_emb)
                  
