@@ -79,7 +79,7 @@ class IncrementalClusterer:
             progressed = False
 
             for cluster in candidate_clusters.values():
-                other_item_ids = [item_id for item_id, cluster_id in self.assignments.items() if cluster_id != cluster.prototype_id]
+                other_item_ids = [item_id for item_id in all_items.keys() if item_id not in self.assignments or self.assignments.get(item_id) != cluster.prototype_id]
                 if not other_item_ids:
                     continue
 
