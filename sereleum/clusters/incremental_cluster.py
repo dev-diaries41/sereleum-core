@@ -3,13 +3,13 @@ import random
 import uuid
 
 from typing import Dict, List, Optional
+from smartscan.classify.helpers import merge_similar_clusters
 from smartscan.classify.types import (
     Cluster,
     Assignments,
     ClusterMetadata,
     ClusterResult,
 )
-from smartscan.classify.helpers import merge_similar_clusters
 
 class IncrementalClusterer:
     def __init__(
@@ -22,10 +22,8 @@ class IncrementalClusterer:
         top_k: int = 3,
         benchmarking: bool = False,
     ):
-
         self.clusters: Dict[str, Cluster] = existing_clusters or {}
-        self.assignments: Assignments = existing_assignments or {}
-        
+        self.assignments: Assignments = existing_assignments or {}        
         self._counts: Dict[str, int] = {cid: 0 for cid in self.clusters}
         for cid in self.assignments.values():
             if cid in self._counts:
@@ -40,13 +38,13 @@ class IncrementalClusterer:
 
 
     def cluster(self, ids: List[str], embeddings: List[np.ndarray]) -> ClusterResult:
-        items: Dict[str, np.ndarray] = {i: e for i, e in zip(ids, embeddings)}
-        all_items = items.copy()
+        all_items: Dict[str, np.ndarray] = {i: e for i, e in zip(ids, embeddings)}
         min_cluster_size = self._compute_min_cluster_size(len(all_items))
+        processed_count = 0
 
-        while items:
-            item_id = sorted(items.keys())[0]
-            emb = items.pop(item_id)
+        while processed_count < len(all_items):
+            item_id = ids[processed_count]
+            emb = all_items[item_id]
 
             if not self.clusters:
                 self._set_and_assign(item_id, emb)
@@ -64,16 +62,14 @@ class IncrementalClusterer:
             else:
                 prev_cid = self.assignments.get(item_id)
                 if prev_cid and prev_cid in self.clusters:
-                    # DO NOT create new cluster if it is already in one
                     pass
                 else:
-                    # truly new item
                     self._set_and_assign(item_id, emb)
+            processed_count += 1
 
         # Reassignment phase.
         # Termination conditions: loop until either (a) no progressed changes in an iteration, or
         # every item's assigned cluster equals the cluster with maximum similarity (i.e. stable).
-        
         while True:
             if not self.clusters:
                 break
@@ -83,7 +79,7 @@ class IncrementalClusterer:
             progressed = False
 
             for cluster in candidate_clusters.values():
-                other_item_ids = [item_id for item_id in all_items.keys() if item_id not in self.assignments or self.assignments.get(item_id) != cluster.prototype_id]
+                other_item_ids = [item_id for item_id, cluster_id in self.assignments.items() if cluster_id != cluster.prototype_id]
                 if not other_item_ids:
                     continue
 
@@ -91,17 +87,36 @@ class IncrementalClusterer:
                 nn_indices = self._get_top_k(cluster.embedding, other_embeds)
                 if len(nn_indices) == 0:
                     continue
-                nn_ids = [other_item_ids[i] for i in nn_indices]
+                nn_ids = [other_item_ids[idx] for idx in nn_indices]
                 chosen_target_cid = self._reassign_by_nn_votes(nn_ids, cluster)
                 target_cluster = self.clusters.get(chosen_target_cid) if chosen_target_cid else None
                 if not target_cluster:
                     continue
-                reassigned_items = [item_id for item_id, cid in self.assignments.items() if cid == cluster.prototype_id]
-                progressed = self._update_reassigned_items(reassigned_items, target_cluster, cluster, all_items)
 
+                reassigned_items = [item_id for item_id, cid in self.assignments.items() if cid == cluster.prototype_id]
+
+                for item_id in reassigned_items:
+                    item_emb = all_items[item_id]
+                    other_ids = [oid for oid in all_items if oid != item_id and oid in self.assignments]
+                    if not other_ids:
+                        self._update_and_assign(item_id, item_emb, target_cluster)
+                        progressed = True
+                        continue
+
+                    other_embs = np.array([all_items[oid] for oid in other_ids])
+                    nn_indices = self._get_top_k(item_emb, other_embs)
+                    vote_counts, vote_sims = self._tally_votes([other_ids[idx] for idx in nn_indices], item_emb)
+                 
+                    if not vote_counts:
+                        continue
+
+                    chosen_cid = self._select_top_cluster(vote_counts, vote_sims)
+                    self._update_and_assign(item_id, item_emb, self.clusters[chosen_cid])
+                    if chosen_cid != cluster.prototype_id:
+                        progressed = True
+                        
             self._remove_empty_clusters()
             stable = self._are_clusters_stable(all_items)
-
             # Check global stability: every item should be assigned to the cluster with highest similarity
             # If that holds, clusters are stable and can stop. Also stop if no changes were made in this iteration.
             if stable or not progressed:
@@ -152,7 +167,6 @@ class IncrementalClusterer:
             ),
             label=cluster.label,
         )
-
         self.assignments[item_id] = target_cid
         self._counts[target_cid] = old_size + 1
 
@@ -177,11 +191,9 @@ class IncrementalClusterer:
                     ),
                     label=prev_cluster.label,
                 )
-
-
+    
     def _generate_id(self):
         return random.randbytes(8).hex() if self.benchmarking else uuid.uuid4().hex
-
 
     def _compute_min_cluster_size(self, total_items: int) -> int:
         if total_items <= 0:
@@ -213,13 +225,10 @@ class IncrementalClusterer:
             cluster_sizes.append(size)
             if size > 1:
                 cohesions.append(c.metadata.mean_similarity)
-
         avg_cohesion = np.mean(cohesions) if cohesions else 0.0
         avg_cluster_size = np.mean(cluster_sizes) if cluster_sizes else 0.0
-
         return avg_cohesion, avg_cluster_size
     
-
     def _remove_empty_clusters(self):
         empty_clusters = [cluster_id for cluster_id in self.clusters if cluster_id not in self.assignments.values()]
         for cluster_id in empty_clusters:
@@ -230,21 +239,17 @@ class IncrementalClusterer:
             return True
 
         cluster_ids = list(self.clusters.keys())
-        cluster_embs = np.array([c.embedding for c in self.clusters.values()])  # (k, d)
+        cluster_embs = np.array([c.embedding for c in self.clusters.values()]) 
         item_ids = list(all_items.keys())
-        item_embs = np.array([all_items[i] for i in item_ids])  # (n, d)
-
-        # All pairwise similarities at once (n x k)
+        item_embs = np.array([all_items[i] for i in item_ids]) 
         sims = item_embs @ cluster_embs.T
         best_idx = np.argmax(sims, axis=1)
         best_cids = [cluster_ids[i] for i in best_idx]
 
-        # Check assignments
         for item_id, best_cid in zip(item_ids, best_cids):
             if self.assignments.get(item_id) != best_cid:
                 return False
         return True
-    
 
     def _tally_votes(self, neighbour_ids: list[str], embedding: np.ndarray) -> tuple[dict[str, int], dict[str, list[float]]]:
         vote_counts: dict[str, int] = {}
@@ -271,7 +276,7 @@ class IncrementalClusterer:
             return None
 
         return chosen_target_cid
-    
+
     def _select_top_cluster(self, vote_counts: dict[str, int], vote_sims: dict[str, list[float]]) -> str:
         top_value = max(vote_counts.values())
         top_cids = [cid for cid, v in vote_counts.items() if v == top_value]
@@ -279,30 +284,6 @@ class IncrementalClusterer:
             return top_cids[0]
         return max(top_cids, key=lambda cid: float(np.mean(vote_sims.get(cid, [0.0]))))
 
-    def _update_reassigned_items(self, reassigned_items: list[str], target_cluster: Cluster, current_cluster: Cluster, all_items: dict[str, np.ndarray]):
-        updated = False
-
-        for item_id in reassigned_items:
-            item_emb = all_items[item_id]
-            other_ids = [oid for oid in all_items if oid != item_id and oid in self.assignments]
-            if not other_ids:
-                self._update_and_assign(item_id, item_emb, target_cluster)
-                updated = True
-                continue
-
-            other_embs = np.array([all_items[oid] for oid in other_ids])
-            nn_indices = self._get_top_k(item_emb, other_embs)
-            votes, sims_map = self._tally_votes([other_ids[i] for i in nn_indices], item_emb)
-
-            if not votes:
-                continue
-
-            chosen_target_cid = self._select_top_cluster(votes, sims_map)
-            self._update_and_assign(item_id, item_emb, self.clusters[chosen_target_cid])
-            if chosen_target_cid != current_cluster.prototype_id:
-                updated = True
-        return updated
-    
     @staticmethod
     def _get_top_k(embedding: np.ndarray, other_embeds: np.ndarray, k=5):
         if len(other_embeds) == 0:
@@ -316,6 +297,7 @@ class IncrementalClusterer:
             top_idx = top_idx[np.argsort(-sims[top_idx])]
         return top_idx
     
+
     @staticmethod
     def _update_prototype_embedding(current_prototype: np.ndarray, batch_embeddings: np.ndarray, current_n: int, sign: int = 1) -> np.ndarray:
         if sign not in (1, -1):
