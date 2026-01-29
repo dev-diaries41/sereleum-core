@@ -193,38 +193,54 @@ class ClustersManager():
             clusters.update(self._to_clusters_dict(batch, with_embeddings=True))
         return clusters
     
+
     def get_top_clusters(self, n: int) -> Dict[ClusterId, ClusterNoEmbeddings]:
         top_clusters: Dict[ClusterId, ClusterNoEmbeddings] = {}
+        offset = 0
+        max_prototype_size = 0
+        added_this_pass = True
 
-        while True:
-            max_prototype_size = max(
-                (cluster.metadata.prototype_size for cluster in top_clusters.values()),
-                default=0,
-            )
+        while added_this_pass:
+            added_this_pass = False
+            offset = 0
 
-            result = self.embedding_store.get(
-                include=["metadatas"],
-                limit=n,
-                filter={"prototype_size": {"$gt": max_prototype_size + 1}},
-            )
+            while True:
+                result = self.embedding_store.get(
+                    include=["metadatas"],
+                    limit=n,
+                    offset=offset,
+                    filter={"prototype_size": {"$gt": max_prototype_size}} if max_prototype_size > 0 else None,
+                )
 
-            if len(result.metadatas) == 0:
-                break
+                if len(result.metadatas) == 0:
+                    break
 
-            if len(result.metadatas) == n:
-                top_clusters = self._to_clusters_dict(result)
-            else:
-                top_clusters.update(self._to_clusters_dict(result))
+                clusters_page = self._to_clusters_dict(result)
+                for cid, cluster in clusters_page.items():
+                    if cid not in top_clusters:
+                        top_clusters[cid] = cluster
+                        added_this_pass = True
 
-                if len(top_clusters) > n:
-                    top_clusters = dict(
-                        sorted(
-                            top_clusters.items(),
-                            key=lambda x: x[1].metadata.prototype_size,
-                            reverse=True,
-                        )[:n]
-                    )
+                offset += n
+
+            if added_this_pass:
+                # Update max_prototype_size only after a full pass that added new clusters
+                max_prototype_size = max(
+                    cluster.metadata.prototype_size for cluster in top_clusters.values()
+                )
+
+            # Keep only top-n clusters sorted by prototype_size
+            if len(top_clusters) > n:
+                top_clusters = dict(
+                    sorted(
+                        top_clusters.items(),
+                        key=lambda x: x[1].metadata.prototype_size,
+                        reverse=True
+                    )[:n]
+                )
+
         return top_clusters
+
     
     def calculate_avg_tokens_for_cluster(self, cluster_id: str, sample_size: int) -> int:
         total_tokens = 0
