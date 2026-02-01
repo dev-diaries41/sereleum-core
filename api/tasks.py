@@ -7,15 +7,15 @@ from dramatiq.brokers.redis import RedisBroker
 
 from sereleum.types import Prompt
 from sereleum.embeddings.helpers import get_embedding_store
-from sereleum.prompts.index.indexer import PromptIndexer
-from sereleum.prompts.index.indexer_listener import PromptIndexListener
+from sereleum.index.indexer import PromptIndexer
+from sereleum.index.indexer_listener import PromptIndexListener
 from sereleum.providers.llm.openai import OpenAIClient
-from sereleum.models.manage import ModelManager
+from sereleum.utils.model_manager import ModelManager
 from sereleum.schemas.llm import LLMClientConfig
 from sereleum.prompts.prompts_manager import PromptsManager
-from sereleum.prompts.clusters_manager import ClustersManager
+from sereleum.clusters.clusters_manager import ClustersManager
 from sereleum.constants.models import OPENAI_API_KEY, DEFAULT_SYSTEM_PROMPT, DEFAULT_OPENAI_MODEL
-from sereleum.prompts.cluster import cluster_prompts
+from sereleum.clusters.cluster import cluster_prompts
 
 from api.redis import REDIS_HOST, REDIS_PASSWORD, REDIS_PORT, redis_client
 
@@ -44,10 +44,16 @@ def get_cluster_manager(prompt_manager: PromptsManager):
     cluster_embedding_store = get_embedding_store('cluster', 'all-minilm-l6-v2', text_embedder.embedding_dim) 
     return  ClustersManager(embedding_store=cluster_embedding_store, prompts_manager=prompt_manager, llm=llm)
 
-@dramatiq.actor
+@dramatiq.actor(max_retries = 2)
 async def index_prompts_task(file_path: str, auto_label: bool = True, auto_merge_threshold: float = 0.9, initial_threshold: float = 0.55):
     try:
         msg = CurrentMessage().get_current_message()
+        current_retries = msg.options.setdefault("retries", 0)
+
+        if current_retries + 1 > 2:
+            redis_client.set(f"status_{msg.message_id}", "failed", ex=86400)
+            return
+        
         with open(file_path) as f:
             prompts = [Prompt(**p) for p in json.load(f)]
         prompt_embedding_store = get_embedding_store( 'prompt', 'all-minilm-l6-v2', text_embedder.embedding_dim) 
@@ -59,8 +65,15 @@ async def index_prompts_task(file_path: str, auto_label: bool = True, auto_merge
 
 
 # Note: in prod client_id will be passed instead of just using "cluster_job_status"
-@dramatiq.actor
+@dramatiq.actor(max_retries = 2)
 async def cluster_prompts_task(auto_label: bool = True, auto_merge_threshold: float = 0.9, initial_threshold: float = 0.55):
+    msg = CurrentMessage().get_current_message()
+    current_retries = msg.options.setdefault("retries", 0)
+
+    if current_retries + 1 > 2:
+        redis_client.set("cluster_job_status", "failed", ex=86400)
+        return
+
     redis_client.set("cluster_job_status", "active", ex=86400)
     prompts_manager = get_prompt_manager()
     clusters_manager = get_cluster_manager(prompts_manager)

@@ -17,16 +17,15 @@ from api.redis import redis_client
 from sereleum.constants.models import OPENAI_API_KEY, DEFAULT_SYSTEM_PROMPT, DEFAULT_OPENAI_MODEL
 from sereleum.constants import  UPLOAD_DIR
 from sereleum.constants.api import Routes
-from sereleum.prompts.cluster import  get_cluster_plot
+from sereleum.clusters.cluster import  get_cluster_plot
 from sereleum.schemas.llm import LLMClientConfig
-from sereleum.providers.llm.llm_client import LLMClient
 from sereleum.schemas.api import FailMessage, CompleteMessage, ProgressMessage
-from sereleum.prompts.helpers import get_prompts_overview
 from sereleum.prompts.prompts_manager import PromptsManager
-from sereleum.prompts.clusters_manager import ClustersManager
+from sereleum.clusters.clusters_manager import ClustersManager
+from sereleum.clusters.helpers import get_overview
 from sereleum.embeddings.helpers import get_embedding_store
 from sereleum.providers.llm.openai import OpenAIClient
-from sereleum.models.manage import ModelManager
+from sereleum.utils.model_manager import ModelManager
 from sereleum.errors import ReveliumError, ErrorCode
 from sereleum.schemas.api import (
     GetPromptsRequest, 
@@ -150,7 +149,7 @@ async def track_prompts_cluster_status(request: Request, job_id: str | None = No
     return EventSourceResponse(event_generator())
 
 @app.post(Routes.ADD_PROMPTS_FILE_ENDPOINT)
-async def add_prompts_file(file: UploadFile = File(...), auto_label: bool = Form(False), auto_merge_threshold: float = Form(0.9), initial_threshold: float = Form(0.55)):
+async def add_prompts_file(file: UploadFile = File(...), auto_label: bool = Form(False), auto_merge_threshold: float = Form(0.9), initial_threshold: float = Form(0.3)):
     with NamedTemporaryFile(dir=UPLOAD_DIR, delete=False, suffix=".json") as tmp:
         tmp.write(await file.read())
         tmp.flush()
@@ -181,10 +180,10 @@ async def count_prompts():
 
 
 @app.get(Routes.GET_PROMPTS_OVERVIEW_ENDPOINT)
-async def get_overview():
+async def get_sereleum_overview():
     prompts_manager = get_prompt_manager()
     clusters_manager = get_cluster_manager(prompts_manager)
-    overview = await run_in_threadpool( get_prompts_overview, prompts_manager, clusters_manager)
+    overview = await run_in_threadpool( get_overview, prompts_manager, clusters_manager)
     return JSONResponse(GetPromptsOverviewResponse(**overview.model_dump()).model_dump())
 
 

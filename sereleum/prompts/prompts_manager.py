@@ -3,13 +3,13 @@ import math
 
 from numpy import ndarray
 from datetime import datetime
-from typing import List, Optional, Iterable, Tuple, Any, Generator
+from typing import List, Optional, Tuple, Any, Generator
 
 from smartscan import ItemEmbedding,Assignments, ClusterMerges, ItemId, TextEmbeddingProvider, ClusterId, ItemEmbeddingUpdate, GetResult, QueryResult
 from smartscan.embeds import EmbeddingStore
 
-from sereleum.types import Prompt, PromptMetadata
-from sereleum.utils import   paginate_until
+from sereleum.prompts.types import Prompt, PromptMetadata
+from sereleum.utils.batch import   paginate_until
 from sereleum.errors import ReveliumError, ErrorCode
 
 
@@ -86,12 +86,12 @@ class PromptsManager():
 
     # Designed to limit reads whilst covering all "sections" of the db
     # This helps prevents large number of reads for large number of prompts or high meomry usage whehn plotting cluster plots
-    def get_prompt_metadata_samples(self, sample_size: int, cluster_ids: Optional[List[str]] = None, batch_size: int= 100,) -> Tuple[List[ItemId], List[PromptMetadata], List[ndarray]]:
+    def get_prompt_metadata_samples(self, sample_size: int, cluster_ids: Optional[List[str]] = None, batch_size: int= 100, exclude_clustered: bool = False) -> Tuple[List[ItemId], List[PromptMetadata], List[ndarray]]:
         id_list, metadata_list, embedding_list = [], [], []
         total_prompts = self.embedding_store.count()
         max_sample_size = sample_size if total_prompts >= sample_size else total_prompts
 
-        for id_, metadata, emb in self.stream_prompts_metadata(cluster_ids=cluster_ids, batch_size=batch_size, with_embeddings=True):
+        for id_, metadata, emb in self.stream_prompts_metadata(cluster_ids=cluster_ids, batch_size=batch_size, with_embeddings=True, exclude_clustered=exclude_clustered):
             if len(id_list) < max_sample_size:
                 id_list.append(id_)
                 metadata_list.append(metadata)
@@ -115,27 +115,13 @@ class PromptsManager():
                     initial_offset += step_size # increase in real step size to enusre the entire db is passed in n_sections
         return id_list, metadata_list, embedding_list
     
-    def stream_prompt_embeddings(self, cluster_ids: Optional[List[str]] = None, batch_size: int= 100, initial_offset: int = 0) -> Iterable[Tuple[ItemId, ndarray, ClusterId]]:
-        for batch in paginate_until(
-            lambda offset, limit: self.embedding_store.get(
-                include=["embeddings", "metadatas"],
-                filter={"cluster_id": {"$in": cluster_ids}} if cluster_ids else None,
-                offset=offset,
-                limit=limit,
-            ),
-            break_fn= lambda batch: len(batch.embeddings) == 0,
-            batch_size=batch_size,
-            initial_offset = initial_offset
-            ):
-            yield from zip(batch.ids, batch.embeddings, [m.get("cluster_id") for m in batch.metadatas])
 
-
-    def get_prompts(self, ids: Optional[List[str]] = None, cluster_id: Optional[ClusterId] = None, limit: Optional[int] = None, offset: Optional[int] = None) -> List[Prompt]:
+    def get_prompts(self, ids: Optional[List[str]] = None, cluster_ids: Optional[List[str]] = None, limit: Optional[int] = None, offset: Optional[int] = None) -> List[Prompt]:
         if ids:
             return self.get_prompts_by_id(ids)
         
         result = self.embedding_store.get(
-                filter={"cluster_id": cluster_id} if cluster_id else None,
+                filter={"cluster_id": {"$in": cluster_ids}} if cluster_ids else None,
                 include=["metadatas", "documents"],
                 offset=offset,
                 limit=limit,
@@ -157,7 +143,7 @@ class PromptsManager():
         return list(self.stream_prompts_by_id(ids, batch_size))
     
     # This handle cases where the number of ids may be very high
-    def stream_prompts_by_id(self, ids: List[str], batch_size: int= 100) -> Iterable[Prompt]:
+    def stream_prompts_by_id(self, ids: List[str], batch_size: int= 100) -> Generator[Prompt, Any, None]:
         start = 0
 
         while start < len(ids):
@@ -170,7 +156,7 @@ class PromptsManager():
             yield from self._to_prompts(result)
             start += batch_size
     
-    def stream_prompts(self, cluster_ids: Optional[List[str]] = None, batch_size: int= 100, initial_offset: int = 0) -> Iterable[Prompt]:
+    def stream_prompts(self, cluster_ids: Optional[List[str]] = None, batch_size: int= 100, initial_offset: int = 0) -> Generator[Prompt, Any, None]:
         for batch in paginate_until(
             lambda offset, batch_size: self.embedding_store.get(
                 filter={"cluster_id": {"$in": cluster_ids}} if cluster_ids else None,
@@ -201,10 +187,14 @@ class PromptsManager():
 
     
     # Note: tokens in metadata shouldnt be none here
-    def stream_prompts_metadata(self, cluster_ids: Optional[List[str]] = None, batch_size: int= 100, initial_offset: int = 0,  with_embeddings: bool = False) -> Generator[tuple[str, PromptMetadata] | tuple[str, PromptMetadata, ndarray], Any, None]:
+    def stream_prompts_metadata(self, cluster_ids: Optional[List[str]] = None, batch_size: int= 100, initial_offset: int = 0,  with_embeddings: bool = False, exclude_clustered: bool = False) -> Generator[tuple[str, PromptMetadata] | tuple[str, PromptMetadata, ndarray], Any, None]:
+        where={"cluster_id": {"$in": cluster_ids}} if cluster_ids else None
+        if exclude_clustered:
+            where = {"cluster_id": {"$eq": PromptMetadata.UNCLUSTERED}}
+            
         for batch in paginate_until(
             lambda offset, limit: self.embedding_store.get(
-                filter={"cluster_id": {"$in": cluster_ids}} if cluster_ids else None,
+                filter=where,
                 include=["metadatas", "embeddings"] if with_embeddings else ["metadatas"],
                 offset=offset,
                 limit=limit,
