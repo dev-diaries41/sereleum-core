@@ -5,7 +5,6 @@ from smartscan import ItemEmbedding
 from smartscan.processor import ProcessorListener
 
 from sereleum.types import Prompt, Status
-from sereleum.prompts.cluster import cluster_prompts
 
 class DefaultIndexerListener(ProcessorListener[Prompt, ItemEmbedding]):
     def on_error(self, e, item):

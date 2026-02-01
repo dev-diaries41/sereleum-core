@@ -12,10 +12,10 @@ from benchmarks.constants import BENCHMARK_CHROMADB_PATH, BENCHMARK_DIR
 
 from sereleum.logs import getLogger
 from sereleum.types import Prompt
-from sereleum.prompts.index.indexer import PromptIndexer
-from sereleum.prompts.index.indexer_listener import  ProgressBarIndexerListener
+from sereleum.index.indexer import PromptIndexer
+from sereleum.index.indexer_listener import  ProgressBarIndexerListener
 from sereleum.data import get_dummy_data, get_placeholder_prompts, get_test_prompts
-from sereleum.models.manage import ModelManager
+from sereleum.utils.model_manager import ModelManager
 from sereleum.embeddings.helpers import get_embedding_store_persistent_file
 
 BENCHMARK_NAME = "indexing_benchmarks"
@@ -45,12 +45,12 @@ if __name__ == "__main__":
     parser.add_argument("-n", type=int, help="number of items to generate", default=100)
     parser.add_argument("-o", type=int, help="dummy data offset", default=0)
     parser.add_argument("--stress", action="store_true", help="stress test")
-    parser.add_argument("--test", action="store_true", help="use test prompts")
+    parser.add_argument("--file", "-f", help="prompts file path")
 
     args = parser.parse_args()
     if args.n and args.stress:
         asyncio.run(main(get_dummy_data(args.n, args.o)))
-    elif args.test:
-        asyncio.run(main(get_test_prompts()))
     else:
-        asyncio.run(main(get_placeholder_prompts()))
+        with open(args.file) as f:
+            prompts = [Prompt(**p) for p in json.load(f)]
+        asyncio.run(main(prompts))

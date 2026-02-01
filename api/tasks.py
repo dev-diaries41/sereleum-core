@@ -7,15 +7,15 @@ from dramatiq.brokers.redis import RedisBroker
 
 from sereleum.types import Prompt
 from sereleum.embeddings.helpers import get_embedding_store
-from sereleum.prompts.index.indexer import PromptIndexer
-from sereleum.prompts.index.indexer_listener import PromptIndexListener
+from sereleum.index.indexer import PromptIndexer
+from sereleum.index.indexer_listener import PromptIndexListener
 from sereleum.providers.llm.openai import OpenAIClient
-from sereleum.models.manage import ModelManager
+from sereleum.utils.model_manager import ModelManager
 from sereleum.schemas.llm import LLMClientConfig
 from sereleum.prompts.prompts_manager import PromptsManager
-from sereleum.prompts.clusters_manager import ClustersManager
+from sereleum.clusters.clusters_manager import ClustersManager
 from sereleum.constants.models import OPENAI_API_KEY, DEFAULT_SYSTEM_PROMPT, DEFAULT_OPENAI_MODEL
-from sereleum.prompts.cluster import cluster_prompts
+from sereleum.clusters.cluster import cluster_prompts
 
 from api.redis import REDIS_HOST, REDIS_PASSWORD, REDIS_PORT, redis_client
 

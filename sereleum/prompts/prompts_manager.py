@@ -8,8 +8,8 @@ from typing import List, Optional, Tuple, Any, Generator
 from smartscan import ItemEmbedding,Assignments, ClusterMerges, ItemId, TextEmbeddingProvider, ClusterId, ItemEmbeddingUpdate, GetResult, QueryResult
 from smartscan.embeds import EmbeddingStore
 
-from sereleum.types import Prompt, PromptMetadata
-from sereleum.utils import   paginate_until
+from sereleum.prompts.types import Prompt, PromptMetadata
+from sereleum.utils.batch import   paginate_until
 from sereleum.errors import ReveliumError, ErrorCode
 
 
@@ -116,12 +116,12 @@ class PromptsManager():
         return id_list, metadata_list, embedding_list
     
 
-    def get_prompts(self, ids: Optional[List[str]] = None, cluster_id: Optional[ClusterId] = None, limit: Optional[int] = None, offset: Optional[int] = None) -> List[Prompt]:
+    def get_prompts(self, ids: Optional[List[str]] = None, cluster_ids: Optional[List[str]] = None, limit: Optional[int] = None, offset: Optional[int] = None) -> List[Prompt]:
         if ids:
             return self.get_prompts_by_id(ids)
         
         result = self.embedding_store.get(
-                filter={"cluster_id": cluster_id} if cluster_id else None,
+                filter={"cluster_id": {"$in": cluster_ids}} if cluster_ids else None,
                 include=["metadatas", "documents"],
                 offset=offset,
                 limit=limit,
