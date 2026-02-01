@@ -45,12 +45,12 @@ if __name__ == "__main__":
     parser.add_argument("-n", type=int, help="number of items to generate", default=100)
     parser.add_argument("-o", type=int, help="dummy data offset", default=0)
     parser.add_argument("--stress", action="store_true", help="stress test")
-    parser.add_argument("--test", action="store_true", help="use test prompts")
+    parser.add_argument("--file", "-f", help="prompts file path")
 
     args = parser.parse_args()
     if args.n and args.stress:
         asyncio.run(main(get_dummy_data(args.n, args.o)))
-    elif args.test:
-        asyncio.run(main(get_test_prompts()))
     else:
-        asyncio.run(main(get_placeholder_prompts()))
+        with open(args.file) as f:
+            prompts = [Prompt(**p) for p in json.load(f)]
+        asyncio.run(main(prompts))
