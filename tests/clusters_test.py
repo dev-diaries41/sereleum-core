@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from sereleum.clusters.incremental_cluster import IncrementalClusterer
+from smartscan.classify import IncrementalClusterer
 from smartscan.classify.types import Cluster
 
 class TestIncrementalClusterer:

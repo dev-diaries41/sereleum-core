@@ -6,7 +6,7 @@ from io import BytesIO
 from sklearn.manifold import TSNE
 from sklearn.decomposition import PCA
 from smartscan import Assignments
-from sereleum.clusters.incremental_cluster import IncrementalClusterer
+from smartscan.classify import IncrementalClusterer
 from sereleum.prompts.prompts_manager import PromptsManager
 from sereleum.clusters.clusters_manager import ClustersManager
 

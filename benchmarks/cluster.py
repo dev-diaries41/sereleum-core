@@ -13,7 +13,7 @@ import time
 from dataclasses import asdict
 
 from smartscan import ClusterResult
-from sereleum.clusters.incremental_cluster import IncrementalClusterer
+from smartscan.classify import IncrementalClusterer
 from sereleum.clusters.vecotorized_clusterer import IncrementalClustererVectorized
 from benchmarks.constants import BENCHMARK_CHROMADB_PATH, BENCHMARK_DIR
 
