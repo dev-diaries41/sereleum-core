@@ -1,127 +1,114 @@
-# Sereleum
+# Sereleum-Server
 
-Sereleum is a prompts analytics platform that allows businesses to turn user prompts into actionable insights. It enables uncovering semantic patterns, and optimising LLM-powered products. 
+This is the server that powers the **Sereleum** app, a prompts analytics platform that helps businesses turn user prompts into actionable insights. It uncovers semantic patterns and optimizes LLM-powered products.
 
-## Core Features
+## Installation
 
-Sereleum focuses on analytics-driven controls that turn raw user prompts into standardized, high-quality, and cost-efficient interactions.
+1. Clone the repository:
 
-### 1. Prompt Clustering & Intent Discovery
+```bash
+git clone https://github.com/dev-diaries41/sereleum-server.git
+cd sereleum-server
+```
 
-Automatically groups semantically similar prompts and labels clusters to surface **dominant user intents and workflows**.
+2. Install dependencies:
 
-**What this enables:**
+```bash
+pip install .
+```
 
-* Clear visibility into how users actually use your LLM-powered product
-* Identification of repeatable, high-value use cases suitable for standardization
-* Identify core product workflows
+## Deployment
 
----
+Docker Compose is used for deployment.
 
-### 2. Token Usage & Cost by Cluster (Top 5)
+**Build the server:**
 
-Tracks token consumption and cost at the **use-case level**, focusing on the top 5 clusters that drive the majority of spend and traffic.
+```bash
+docker compose build
+```
 
-**Why top 5 only:**
+**Start the server:**
 
-* Captures the highest-impact intents
-* Reduces noise and computational overhead
-* Directs optimization efforts where ROI is highest
+```bash
+docker compose up
+```
 
-**What this enables:**
+## Benchmarking
 
-* Immediate visibility into which user intents are most expensive
-* Prioritization of clusters for prompt optimization and templating
-
----
-
-### 3. Cluster-Driven Prompt Template Discovery
-
-Identifies clusters where **prompt structure can be standardized** to improve quality, consistency, and cost efficiency.
-
-Instead of manually guessing which prompts need templates, Sereleum surfaces **template candidates** based on:
-
-* High prompt repetition
-* High token usage
-* High variance in user phrasing for the same intent
-
-**What this enables:**
-
-* Converting dominant clusters into reusable prompt templates
-* Reducing output variance across users
-* Lowering token usage by constraining unnecessary verbosity
-* Turning free-form chat into reliable product workflows
+You can benchmark **indexing** and **clustering** processes using a simple CLI.
 
 ---
 
-### 4. Feedback Loop: Measure Template Impact
+### Indexing Benchmarks
 
-Once templates are introduced, Sereleum tracks changes at the cluster level:
+Supports **stress tests** with dummy data or indexing from a **prompts JSON file**.
 
-* Token usage before vs after templating
-* Prompt length reduction
-* Shift in cluster composition
+**CLI Options:**
 
-This closes the loop between **observation → intervention → measurement**.
+* `-n` → Number of items to generate (default: 100)
+* `-o` → Dummy data offset (default: 0)
+* `--stress` → Run stress test with dummy data
+* `-f` → Path to prompts file
 
----
+**Usage Examples:**
 
-## Use Cases
+Run stress test with 10,000 items:
 
-### Use Case Segmentation & Discoverability
+```bash
+python -m benchmarks.index -n 10000 --stress
+```
 
-Understand exactly how users interact with your product at the intent level.
+Run benchmark using a prompts file:
 
-**Example:**
-Sereleum reveals a dominant cluster around “production ML system design.” The team recognizes this as a core workflow rather than an edge case and invests in improving that experience.
-
----
-
-### Prompt Template Optimization for Core Workflows
-
-Use real prompt data to design templates that improve outputs and reduce user effort.
-
-**Example:**
-A customer support chatbot shows a large cluster for “cancel subscription.” Sereleum flags it as a high-volume, low-variance intent. The team introduces a structured template, reducing response time, token usage, and support tickets.
+```bash
+python -m benchmarks.index -f path/to/prompts.json
+```
 
 ---
 
-### System Prompt Refinement Based on Observed Demand
+### Clustering Benchmarks
 
-Align system-level behavior with actual user needs instead of assumptions.
+Supports **simulated benchmarks** or **real clustering** using indexed prompts.
 
-**Example:**
-Clusters show users consistently asking for casual, blog-style writing despite a formal system prompt. The team updates the system prompt and observes reduced rewrites and lower average token usage per request.
+**CLI Options:**
+
+* `-s` → Run simulated benchmark
+* `-r` → Run benchmark with real prompts
+* `-i` → Number of items (simulated only, default: 10000)
+* `-d` → Embedding dimension (simulated only, default: 384)
+
+**Usage Examples:**
+
+Run simulated clustering:
+
+```bash
+python -m benchmarks.cluster -s -i 1000 -d 384
+```
+
+Run real clustering:
+
+```bash
+python -m benchmarks.cluster -r
+```
+
+> Real clustering requires prompts to be indexed first.
 
 ---
 
-### Cost Control Through Cluster-Level Optimization
+## Design Choices
 
-Identify which use cases drive disproportionate LLM costs and intervene surgically.
+### Orchestration
 
-**Example:**
-Analytics queries form a top-cost cluster due to overly verbose prompts. Sereleum surfaces this cluster as a template candidate. After introducing a constrained template, costs drop without degrading output quality.
+Docker Compose manages four services:
+
+* **Sereleum** – the FastAPI application
+* **ChromaDB** – ChromaDB server required by both the API and Dramatiq workers
+* **Dramatiq Workers** – task queue for indexing and clustering tasks
+* **Redis** – required by Dramatiq
+
+### Model
+
+* Embedding model: **MiniLM-L6 quantized (onnxruntime)**
+* **Max token length**: MiniLM-L6 tokenizer uses a maximum of **512 tokens** instead of 128. Using the higher limit increases indexing time but improves clustering accuracy by avoiding context loss when embedding large prompts.
 
 ---
-
-### Turning Chat Into Product Workflows
-
-Move from unstructured chat to reliable, repeatable product experiences.
-
-**Example:**
-An internal AI assistant shows repeated but inconsistently phrased prompts for “generate quarterly report insights.” Sereleum clusters them, surfaces the intent, and enables the team to ship a guided prompt template that becomes a first-class feature.
-
----
-
-Sereleum enables businesses to treat prompts as **measurable, optimizable product interfaces**.
-
-
-## Design choices
-
-* Model: MiniLM-6 quant onnxruntime model
-* Max token length: MiniLM-l6 tokenizer used max length of 512 instead of 128
-    - Pro: This improves cluster accuracy by avoiding loss of context when embedding large prompts
-    - Con: This increases indexing time (batch embed generation and storage) by up to 4x
-    - Bench marks: 50 prompts of character length ~ 500, using the 512 tokenizer length takes ~3s, on CPU with 16 cores
-* Since cluster accuracy is pivotal for the features mentioned above 512 is used instead of 128 even though in increases processing time.
-    
