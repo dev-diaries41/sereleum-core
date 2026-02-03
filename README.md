@@ -1,4 +1,4 @@
-# Sereleum-Server
+# Sereleum-Core
 
 This is the server that powers the **Sereleum** app, a prompts analytics platform that helps businesses turn user prompts into actionable insights. It uncovers semantic patterns and optimizes LLM-powered products.
 
@@ -7,7 +7,7 @@ This is the server that powers the **Sereleum** app, a prompts analytics platfor
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/dev-diaries41/sereleum-server.git
+git clone https://github.com/dev-diaries41/sereleum-core.git
 cd sereleum-server
 ```
 
