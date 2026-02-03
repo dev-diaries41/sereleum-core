@@ -1,6 +1,6 @@
 # Sereleum-Core
 
-This is the server that powers the **Sereleum** app, a prompts analytics platform that helps businesses turn user prompts into actionable insights. It uncovers semantic patterns and optimizes LLM-powered products.
+This is the core engine that powers the [Sereleum app](https://github.com/dev-diaries41/sereleum), providing the indexing, clustering and labelling pipeline to enable prompts analysis. It includes the API and Client packages.
 
 ## Installation
 
