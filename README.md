@@ -8,7 +8,7 @@ This is the core engine that powers the [Sereleum app](https://github.com/dev-di
 
 ```bash
 git clone https://github.com/dev-diaries41/sereleum-core.git
-cd sereleum-server
+cd sereleum-core
 ```
 
 2. Install dependencies:
