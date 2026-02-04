@@ -10,12 +10,13 @@ from dataclasses import asdict
 
 from benchmarks.constants import BENCHMARK_CHROMADB_PATH, BENCHMARK_DIR
 
+from smartscan.models.model_manager import ModelManager
+
 from sereleum.logs import getLogger
 from sereleum.types import Prompt
 from sereleum.index.indexer import PromptIndexer
 from sereleum.index.indexer_listener import  ProgressBarIndexerListener
 from sereleum.data import get_dummy_data
-from sereleum.utils.model_manager import ModelManager
 from sereleum.embeddings.helpers import get_embedding_store_persistent_file
 
 BENCHMARK_NAME = "indexing_benchmarks"
