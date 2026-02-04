@@ -14,6 +14,8 @@ from tempfile import NamedTemporaryFile
 from api.tasks import index_prompts_task
 from api.redis import redis_client
 
+from smartscan.models.model_manager import ModelManager
+
 from sereleum.constants.models import OPENAI_API_KEY, DEFAULT_SYSTEM_PROMPT, DEFAULT_OPENAI_MODEL
 from sereleum.constants import  UPLOAD_DIR
 from sereleum.constants.api import Routes
@@ -25,7 +27,6 @@ from sereleum.clusters.clusters_manager import ClustersManager
 from sereleum.clusters.helpers import get_overview
 from sereleum.embeddings.helpers import get_embedding_store
 from sereleum.providers.llm.openai import OpenAIClient
-from sereleum.utils.model_manager import ModelManager
 from sereleum.errors import ReveliumError, ErrorCode
 from sereleum.schemas.api import (
     GetPromptsRequest, 

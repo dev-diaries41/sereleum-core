@@ -1,21 +1,9 @@
 import os
 
-from typing import Dict
-from sereleum.providers.types import LocalTextEmbeddingModel, ModelInfo
 from dotenv import load_dotenv
-
 load_dotenv()
 
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 DEFAULT_OPENAI_MODEL = "gpt-5-mini"
 DEFAULT_TEXT_EMBEDDER = "all-minilm-l6-v2"
 DEFAULT_SYSTEM_PROMPT = "Your objective is to label prompt messages from clusters and label them, returning ClassificationResult. Labels should be one word max 3 words."
-
-# Local models
-MINILM_MAX_TOKENS = 512
-MINILM_MODEL_PATH = 'minilm_sentence_transformer_quant.onnx'
-MINILM_MODEL_URL = "https://github.com/dev-diaries41/smartscan-models/releases/download/1.0.0/minilm_sentence_transformer_quant.onnx"
-
-MODEL_REGISTRY: Dict[LocalTextEmbeddingModel, ModelInfo] = {
-    'all-minilm-l6-v2': ModelInfo(url=MINILM_MODEL_URL, path=MINILM_MODEL_PATH),
-}
