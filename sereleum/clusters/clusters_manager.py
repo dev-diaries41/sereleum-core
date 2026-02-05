@@ -5,7 +5,7 @@ import numpy as np
 from typing import List, Dict, Optional, Iterable, Tuple
 
 from smartscan import ItemEmbedding, Cluster, ClusterNoEmbeddings, ClusterMetadata, Assignments, ClusterMerges, ItemId, TextEmbeddingProvider, ClusterId, ClusterAccuracy, ItemEmbeddingUpdate, Include, GetResult, QueryResult
-from smartscan.classify import  calculate_cluster_accuracy
+from smartscan.cluster import  calculate_cluster_accuracy
 from smartscan.embeds import EmbeddingStore, generate_prototype_embedding
 
 from sereleum.utils.batch import   paginate_until
