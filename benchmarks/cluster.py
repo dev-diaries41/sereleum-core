@@ -13,7 +13,7 @@ import time
 from dataclasses import asdict
 
 from smartscan import ClusterResult
-from smartscan.classify import IncrementalClusterer
+from smartscan.cluster import IncrementalClusterer
 
 from benchmarks.constants import BENCHMARK_CHROMADB_PATH, BENCHMARK_DIR
 from benchmarks.utils import with_time
