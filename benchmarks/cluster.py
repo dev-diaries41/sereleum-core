@@ -125,11 +125,11 @@ def main():
 
     args = parser.parse_args()
 
-    if args.standard:
+    if args.sim:
         run_simulated_benchmark(n_items=args.items, dim=args.dim)
     if args.real:
         asyncio.run(run_real_benchmark())
-    if not args.standard and not args.vectorized and not args.real:
+    if not args.sim and not args.real:
         print("No benchmark selected. Use --standard, --vectorized, or --real.")
 
 
