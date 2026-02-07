@@ -12,9 +12,9 @@ class LLMClient(ABC):
         raise NotImplementedError
     
     @abstractmethod
-    def generate_json(self, prompt: str, format: Type[JsonOutput], history: Optional[List[Message]] = None) -> JsonOutput: 
+    def generate_json(self, prompt: str, format: Type[JsonOutput], images: Optional[List[Dict[str, str]]] = None, history: Optional[List[Message]] = None) -> JsonOutput: 
         raise NotImplementedError
     
     @abstractmethod
-    def generate_text_from_images(self, prompt: str, images: List[Dict[str, str]], history: Optional[List[Message]] = None) -> np.ndarray:
+    def generate_text_from_images(self, prompt: str, images: List[Dict[str, str]], history: Optional[List[Message]] = None) -> str:
         raise NotImplementedError
