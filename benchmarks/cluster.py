@@ -124,7 +124,7 @@ def main():
     parser.add_argument("--dim", "-d", type=int, default=384, help="Embedding dimension for benchmark")
     parser.add_argument("--top-k", "-k", type=int, default=5, help="Top k nearest neighbours")
     parser.add_argument("--merge-threshold", "-m", type=float, default=0.9, help="Required similarity threshold for merging clusters")
-    parser.add_argument("--threshold", "-t", type=float, default=0.9, help="Default similarity threshold")
+    parser.add_argument("--threshold", "-t", type=float, default=0.3, help="Default similarity threshold")
 
     args = parser.parse_args()
 
