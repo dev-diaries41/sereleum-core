@@ -131,7 +131,7 @@ def main():
     if args.sim:
         run_simulated_benchmark(n_items=args.items, dim=args.dim)
     if args.real:
-        asyncio.run(run_real_benchmark())
+        asyncio.run(run_real_benchmark(args.threshold, args.merge_threshold, args.top_k))
     if not args.sim and not args.real:
         print("No benchmark selected. Use --standard, --vectorized, or --real.")
 
