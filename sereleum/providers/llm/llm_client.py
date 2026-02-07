@@ -1,10 +1,8 @@
 from abc import abstractmethod, ABC
-from typing import List, Optional, Dict, TypeVar, Type
-from pydantic import BaseModel
+from typing import List, Optional, Dict, Type
 from sereleum.schemas.llm import Message
-import numpy as np
+from sereleum.providers.types import JsonOutput
 
-JsonOutput = TypeVar("JsonOutput", bound=BaseModel)
 
 class LLMClient(ABC):
     @abstractmethod

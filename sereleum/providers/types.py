@@ -1,4 +1,5 @@
-from typing import Literal, TypeAlias
+from typing import Literal, TypeAlias, TypeVar
+from pydantic import BaseModel
 from smartscan.types import LocalTextEmbeddingModel
 
 TextEmbeddingModel: TypeAlias = Literal[
@@ -6,3 +7,6 @@ TextEmbeddingModel: TypeAlias = Literal[
     "text-embedding-3-small",
     "text-embedding-3-large",
 ]
+
+
+JsonOutput = TypeVar("JsonOutput", bound=BaseModel)
