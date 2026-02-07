@@ -47,7 +47,7 @@ def cluster(clusterer: IncrementalClusterer, ids, embeddings) -> tuple[ClusterRe
 
 # `prompt_id` must be prefixed with label e.g promptlabel_123
 # this is only for benchmarking
-async def run(prompts_manager: PromptsManager, clusters_manager: ClustersManager, model:TextEmbeddingModel, plot_output: str):
+async def run(prompts_manager: PromptsManager, clusters_manager: ClustersManager, model:TextEmbeddingModel, plot_output: str, default_threshold: float = 0.3, merge_threshold: float = 0.9, top_k: int = 5):
     results = {}
     ## NOTE: IncrementalClusterer uses random numbers internally. Running multiple models sequentially 
     # without reseeding causes non-deterministic clustering and lower accuracy. Reseed Python and 
@@ -60,7 +60,7 @@ async def run(prompts_manager: PromptsManager, clusters_manager: ClustersManager
         return
     existing_clusters = clusters_manager.get_all_clusters()
     existing_assignments = {prompt_id : metadata.cluster_id for prompt_id, metadata in zip(ids, metadatas)}
-    clusterer = IncrementalClusterer(default_threshold=0.3, merge_threshold=0.9, top_k=5, existing_assignments=existing_assignments, existing_clusters=existing_clusters, benchmarking=True)  
+    clusterer = IncrementalClusterer(default_threshold=default_threshold, merge_threshold=merge_threshold, top_k=top_k, existing_assignments=existing_assignments, existing_clusters=existing_clusters, benchmarking=True)  
     result,time = cluster(clusterer, ids, embeddings)
     logger.debug(f"Number assignments: {len(result.assignments)} | Number clusters: {len(result.clusters)}")
     if result.assignments:
@@ -97,12 +97,12 @@ def get_cluster_manager(prompt_manager: PromptsManager, llm):
     embedding_store = get_embedding_store_persistent_file(BENCHMARK_CHROMADB_PATH, 'cluster', 'all-minilm-l6-v2', 384)
     return ClustersManager(embedding_store=embedding_store, prompts_manager=prompt_manager, llm=llm)
 
-async def run_real_benchmark():
+async def run_real_benchmark(default_threshold: float = 0.3, merge_threshold: float = 0.9, top_k: int = 5):
     llm = OpenAIClient(OPENAI_API_KEY, LLMClientConfig(model_name=DEFAULT_OPENAI_MODEL, system_prompt=DEFAULT_SYSTEM_PROMPT))
     prompts_manager = get_prompt_manager()
     clusters_manager = get_cluster_manager(prompts_manager, llm)
     plot_output = get_new_filename(BENCHMARK_PLOTS_DIR, f"real_{BENCHMARK_CLUSTERS_PLOT}", ".png")
-    await run(prompts_manager, clusters_manager, 'all-minilm-l6-v2', plot_output)
+    await run(prompts_manager, clusters_manager, 'all-minilm-l6-v2', plot_output, default_threshold=default_threshold, merge_threshold=merge_threshold, top_k=top_k)
 
 
 def run_simulated_benchmark(n_items=10000, dim=384):
@@ -122,6 +122,9 @@ def main():
     parser.add_argument("--real", "-r", action="store_true", help="Run benchmark with real prompts data")
     parser.add_argument("--items", "-i", type=int, default=10000, help="Number of items for benchmark")
     parser.add_argument("--dim", "-d", type=int, default=384, help="Embedding dimension for benchmark")
+    parser.add_argument("--top-k", "-k", type=int, default=5, help="Top k nearest neighbours")
+    parser.add_argument("--merge-threshold", "-m", type=float, default=0.9, help="Required similarity threshold for merging clusters")
+    parser.add_argument("--threshold", "-t", type=float, default=0.9, help="Default similarity threshold")
 
     args = parser.parse_args()
 
