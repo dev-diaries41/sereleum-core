@@ -46,12 +46,21 @@ if __name__ == "__main__":
     parser.add_argument("-n", type=int, help="number of items to generate", default=100)
     parser.add_argument("-o", type=int, help="dummy data offset", default=0)
     parser.add_argument("--stress", action="store_true", help="stress test")
-    parser.add_argument("--file", "-f", help="prompts file path")
+    parser.add_argument("--file", "-f", help="JSON prompts filepath")
+    parser.add_argument("--dir", "-d", help="Directory with json prompt files")
 
     args = parser.parse_args()
     if args.n and args.stress:
         asyncio.run(main(get_dummy_data(args.n, args.o)))
-    else:
+    elif args.file:
         with open(args.file) as f:
             prompts = [Prompt(**p) for p in json.load(f)]
         asyncio.run(main(prompts))
+    elif args.dir:
+        all_prompts = []
+        for filename in os.listdir(args.dir):
+            filepath = os.path.join(args.dir, filename)
+            with open(filepath) as f:
+                all_prompts.extend([Prompt(**p) for p in json.load(f)])
+        asyncio.run(main(all_prompts))
+
