@@ -23,7 +23,7 @@ os.makedirs(BENCHMARK_DIR, exist_ok=True)
 
 
 
-def label_prompts(llm: LLMClient, cluster_manager: ClustersManager, prompts_manager: PromptsManager, cluster_id: str, sample_size: int, existing_labels: list[str]) -> LLMClassificationResult:
+def label_cluster(llm: LLMClient, cluster_manager: ClustersManager, prompts_manager: PromptsManager, cluster_id: str, sample_size: int, existing_labels: list[str]) -> LLMClassificationResult:
     clusters = cluster_manager.get_clusters(cluster_ids=[cluster_id], include=['embeddings'])
     if not clusters:
         raise ValueError("Cluster not found")
@@ -36,7 +36,7 @@ def label_prompts(llm: LLMClient, cluster_manager: ClustersManager, prompts_mana
     return  LLMClassificationResult(item_id="test", label="test label", confidence=0.8)
 
 def run(llm: OpenAIClient, cm: ClustersManager, pm: PromptsManager, cluster_id: str, sample_size: int):
-    result = label_prompts(llm, cm, pm, cluster_id, sample_size, [])
+    result = label_cluster(llm, cm, pm, cluster_id, sample_size, [])
     print(result)
     
     with open(BENCHMARK_OUTPUT_PATH, "a") as f:

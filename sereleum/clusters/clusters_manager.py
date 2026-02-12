@@ -69,7 +69,7 @@ class ClustersManager():
     async def label_and_update_clusters(self, unlabelled_clusters: List[ItemEmbeddingUpdate[None, ClusterMetadata]], sample_size: int = 10) -> int:
         existing_labels = self.get_existing_labels()
         sem = asyncio.Semaphore(self.label_concurrency)
-        label_tasks = {cluster.item_id: self.async_label_prompts(sem, self.llm, self.prompts_manager, cluster.item_id, sample_size, existing_labels) for cluster in unlabelled_clusters}
+        label_tasks = {cluster.item_id: self.async_label_clusters(sem, self.llm, self.prompts_manager, cluster.item_id, sample_size, existing_labels) for cluster in unlabelled_clusters}
         label_results = {}
         
         if label_tasks:
@@ -94,7 +94,7 @@ class ClustersManager():
         return len(labelled_clusters)
     
 
-    def label_prompts(self, cluster_id: str, sample_size: int, existing_labels: list[str]) -> LLMClassificationResult:
+    def label_cluster(self, cluster_id: str, sample_size: int, existing_labels: list[str]) -> LLMClassificationResult:
         clusters = self.get_clusters(cluster_ids=[cluster_id], include=['embeddings'])
         if not clusters:
             raise ValueError("Cluster not found")
@@ -103,9 +103,9 @@ class ClustersManager():
         input_prompt = get_labelling_prompt(cluster_id, existing_labels, sample_prompts)
         return self.llm.generate_json(input_prompt, LLMClassificationResult)
 
-    async def async_label_prompts(self, semaphore:  asyncio.Semaphore, cluster_id: str, sample_size: int, existing_labels: list[str]):
+    async def async_label_clusters(self, semaphore:  asyncio.Semaphore, cluster_id: str, sample_size: int, existing_labels: list[str]):
         async with semaphore:
-            return await asyncio.to_thread(self.label_prompts, self.llm, self.prompts_manager, cluster_id, sample_size, existing_labels)
+            return await asyncio.to_thread(self.label_cluster, self.llm, self.prompts_manager, cluster_id, sample_size, existing_labels)
 
 
     def update_cluster_label(self, cluster_id: str, label: str) -> bool:
