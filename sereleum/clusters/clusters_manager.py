@@ -8,10 +8,13 @@ from smartscan import ItemEmbedding, Cluster, ClusterNoEmbeddings, ClusterMetada
 from smartscan.cluster import  calculate_cluster_accuracy
 from smartscan.embeds import EmbeddingStore, generate_prototype_embedding
 
-from sereleum.utils.batch import   paginate_until
 from sereleum.prompts.prompts_manager import PromptsManager
-from sereleum.clusters.label import  async_label_prompts
 from sereleum.providers.llm.llm_client import LLMClient
+from sereleum.schemas.llm import LLMClassificationResult
+from sereleum.prompts.prompts_manager import PromptsManager
+from sereleum.prompts.prompts import get_labelling_prompt
+from sereleum.utils.batch import   paginate_until
+
 
 class ClustersManager():
     def __init__(self, 
@@ -26,7 +29,6 @@ class ClustersManager():
         self.llm = llm
         self.label_confidence_threshold = label_confidence_threshold
         self.label_concurrency = label_concurrency
-
     
     async def update_clusters(self, clusters: Dict[str, Cluster], merges: ClusterMerges) -> List[ItemEmbeddingUpdate[None, ClusterMetadata]]:
         """
@@ -67,7 +69,7 @@ class ClustersManager():
     async def label_and_update_clusters(self, unlabelled_clusters: List[ItemEmbeddingUpdate[None, ClusterMetadata]], sample_size: int = 10) -> int:
         existing_labels = self.get_existing_labels()
         sem = asyncio.Semaphore(self.label_concurrency)
-        label_tasks = {cluster.item_id: async_label_prompts(sem, self.llm, self.prompts_manager, cluster.item_id, sample_size, existing_labels) for cluster in unlabelled_clusters}
+        label_tasks = {cluster.item_id: self.async_label_clusters(sem, self.llm, self.prompts_manager, cluster.item_id, sample_size, existing_labels) for cluster in unlabelled_clusters}
         label_results = {}
         
         if label_tasks:
@@ -91,6 +93,20 @@ class ClustersManager():
 
         return len(labelled_clusters)
     
+
+    def label_cluster(self, cluster_id: str, sample_size: int, existing_labels: list[str]) -> LLMClassificationResult:
+        clusters = self.get_clusters(cluster_ids=[cluster_id], include=['embeddings'])
+        if not clusters:
+            raise ValueError("Cluster not found")
+        prompts = self.prompts_manager.embedding_store.query(query_embeds=[clusters[cluster_id].embedding], filter={"cluster_id": cluster_id},  limit=sample_size, include=['documents'])
+        sample_prompts = [content for content in prompts.datas]
+        input_prompt = get_labelling_prompt(cluster_id, existing_labels, sample_prompts)
+        return self.llm.generate_json(input_prompt, LLMClassificationResult)
+
+    async def async_label_clusters(self, semaphore:  asyncio.Semaphore, cluster_id: str, sample_size: int, existing_labels: list[str]):
+        async with semaphore:
+            return await asyncio.to_thread(self.label_cluster, self.llm, self.prompts_manager, cluster_id, sample_size, existing_labels)
+
 
     def update_cluster_label(self, cluster_id: str, label: str) -> bool:
         """
@@ -166,7 +182,11 @@ class ClustersManager():
         return labels
     
 
-    def get_clusters(self, cluster_ids: Optional[List[str]] = None, limit: Optional[int] = None, offset: Optional[int] = None, include: Include = ['metadatas', 'embeddings']) -> dict[ClusterId, Cluster | ClusterNoEmbeddings]:
+    def get_clusters(self, cluster_ids: Optional[List[str]] = None, limit: Optional[int] = None, offset: Optional[int] = None, include: Optional[Include] = None) -> dict[ClusterId, Cluster | ClusterNoEmbeddings]:
+        include = include or []
+        if 'metadatas' not in include:
+            include.append('metadatas')
+
         results = self.embedding_store.get(
                 ids = cluster_ids if cluster_ids else None,
                 include=include,
