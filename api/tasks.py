@@ -16,7 +16,7 @@ from sereleum.schemas.llm import LLMClientConfig
 from sereleum.prompts.prompts_manager import PromptsManager
 from sereleum.prompts.clusters_manager import PromptClustersManager
 from sereleum.constants.models import OPENAI_API_KEY, DEFAULT_SYSTEM_PROMPT, DEFAULT_OPENAI_MODEL
-from sereleum.cluster import cluster_prompts
+from sereleum.cluster import cluster_items
 
 from api.redis import REDIS_HOST, REDIS_PASSWORD, REDIS_PORT, redis_client
 
@@ -78,5 +78,5 @@ async def cluster_prompts_task(auto_label: bool = True, auto_merge_threshold: fl
     redis_client.set("cluster_job_status", "active", ex=86400)
     prompts_manager = get_prompt_manager()
     clusters_manager = get_cluster_manager(prompts_manager)
-    await cluster_prompts(prompts_manager, clusters_manager, auto_label=auto_label, auto_merge_threshold=auto_merge_threshold, initial_threshold=initial_threshold)
+    await cluster_items(prompts_manager, clusters_manager, auto_label=auto_label, auto_merge_threshold=auto_merge_threshold, initial_threshold=initial_threshold)
     redis_client.set("cluster_job_status", "complete", ex=86400)
