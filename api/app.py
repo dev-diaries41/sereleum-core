@@ -194,7 +194,7 @@ async def update_prompt_cluster(prompt_id: str, cluster_id: str):
         prompts_manager = get_prompt_manager()
         await run_in_threadpool( prompts_manager.update_prompt_cluster , prompt_id,  cluster_id)
     except ReveliumError as e:
-        if e.code == ErrorCode.PROMPT_NOT_FOUND:
+        if e.code == ErrorCode.ITEM_NOT_FOUND:
             raise HTTPException(status_code=404, detail="Prompt not found")
         else:
             raise e

@@ -25,7 +25,7 @@ class ItemsManager(Generic[TItem, TData, TMetadata]):
     def update_item_cluster(self, item_id: str, new_cluster_id: str) -> None:
         items = self.get_by_ids([item_id])
         if len(items) == 0:
-            raise ReveliumError("Item not found", code=ErrorCode.PROMPT_NOT_FOUND)
+            raise ReveliumError("Item not found", code=ErrorCode.ITEM_NOT_FOUND)
         item = items[0]
         updated_metadata = ItemEmbeddingUpdate(
                     item_id,
