@@ -25,7 +25,7 @@ from sereleum.schemas.api import FailMessage, CompleteMessage, ProgressMessage
 from sereleum.prompts.prompts_manager import PromptsManager
 from sereleum.prompts.clusters_manager import PromptClustersManager
 from sereleum.prompts.helpers import get_prompts_overview
-from sereleum.embeddings.helpers import get_embedding_store
+from sereleum.store.helpers import get_embedding_store
 from sereleum.providers.llm.openai import OpenAIClient
 from sereleum.errors import ReveliumError, ErrorCode
 from sereleum.schemas.api import (

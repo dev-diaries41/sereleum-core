@@ -8,7 +8,7 @@ from dramatiq.brokers.redis import RedisBroker
 from smartscan.models.model_manager import ModelManager
 
 from sereleum.types import Prompt
-from sereleum.embeddings.helpers import get_embedding_store
+from sereleum.store.helpers import get_embedding_store
 from sereleum.index.indexer import PromptIndexer
 from sereleum.index.indexer_listener import PromptIndexListener
 from sereleum.providers.llm.openai import OpenAIClient

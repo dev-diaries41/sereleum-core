@@ -1,6 +1,6 @@
 
 from sereleum.providers.types import TextEmbeddingModel
-from sereleum.embeddings.chroma_store import ChromaDBEmbeddingStore
+from sereleum.store.chroma_store import ChromaDBEmbeddingStore
 from sereleum.types import EmbeddingStoreType
 import chromadb
 

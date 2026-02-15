@@ -26,7 +26,7 @@ from sereleum.prompts.prompts_manager import PromptsManager
 from sereleum.prompts.clusters_manager import PromptClustersManager
 from sereleum.providers.llm.openai import OpenAIClient
 from sereleum.schemas.llm import LLMClientConfig
-from sereleum.embeddings.helpers import get_embedding_store_persistent_file
+from sereleum.store.helpers import get_embedding_store_persistent_file
 from sereleum.cluster import plot_clusters, plot_clusters_with_prototypes
 from sereleum.utils.file import get_new_filename
 from sereleum.logs import getLogger

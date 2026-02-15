@@ -1,7 +1,7 @@
 from sereleum.prompts.prompts_manager import PromptsManager
 from sereleum.providers.llm.llm_client import LLMClient
 from sereleum.prompts.clusters_manager import PromptClustersManager
-from sereleum.embeddings.helpers import get_embedding_store
+from sereleum.store.helpers import get_embedding_store
 from sereleum.providers.types import TextEmbeddingModel
 
 # TODO: pass client id to get unique collections per client

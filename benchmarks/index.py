@@ -17,7 +17,7 @@ from sereleum.types import Prompt
 from sereleum.index.indexer import PromptIndexer
 from sereleum.index.indexer_listener import  ProgressBarIndexerListener
 from sereleum.data import get_dummy_data
-from sereleum.embeddings.helpers import get_embedding_store_persistent_file
+from sereleum.store.helpers import get_embedding_store_persistent_file
 
 BENCHMARK_NAME = "indexing_benchmarks"
 BENCHMARK_OUTPUT_PATH = os.path.join(BENCHMARK_DIR, f"{BENCHMARK_NAME}.jsonl")

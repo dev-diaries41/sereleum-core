@@ -11,7 +11,7 @@ from sereleum.providers.llm.openai import OpenAIClient
 from sereleum.schemas.llm import LLMClientConfig
 from sereleum.prompts.prompts_manager import PromptsManager
 from sereleum.prompts.clusters_manager import PromptClustersManager
-from sereleum.embeddings.helpers import get_embedding_store_persistent_file
+from sereleum.store.helpers import get_embedding_store_persistent_file
 from sereleum.prompts.prompts import get_labelling_prompt
 from sereleum.schemas.llm import LLMClassificationResult
 from sereleum.providers.llm.llm_client import LLMClient
