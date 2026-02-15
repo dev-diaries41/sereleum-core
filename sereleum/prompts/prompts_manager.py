@@ -13,7 +13,7 @@ class PromptsManager(ItemsManager[Prompt, str, PromptMetadata]):
 
 
     def to_items(self, result: GetResult | QueryResult) -> List[Prompt]:
-        return [ Prompt(prompt_id=prompt_id, content=prompt_content,  metadata=PromptMetadata(**metadata)) for prompt_id, metadata, prompt_content in zip(result.ids, result.metadatas, result.datas) ]
+        return [ Prompt(id=prompt_id, data=prompt_content,  metadata=PromptMetadata(**metadata)) for prompt_id, metadata, prompt_content in zip(result.ids, result.metadatas, result.datas) ]
     
     def to_item_tuples(self, result: GetResult | QueryResult, with_embeddings: bool = False)  -> Generator[tuple[str, PromptMetadata] | tuple[str, PromptMetadata, ndarray], Any, None]:
         if not with_embeddings:
