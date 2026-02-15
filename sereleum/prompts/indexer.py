@@ -22,8 +22,8 @@ class PromptIndexer(BatchProcessor[Prompt, ItemEmbedding[None, PromptMetadata]])
     # All chunks share the same item_id (url or file) so that chunks are group
     # In the on_batch_complete method, the listener can handle use it as metaddata and assign unique ids to each chunk if required
     def on_process(self, item):
-        tokens = count_tokens_embedding(item.content, "gpt-5-mini")
-        chunks = chunk_text(item.content, self.max_tokenizer_length)
+        tokens = count_tokens_embedding(item.data, "gpt-5-mini")
+        chunks = chunk_text(item.data, self.max_tokenizer_length)
         embeddings = self.text_encoder.embed_batch(chunks)
         text_prototype = generate_prototype_embedding(embeddings)
         return ItemEmbedding(item.id, text_prototype, data=item.data, metadata={**item.metadata.model_dump(), "tokens": tokens})
