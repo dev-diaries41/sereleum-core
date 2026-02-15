@@ -1,11 +1,9 @@
-from sereleum.clusters.clusters_manager import ClustersManager
+from sereleum.prompts.clusters_manager import PromptClustersManager
 from sereleum.prompts.prompts_manager import PromptsManager
-from sereleum.prompts.prompts_manager import PromptsManager
-from sereleum.clusters.clusters_manager import ClustersManager
 from sereleum.types import PromptsOverviewInfo
 from smartscan import ClusterId
 
-def get_overview(prompt_manager: PromptsManager, cluster_manager: ClustersManager, top_n: int = 6) -> PromptsOverviewInfo:
+def get_prompts_overview(prompt_manager: PromptsManager, cluster_manager: PromptClustersManager, top_n: int = 6) -> PromptsOverviewInfo:
         prompt_count = prompt_manager.embedding_store.count()
         cluster_count = cluster_manager.embedding_store.count()
         top_clusters = cluster_manager.get_top_clusters(top_n)
