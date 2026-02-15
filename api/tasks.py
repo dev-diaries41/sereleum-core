@@ -9,8 +9,8 @@ from smartscan.models.model_manager import ModelManager
 
 from sereleum.types import Prompt
 from sereleum.store.helpers import get_embedding_store
-from sereleum.index.indexer import PromptIndexer
-from sereleum.index.indexer_listener import PromptIndexListener
+from sereleum.prompts.indexer import PromptIndexer
+from sereleum.prompts.indexer_listener import PromptIndexListener
 from sereleum.providers.llm.openai import OpenAIClient
 from sereleum.schemas.llm import LLMClientConfig
 from sereleum.prompts.prompts_manager import PromptsManager
