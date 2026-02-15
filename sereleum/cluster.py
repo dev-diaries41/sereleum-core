@@ -35,7 +35,7 @@ def get_cluster_plot(items_manager: ItemsManager) -> Optional[bytes]:
     ids, metadatas, embeddings = items_manager.get_samples(1e5)
     if not ids:
         return None
-    existing_assignments = {prompt_id : metadata.cluster_id for prompt_id, metadata in zip(ids, metadatas)}
+    existing_assignments = {item_id : metadata.cluster_id for item_id, metadata in zip(ids, metadatas)}
     return plot_clusters_bytes(ids, embeddings, existing_assignments)
 
 

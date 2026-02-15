@@ -16,7 +16,7 @@ from sereleum.schemas.llm import LLMClientConfig
 from sereleum.prompts.prompts_manager import PromptsManager
 from sereleum.clusters.clusters_manager import ClustersManager
 from sereleum.constants.models import OPENAI_API_KEY, DEFAULT_SYSTEM_PROMPT, DEFAULT_OPENAI_MODEL
-from sereleum.clusters.cluster import cluster_prompts
+from sereleum.cluster import cluster_prompts
 
 from api.redis import REDIS_HOST, REDIS_PASSWORD, REDIS_PORT, redis_client
 

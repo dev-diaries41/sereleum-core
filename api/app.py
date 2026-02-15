@@ -19,7 +19,7 @@ from smartscan.models.model_manager import ModelManager
 from sereleum.constants.models import OPENAI_API_KEY, DEFAULT_SYSTEM_PROMPT, DEFAULT_OPENAI_MODEL
 from sereleum.constants import  UPLOAD_DIR
 from sereleum.constants.api import Routes
-from sereleum.clusters.cluster import  get_cluster_plot
+from sereleum.cluster import  get_cluster_plot
 from sereleum.schemas.llm import LLMClientConfig
 from sereleum.schemas.api import FailMessage, CompleteMessage, ProgressMessage
 from sereleum.prompts.prompts_manager import PromptsManager
