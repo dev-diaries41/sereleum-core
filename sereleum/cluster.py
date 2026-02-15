@@ -5,7 +5,7 @@ from typing import Optional, List
 from io import BytesIO
 from sklearn.manifold import TSNE
 from sklearn.decomposition import PCA
-from smartscan import Assignments
+from smartscan import Assignments, ClusterAccuracy, ItemId
 from smartscan.cluster import IncrementalClusterer
 from sereleum.store.items_manager import ItemsManager
 from sereleum.store.clusters_manager import ClustersManager
@@ -31,6 +31,19 @@ async def cluster_items(items_manager: ItemsManager, cluster_manager: ClustersMa
             n_labelled = await cluster_manager.label_and_update(unlabelled)
     return result
 
+def calculate_cluster_accuracy(item_manager: ItemsManager) -> ClusterAccuracy:
+        true_labels: dict[ItemId, str] = {}
+        assignments: Assignments = {}
+        for item in  item_manager.stream():
+            ## temp solution
+            assignments[item] = item.metadata.cluster_id
+            label = item.id.split("_")[0]
+            if not label: 
+                print(f"[WARNING] {item.id} is not a valid labelled item.")
+                continue
+            true_labels[item.id] = label
+        return calculate_cluster_accuracy(true_labels, assignments)
+    
 def get_cluster_plot(items_manager: ItemsManager) -> Optional[bytes]:
     ids, metadatas, embeddings = items_manager.get_samples(1e5)
     if not ids:
