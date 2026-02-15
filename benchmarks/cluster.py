@@ -13,7 +13,7 @@ import time
 from dataclasses import asdict
 
 from smartscan import ClusterResult
-from smartscan.cluster import IncrementalClusterer
+from smartscan.cluster import IncrementalClusterer, calculate_cluster_accuracy
 
 from benchmarks.constants import BENCHMARK_CHROMADB_PATH, BENCHMARK_DIR
 from benchmarks.utils import with_time
@@ -27,7 +27,7 @@ from sereleum.prompts.clusters_manager import PromptClustersManager
 from sereleum.providers.llm.openai import OpenAIClient
 from sereleum.schemas.llm import LLMClientConfig
 from sereleum.store.helpers import get_embedding_store_persistent_file
-from sereleum.cluster import plot_clusters, plot_clusters_with_prototypes, calculate_cluster_accuracy
+from sereleum.cluster import plot_clusters, plot_clusters_with_prototypes, get_assignments_and_labels
 from sereleum.utils.file import get_new_filename
 from sereleum.logs import getLogger
 
@@ -81,7 +81,8 @@ async def run(items_manager: ItemsManager, clusters_manager: ClustersManager, mo
         output = get_new_filename(BENCHMARK_PLOTS_DIR, filename, ".png")
 
         plot_clusters_with_prototypes(ids=ids, embeddings=embeddings, assignments=result.assignments, prototype_embeddings=prototype_embeddings, prototype_ids=cluster_ids, output_path=output)
-    acc_info = calculate_cluster_accuracy()
+    true_labels, assignments = get_assignments_and_labels(items_manager)
+    acc_info = calculate_cluster_accuracy(true_labels, assignments)
     bench = {"accuracy": asdict(acc_info), "clustering_speed": time}
     results[model] = bench
     logger.info(results)
