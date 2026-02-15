@@ -2,7 +2,7 @@ from fastapi import WebSocket
 
 from smartscan.processor import ProcessorListener
 from smartscan.processor.types import Input, Output
-from sereleum.schemas.api import FailMessage, ErrorMessage, ProgressMessage, CompleteMessage, ActiveMessage
+from sereleum.schemas.api import FailMessage, ErrorMessage, ProgressMessage, CompleteMessage
 
 
 class BaseWebSocketListener(ProcessorListener[Input, Output]):
@@ -10,7 +10,7 @@ class BaseWebSocketListener(ProcessorListener[Input, Output]):
         self.ws = ws
 
     async def on_active(self):
-        await self.ws.send_json(ActiveMessage().model_dump())  
+        await self.ws.send_json({})  
 
 
     async def on_progress(self, progress):
