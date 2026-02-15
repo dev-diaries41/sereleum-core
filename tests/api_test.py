@@ -36,7 +36,7 @@ class TestReveliumClient:
 
     async def test_get_prompts(self, setup_client: tuple[ReveliumClient, list[Prompt]]):
         client, prompts = setup_client
-        prompt_ids = [p.get("prompt_id") if isinstance(p, dict) else p.prompt_id for p in prompts]
+        prompt_ids = [p.get("id") if isinstance(p, dict) else p.id for p in prompts]
         retrieved_prompts = await client.get_prompts(ids=prompt_ids)
         assert isinstance(retrieved_prompts, list)
 
