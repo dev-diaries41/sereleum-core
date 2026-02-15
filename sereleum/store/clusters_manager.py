@@ -1,36 +1,33 @@
 import asyncio 
-
-
 import numpy as np
-from typing import List, Dict, Optional, Iterable, Tuple
+from typing import List, Dict, Optional, Generic
 
-from smartscan import ItemEmbedding, Cluster, ClusterNoEmbeddings, ClusterMetadata, Assignments, ClusterMerges, ItemId, TextEmbeddingProvider, ClusterId, ClusterAccuracy, ItemEmbeddingUpdate, Include, GetResult, QueryResult
-from smartscan.cluster import  calculate_cluster_accuracy
+from smartscan import ItemEmbedding, Cluster, ClusterNoEmbeddings, ClusterMetadata, ClusterMerges, ClusterId, ItemEmbeddingUpdate, Include, GetResult, QueryResult
 from smartscan.embeds import EmbeddingStore, generate_prototype_embedding
 
-from sereleum.prompts.prompts_manager import PromptsManager
 from sereleum.providers.llm.llm_client import LLMClient
 from sereleum.schemas.llm import LLMClassificationResult
-from sereleum.prompts.prompts_manager import PromptsManager
-from sereleum.prompts.prompts import get_labelling_prompt
+from sereleum.store.items_manager import ItemsManager
 from sereleum.utils.batch import   paginate_until
+from sereleum.store.types import TData, TItem, TMetadata
 
+from abc import abstractmethod
 
-class ClustersManager():
+class ClustersManager(Generic[TItem, TData, TMetadata]):
     def __init__(self, 
         embedding_store: EmbeddingStore,
-        prompts_manager: PromptsManager,
+        items_manager: ItemsManager[TItem, TData, TMetadata],
         llm: LLMClient, 
         label_confidence_threshold: float = 0.8,
         label_concurrency: int = 8,
                  ): 
         self.embedding_store = embedding_store 
-        self.prompts_manager = prompts_manager
+        self.items_manager = items_manager
         self.llm = llm
         self.label_confidence_threshold = label_confidence_threshold
         self.label_concurrency = label_concurrency
     
-    async def update_clusters(self, clusters: Dict[str, Cluster], merges: ClusterMerges) -> List[ItemEmbeddingUpdate[None, ClusterMetadata]]:
+    async def update(self, clusters: Dict[str, Cluster], merges: ClusterMerges) -> List[ItemEmbeddingUpdate[None, ClusterMetadata]]:
         """
         Update the embedding store with clusters, applying merges if provided.
         Old clusters that have been merged are removed from the store.
@@ -65,11 +62,10 @@ class ClustersManager():
         
         return unlabelled_clusters
     
-
-    async def label_and_update_clusters(self, unlabelled_clusters: List[ItemEmbeddingUpdate[None, ClusterMetadata]], sample_size: int = 10) -> int:
+    async def label_and_update(self, unlabelled_clusters: List[ItemEmbeddingUpdate[None, ClusterMetadata]], sample_size: int = 10) -> int:
         existing_labels = self.get_existing_labels()
         sem = asyncio.Semaphore(self.label_concurrency)
-        label_tasks = {cluster.item_id: self.async_label_clusters(sem, self.llm, self.prompts_manager, cluster.item_id, sample_size, existing_labels) for cluster in unlabelled_clusters}
+        label_tasks = {cluster.item_id: self.async_label(sem, self.llm, self.items_manager, cluster.item_id, sample_size, existing_labels) for cluster in unlabelled_clusters}
         label_results = {}
         
         if label_tasks:
@@ -93,22 +89,16 @@ class ClustersManager():
 
         return len(labelled_clusters)
     
-
-    def label_cluster(self, cluster_id: str, sample_size: int, existing_labels: list[str]) -> LLMClassificationResult:
-        clusters = self.get_clusters(cluster_ids=[cluster_id], include=['embeddings'])
-        if not clusters:
-            raise ValueError("Cluster not found")
-        prompts = self.prompts_manager.embedding_store.query(query_embeds=[clusters[cluster_id].embedding], filter={"cluster_id": cluster_id},  limit=sample_size, include=['documents'])
-        sample_prompts = [content for content in prompts.datas]
-        input_prompt = get_labelling_prompt(cluster_id, existing_labels, sample_prompts)
-        return self.llm.generate_json(input_prompt, LLMClassificationResult)
-
-    async def async_label_clusters(self, semaphore:  asyncio.Semaphore, cluster_id: str, sample_size: int, existing_labels: list[str]):
+    @ abstractmethod
+    def label(self, cluster_id: str, sample_size: int, existing_labels: list[str]) -> LLMClassificationResult:
+        raise NotImplementedError
+    
+    async def async_label(self, semaphore:  asyncio.Semaphore, cluster_id: str, sample_size: int, existing_labels: list[str]):
         async with semaphore:
-            return await asyncio.to_thread(self.label_cluster, self.llm, self.prompts_manager, cluster_id, sample_size, existing_labels)
+            return await asyncio.to_thread(self.label, self.llm, self.items_manager, cluster_id, sample_size, existing_labels)
 
 
-    def update_cluster_label(self, cluster_id: str, label: str) -> bool:
+    def update_label(self, cluster_id: str, label: str) -> bool:
         """
         Update the embedding store with clusters, applying merges if provided.
         Old clusters that have been merged are removed from the store.
@@ -121,8 +111,8 @@ class ClustersManager():
         self.embedding_store.update([updated_cluster])
         return True
 
-    def merge_clusters(self, merges: ClusterMerges) -> List[ClusterNoEmbeddings]:
-        self.prompts_manager.update_prompts(merges)
+    def merge(self, merges: ClusterMerges) -> List[ClusterNoEmbeddings]:
+        self.items_manager.update_from_merges(merges)
         merged_clustered_ids = {cid for targets in merges.values() for cid in targets}
         all_clusters = self.get_all_clusters()
 
@@ -133,7 +123,7 @@ class ClustersManager():
 
         for merge_id in merges.keys():
             cluster = self.get_clusters(cluster_ids=[merge_id], include=['metadatas'])[merge_id]
-            _, _, embeds  = self.prompts_manager.get_prompt_metadata_samples(1e5, cluster_ids=[merge_id])
+            _, _, embeds  = self.items_manager.get_samples(1e5, cluster_ids=[merge_id])
             new_protoype_embed = generate_prototype_embedding(embeds)
             new_mean_similarity = np.mean(np.dot(embeds, new_protoype_embed))
             new_prototype_size = len(embeds)
@@ -157,10 +147,9 @@ class ClustersManager():
 
         return self._to_clusters_from_item_embeddings(updated_clusters, with_embeddings=False)
     
-    def query_clusters(self, text_embedder: TextEmbeddingProvider, query: str, cluster_ids: Optional[List[str]] = None, limit: int = 10) -> (Dict[ClusterId, Cluster] | Dict[ClusterId, ClusterNoEmbeddings]):
-        embed = text_embedder.embed(query)
+    def query(self, query_embed: np.ndarray, cluster_ids: Optional[List[str]] = None, limit: int = 10) -> (Dict[ClusterId, Cluster] | Dict[ClusterId, ClusterNoEmbeddings]):
         result = self.embedding_store.query(
-            query_embeds=[embed], 
+            query_embeds=[query_embed], 
             limit=limit, 
                 filter={"cluster_id": {"$in": cluster_ids}} if cluster_ids else None,
             include=["metadatas"]
@@ -261,33 +250,6 @@ class ClustersManager():
 
         return top_clusters
 
-    
-    def calculate_avg_tokens_for_cluster(self, cluster_id: str, sample_size: int) -> int:
-        total_tokens = 0
-        prompts_count = 0
-
-        for _, metadata in self.prompts_manager.stream_prompts_metadata([cluster_id]):
-            if prompts_count >= sample_size:
-                break
-            total_tokens += (metadata.tokens or 0)
-            prompts_count += (1 if metadata.tokens else 0)
-        return int(total_tokens / max(1, prompts_count))
-    
-
-    # TODO: accept prompt_ids that are lablled and fetch label from meta
-    #args: ids and label
-    def calculate_cluster_accuracy(self) -> ClusterAccuracy:
-        true_labels: dict[ItemId, str] = {}
-        assignments: Assignments = {}
-        for p in  self.prompts_manager.stream_prompts():
-            ## temp solution
-            assignments[p.prompt_id] = p.metadata.cluster_id
-            label = p.prompt_id.split("_")[0]
-            if not label: 
-                print(f"[WARNING] {p.prompt_id} is not a valid labelled item.")
-                continue
-            true_labels[p.prompt_id] = label
-        return calculate_cluster_accuracy(true_labels, assignments)
     
     def _to_clusters_dict(self, results: QueryResult[None, ClusterMetadata] | GetResult[None, ClusterMetadata], with_embeddings: bool = False) -> (Dict[ClusterId, Cluster] | Dict[ClusterId, ClusterNoEmbeddings]):
         if with_embeddings:

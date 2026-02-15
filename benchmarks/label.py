@@ -10,8 +10,8 @@ from sereleum.constants.models import DEFAULT_SYSTEM_PROMPT, OPENAI_API_KEY, DEF
 from sereleum.providers.llm.openai import OpenAIClient
 from sereleum.schemas.llm import LLMClientConfig
 from sereleum.prompts.prompts_manager import PromptsManager
-from sereleum.clusters.clusters_manager import ClustersManager
-from sereleum.embeddings.helpers import get_embedding_store_persistent_file
+from sereleum.prompts.clusters_manager import PromptClustersManager
+from sereleum.store.helpers import get_embedding_store_persistent_file
 from sereleum.prompts.prompts import get_labelling_prompt
 from sereleum.schemas.llm import LLMClassificationResult
 from sereleum.providers.llm.llm_client import LLMClient
@@ -23,7 +23,7 @@ os.makedirs(BENCHMARK_DIR, exist_ok=True)
 
 
 
-def label_cluster(llm: LLMClient, cluster_manager: ClustersManager, prompts_manager: PromptsManager, cluster_id: str, sample_size: int, existing_labels: list[str]) -> LLMClassificationResult:
+def label_cluster(llm: LLMClient, cluster_manager: PromptClustersManager, prompts_manager: PromptsManager, cluster_id: str, sample_size: int, existing_labels: list[str]) -> LLMClassificationResult:
     clusters = cluster_manager.get_clusters(cluster_ids=[cluster_id], include=['embeddings'])
     if not clusters:
         raise ValueError("Cluster not found")
@@ -35,7 +35,7 @@ def label_cluster(llm: LLMClient, cluster_manager: ClustersManager, prompts_mana
     input_prompt = get_labelling_prompt(cluster_id, existing_labels, sample_prompts)
     return  LLMClassificationResult(item_id="test", label="test label", confidence=0.8)
 
-def run(llm: OpenAIClient, cm: ClustersManager, pm: PromptsManager, cluster_id: str, sample_size: int):
+def run(llm: OpenAIClient, cm: PromptClustersManager, pm: PromptsManager, cluster_id: str, sample_size: int):
     result = label_cluster(llm, cm, pm, cluster_id, sample_size, [])
     print(result)
     
@@ -54,7 +54,7 @@ def get_prompt_manager():
 
 def get_cluster_manager(prompt_manager: PromptsManager, llm):
     embedding_store = get_embedding_store_persistent_file(BENCHMARK_CHROMADB_PATH, 'cluster', 'all-minilm-l6-v2', 384)
-    return ClustersManager(embedding_store=embedding_store, prompts_manager=prompt_manager, llm=llm)
+    return PromptClustersManager(embedding_store=embedding_store, items_manager=prompt_manager, llm=llm)
 
 if __name__ == "__main__":
     main()
