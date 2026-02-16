@@ -6,7 +6,7 @@ from typing import Dict, Optional, Union
 class ErrorCode(Enum):
     """Enum for error codes used by client."""
 
-    PROMPT_NOT_FOUND = "PROMPT_NOT_FOUND"
+    ITEM_NOT_FOUND = "ITEM_NOT_FOUND"
     INVALID_MODEL_PATH = "INVALID_MODEL_PATH"
     MISSING_API_KEY = "MISSING_API_KEY"
     INVALID_ARGUMENT = "INVALID_ARGUMENT"

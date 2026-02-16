@@ -18,7 +18,7 @@ def generate_synthetic_prompt_data(llm: LLMClient, label: str, topic: str, n:int
 
 ## DEV ONLY placeholders for getting data to cluster
 def strings_to_prompts(arr: list[str], label_prefix: str, offset: int = 0) -> list[Prompt]:
-    return [Prompt(prompt_id=f"{label_prefix}_{idx + offset}", content=prompt_content) for idx, prompt_content in enumerate(arr)]
+    return [Prompt(id=f"{label_prefix}_{idx + offset}", data=prompt_content) for idx, prompt_content in enumerate(arr)]
 
 def get_placeholder_prompts(offset=0) -> list[Prompt]:
     all_data: list[Prompt] = []

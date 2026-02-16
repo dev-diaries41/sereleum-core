@@ -19,13 +19,13 @@ from smartscan.models.model_manager import ModelManager
 from sereleum.constants.models import OPENAI_API_KEY, DEFAULT_SYSTEM_PROMPT, DEFAULT_OPENAI_MODEL
 from sereleum.constants import  UPLOAD_DIR
 from sereleum.constants.api import Routes
-from sereleum.clusters.cluster import  get_cluster_plot
+from sereleum.cluster import  get_cluster_plot
 from sereleum.schemas.llm import LLMClientConfig
 from sereleum.schemas.api import FailMessage, CompleteMessage, ProgressMessage
 from sereleum.prompts.prompts_manager import PromptsManager
-from sereleum.clusters.clusters_manager import ClustersManager
-from sereleum.clusters.helpers import get_overview
-from sereleum.embeddings.helpers import get_embedding_store
+from sereleum.prompts.clusters_manager import PromptClustersManager
+from sereleum.prompts.helpers import get_prompts_overview
+from sereleum.store.helpers import get_embedding_store
 from sereleum.providers.llm.openai import OpenAIClient
 from sereleum.errors import ReveliumError, ErrorCode
 from sereleum.schemas.api import (
@@ -71,7 +71,7 @@ def get_prompt_manager():
 
 def get_cluster_manager(prompt_manager: PromptsManager):
     cluster_embedding_store = get_embedding_store('cluster', 'all-minilm-l6-v2', text_embedder.embedding_dim) 
-    return  ClustersManager(embedding_store=cluster_embedding_store, prompts_manager=prompt_manager, llm=llm)
+    return  PromptClustersManager(embedding_store=cluster_embedding_store, items_manager=prompt_manager, llm=llm)
 
 
 @app.get(Routes.SSE_PROMPTS_INDEX_PROGRESS)
@@ -181,10 +181,10 @@ async def count_prompts():
 
 
 @app.get(Routes.GET_PROMPTS_OVERVIEW_ENDPOINT)
-async def get_sereleum_overview():
+async def get_overview():
     prompts_manager = get_prompt_manager()
     clusters_manager = get_cluster_manager(prompts_manager)
-    overview = await run_in_threadpool( get_overview, prompts_manager, clusters_manager)
+    overview = await run_in_threadpool( get_prompts_overview, prompts_manager, clusters_manager)
     return JSONResponse(GetPromptsOverviewResponse(**overview.model_dump()).model_dump())
 
 
@@ -194,7 +194,7 @@ async def update_prompt_cluster(prompt_id: str, cluster_id: str):
         prompts_manager = get_prompt_manager()
         await run_in_threadpool( prompts_manager.update_prompt_cluster , prompt_id,  cluster_id)
     except ReveliumError as e:
-        if e.code == ErrorCode.PROMPT_NOT_FOUND:
+        if e.code == ErrorCode.ITEM_NOT_FOUND:
             raise HTTPException(status_code=404, detail="Prompt not found")
         else:
             raise e

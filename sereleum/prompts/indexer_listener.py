@@ -53,7 +53,7 @@ class PromptIndexListener(ProcessorListener[Prompt, ItemEmbedding]):
         self._update_status('failed')
 
     async def on_error(self, e, item):
-        print(f"Error processing prompt: {item.prompt_id}. Details: {e}")
+        print(f"Error processing prompt: {item.id}. Details: {e}")
 
     def _get_progres_key(self):
         return f"progress_{self.job_id}"

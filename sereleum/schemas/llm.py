@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, List, Literal
 from openai.types import ResponsesModel
 from smartscan import ClassificationResult
 
@@ -17,3 +17,16 @@ class LLMClassificationResult(ClassificationResult):
 class Message(BaseModel):
     role: str
     content: Optional[str] = None
+
+ImageDetail = Literal["low", "high", "auto"]
+
+class ImageContent(BaseModel):
+    type: str
+    text: Optional[str] = None
+    image_url: Optional[str] = None
+    detail: Optional[ImageDetail] = None
+
+class ImageMessage(BaseModel):
+    role: str
+    content: List[ImageContent]
+

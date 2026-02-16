@@ -1,10 +1,8 @@
 from abc import abstractmethod, ABC
-from typing import List, Optional, Dict, TypeVar, Type
-from pydantic import BaseModel
+from typing import List, Optional, Dict, Type
 from sereleum.schemas.llm import Message
-import numpy as np
+from sereleum.providers.types import JsonOutput
 
-JsonOutput = TypeVar("JsonOutput", bound=BaseModel)
 
 class LLMClient(ABC):
     @abstractmethod
@@ -12,9 +10,9 @@ class LLMClient(ABC):
         raise NotImplementedError
     
     @abstractmethod
-    def generate_json(self, prompt: str, format: Type[JsonOutput], history: Optional[List[Message]] = None) -> JsonOutput: 
+    def generate_json(self, prompt: str, format: Type[JsonOutput], images: Optional[List[str]] = None, history: Optional[List[Message]] = None) -> JsonOutput: 
         raise NotImplementedError
     
     @abstractmethod
-    def generate_text_from_image(self, prompt: str, images: List[Dict[str, str]], history: Optional[List[Message]] = None) -> np.ndarray:
+    def generate_text_from_images(self, prompt: str, images: List[str], history: Optional[List[Message]] = None) -> str:
         raise NotImplementedError

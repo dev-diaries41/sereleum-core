@@ -5,15 +5,15 @@ from typing import Optional, List
 from io import BytesIO
 from sklearn.manifold import TSNE
 from sklearn.decomposition import PCA
-from smartscan import Assignments
+from smartscan import Assignments, ItemId
 from smartscan.cluster import IncrementalClusterer
-from sereleum.prompts.prompts_manager import PromptsManager
-from sereleum.clusters.clusters_manager import ClustersManager
+from sereleum.store.items_manager import ItemsManager
+from sereleum.store.clusters_manager import ClustersManager
 
 
 ## TODO: return n_label
-async def cluster_prompts(prompts_manager: PromptsManager, cluster_manager: ClustersManager, auto_label: bool = True, auto_merge_threshold: float = 0.9, initial_threshold: float = 0.3):
-    ids, metadatas, embeddings = prompts_manager.get_prompt_metadata_samples(1e5)
+async def cluster_items(items_manager: ItemsManager, cluster_manager: ClustersManager, auto_label: bool = True, auto_merge_threshold: float = 0.9, initial_threshold: float = 0.3):
+    ids, metadatas, embeddings = items_manager.get_samples(1e5)
     existing_clusters = cluster_manager.get_all_clusters()
     existing_assignments = {prompt_id : metadata.cluster_id for prompt_id, metadata in zip(ids, metadatas)}
     clusterer = IncrementalClusterer(
@@ -24,18 +24,31 @@ async def cluster_prompts(prompts_manager: PromptsManager, cluster_manager: Clus
     )
     result = clusterer.cluster(ids, embeddings)
     if result.assignments:
-        prompts_manager.update_prompts_from_assignments(result.assignments, result.merges)
+        items_manager.update_from_assignments(result.assignments, result.merges)
     if result.clusters:
-        unlabelled = await cluster_manager.update_clusters(result.clusters, result.merges)
+        unlabelled = await cluster_manager.update(result.clusters, result.merges)
         if len(unlabelled) > 0 and auto_label:
-            n_labelled = await cluster_manager.label_and_update_clusters(unlabelled)
+            n_labelled = await cluster_manager.label_and_update(unlabelled)
     return result
 
-def get_cluster_plot(prompts_manager: PromptsManager) -> Optional[bytes]:
-    ids, metadatas, embeddings = prompts_manager.get_prompt_metadata_samples(1e5)
+def get_assignments_and_labels(item_manager):
+        true_labels: dict[ItemId, str] = {}
+        assignments: Assignments = {}
+        for item in  item_manager.stream():
+            ## temp solution
+            assignments[item.id] = item.metadata.cluster_id
+            label = item.id.split("_")[0]
+            if not label: 
+                print(f"[WARNING] {item.id} is not a valid labelled item.")
+                continue
+            true_labels[item.id] = label
+        return true_labels, assignments
+    
+def get_cluster_plot(items_manager: ItemsManager) -> Optional[bytes]:
+    ids, metadatas, embeddings = items_manager.get_samples(1e5)
     if not ids:
         return None
-    existing_assignments = {prompt_id : metadata.cluster_id for prompt_id, metadata in zip(ids, metadatas)}
+    existing_assignments = {item_id : metadata.cluster_id for item_id, metadata in zip(ids, metadatas)}
     return plot_clusters_bytes(ids, embeddings, existing_assignments)
 
 
@@ -141,10 +154,6 @@ def plot_clusters_with_prototypes(
         prototype_embeddings (List[np.ndarray]): Prototype embeddings.
         method (str): 'tsne' or 'pca'.
     """
-    import matplotlib.pyplot as plt
-    import numpy as np
-    from sklearn.manifold import TSNE
-    from sklearn.decomposition import PCA
 
     all_embeddings = np.concatenate([np.stack(embeddings), prototype_embeddings], axis=0)
 

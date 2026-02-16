@@ -13,19 +13,21 @@ import time
 from dataclasses import asdict
 
 from smartscan import ClusterResult
-from smartscan.cluster import IncrementalClusterer
+from smartscan.cluster import IncrementalClusterer, calculate_cluster_accuracy
 
 from benchmarks.constants import BENCHMARK_CHROMADB_PATH, BENCHMARK_DIR
 from benchmarks.utils import with_time
 
 from sereleum.constants.models import OPENAI_API_KEY, DEFAULT_SYSTEM_PROMPT, DEFAULT_OPENAI_MODEL
 from sereleum.providers.types import TextEmbeddingModel
+from sereleum.store.items_manager import ItemsManager
+from sereleum.store.clusters_manager import ClustersManager
 from sereleum.prompts.prompts_manager import PromptsManager
-from sereleum.clusters.clusters_manager import ClustersManager
+from sereleum.prompts.clusters_manager import PromptClustersManager
 from sereleum.providers.llm.openai import OpenAIClient
 from sereleum.schemas.llm import LLMClientConfig
-from sereleum.embeddings.helpers import get_embedding_store_persistent_file
-from sereleum.clusters.cluster import plot_clusters, plot_clusters_with_prototypes
+from sereleum.store.helpers import get_embedding_store_persistent_file
+from sereleum.cluster import plot_clusters, plot_clusters_with_prototypes, get_assignments_and_labels
 from sereleum.utils.file import get_new_filename
 from sereleum.logs import getLogger
 
@@ -47,14 +49,14 @@ def cluster(clusterer: IncrementalClusterer, ids, embeddings) -> tuple[ClusterRe
 
 # `prompt_id` must be prefixed with label e.g promptlabel_123
 # this is only for benchmarking
-async def run(prompts_manager: PromptsManager, clusters_manager: ClustersManager, model:TextEmbeddingModel, plot_output: str, default_threshold: float = 0.3, merge_threshold: float = 0.9, top_k: int = 5):
+async def run(items_manager: ItemsManager, clusters_manager: ClustersManager, model:TextEmbeddingModel, plot_output: str, default_threshold: float = 0.3, merge_threshold: float = 0.9, top_k: int = 5):
     results = {}
     ## NOTE: IncrementalClusterer uses random numbers internally. Running multiple models sequentially 
     # without reseeding causes non-deterministic clustering and lower accuracy. Reseed Python and 
     # before each clustering run to ensure reproducible results.
     random.seed(32)
     
-    ids, metadatas, embeddings = prompts_manager.get_prompt_metadata_samples(1e5, exclude_clustered=False)
+    ids, metadatas, embeddings = items_manager.get_samples(1e5, exclude_clustered=False)
     if not ids:
         logger.debug("No prompts to cluster")
         return
@@ -64,12 +66,12 @@ async def run(prompts_manager: PromptsManager, clusters_manager: ClustersManager
     result,time = cluster(clusterer, ids, embeddings)
     logger.debug(f"Number assignments: {len(result.assignments)} | Number clusters: {len(result.clusters)}")
     if result.assignments:
-        prompts_manager.update_prompts_from_assignments(result.assignments, result.merges)
+        items_manager.update_from_assignments(result.assignments, result.merges)
     if result.clusters:
-        unlabelled =  await clusters_manager.update_clusters(result.clusters, result.merges)
+        unlabelled =  await clusters_manager.update(result.clusters, result.merges)
         logger.debug(f"Number unlabelled clusters: {len(unlabelled)}")
     # if len(unlabelled) > 0:
-    #    await clusters_manager.label_and_update_clusters(unlabelled)
+    #    await clusters_manager.label_and_update(unlabelled)
     if ids and embeddings:
         plot_clusters(ids, embeddings, result.assignments, output_path=plot_output)
 
@@ -79,7 +81,8 @@ async def run(prompts_manager: PromptsManager, clusters_manager: ClustersManager
         output = get_new_filename(BENCHMARK_PLOTS_DIR, filename, ".png")
 
         plot_clusters_with_prototypes(ids=ids, embeddings=embeddings, assignments=result.assignments, prototype_embeddings=prototype_embeddings, prototype_ids=cluster_ids, output_path=output)
-    acc_info = clusters_manager.calculate_cluster_accuracy()
+    true_labels, assignments = get_assignments_and_labels(items_manager)
+    acc_info = calculate_cluster_accuracy(true_labels, assignments)
     bench = {"accuracy": asdict(acc_info), "clustering_speed": time}
     results[model] = bench
     logger.info(results)
@@ -95,7 +98,7 @@ def get_prompt_manager():
 
 def get_cluster_manager(prompt_manager: PromptsManager, llm):
     embedding_store = get_embedding_store_persistent_file(BENCHMARK_CHROMADB_PATH, 'cluster', 'all-minilm-l6-v2', 384)
-    return ClustersManager(embedding_store=embedding_store, prompts_manager=prompt_manager, llm=llm)
+    return PromptClustersManager(embedding_store=embedding_store, items_manager=prompt_manager, llm=llm)
 
 async def run_real_benchmark(default_threshold: float = 0.3, merge_threshold: float = 0.9, top_k: int = 5):
     llm = OpenAIClient(OPENAI_API_KEY, LLMClientConfig(model_name=DEFAULT_OPENAI_MODEL, system_prompt=DEFAULT_SYSTEM_PROMPT))
