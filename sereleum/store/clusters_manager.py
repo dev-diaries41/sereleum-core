@@ -65,7 +65,7 @@ class ClustersManager(Generic[TItem, TData, TMetadata]):
     async def label_and_update(self, unlabelled_clusters: List[ItemEmbeddingUpdate[None, ClusterMetadata]], sample_size: int = 10) -> int:
         existing_labels = self.get_existing_labels()
         sem = asyncio.Semaphore(self.label_concurrency)
-        label_tasks = {cluster.item_id: self.async_label(sem, self.llm, self.items_manager, cluster.item_id, sample_size, existing_labels) for cluster in unlabelled_clusters}
+        label_tasks = {cluster.item_id: self.async_label(sem, cluster.item_id, sample_size, existing_labels) for cluster in unlabelled_clusters}
         label_results = {}
         
         if label_tasks:
