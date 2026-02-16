@@ -43,7 +43,8 @@ def get_assignments_and_labels(item_manager):
                 continue
             true_labels[item.id] = label
         return true_labels, assignments
-    
+
+ 
 def get_cluster_plot(items_manager: ItemsManager) -> Optional[bytes]:
     ids, metadatas, embeddings = items_manager.get_samples(1e5)
     if not ids:
