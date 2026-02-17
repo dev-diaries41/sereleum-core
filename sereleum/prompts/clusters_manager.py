@@ -1,9 +1,9 @@
 from smartscan.embeds import EmbeddingStore
 
 from sereleum.store.clusters_manager import ClustersManager
-from sereleum.store.items_manager import ItemsManager
-from sereleum.providers.llm.llm_client import LLMClient
+from sereleum.prompts.prompts_manager import PromptsManager
 from sereleum.prompts.types import Prompt, PromptMetadata
+from sereleum.providers.llm.llm_client import LLMClient
 from sereleum.schemas.llm import LLMClassificationResult
 from sereleum.prompts.prompts import get_labelling_prompt
 
@@ -11,7 +11,7 @@ class PromptClustersManager(ClustersManager[Prompt, str, PromptMetadata]):
     def __init__(
         self,
         embedding_store: EmbeddingStore,
-        items_manager: ItemsManager[Prompt, str, PromptMetadata],
+        items_manager: PromptsManager,
         llm: LLMClient,
         label_confidence_threshold: float = 0.8,
         label_concurrency: int = 8,
@@ -29,7 +29,7 @@ class PromptClustersManager(ClustersManager[Prompt, str, PromptMetadata]):
         clusters = self.get_clusters(cluster_ids=[cluster_id], include=['embeddings'])
         if not clusters:
             raise ValueError("Cluster not found")
-        prompts = self.prompts_manager.embedding_store.query(query_embeds=[clusters[cluster_id].embedding], filter={"cluster_id": cluster_id},  limit=sample_size, include=['documents'])
+        prompts = self.items_manager.embedding_store.query(query_embeds=[clusters[cluster_id].embedding], filter={"cluster_id": cluster_id},  limit=sample_size, include=['documents'])
         sample_prompts = [content for content in prompts.datas]
         input_prompt = get_labelling_prompt(cluster_id, existing_labels, sample_prompts)
         return self.llm.generate_json(input_prompt, LLMClassificationResult)
