@@ -11,11 +11,11 @@ from dataclasses import asdict
 from benchmarks.constants import BENCHMARK_CHROMADB_PATH, BENCHMARK_DIR
 
 from smartscan.models.model_manager import ModelManager
+from smartscan.index.listener import ProgressBarIndexerListener
 
 from sereleum.logs import getLogger
 from sereleum.types import Prompt
 from sereleum.prompts.indexer import PromptIndexer
-from sereleum.prompts.indexer_listener import  ProgressBarIndexerListener
 from sereleum.data import get_dummy_data
 from sereleum.store.helpers import get_embedding_store_persistent_file
 
