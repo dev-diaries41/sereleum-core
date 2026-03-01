@@ -5,6 +5,7 @@ import json
 import asyncio
 import os
 import argparse
+import random
 
 from dataclasses import asdict
 
@@ -48,8 +49,12 @@ if __name__ == "__main__":
     parser.add_argument("--stress", action="store_true", help="stress test")
     parser.add_argument("--file", "-f", help="JSON prompts filepath")
     parser.add_argument("--dir", "-d", help="Directory with json prompt files")
+    parser.add_argument("--seed", type=int, default=None)
 
     args = parser.parse_args()
+    if args.seed:
+        random.seed(args.seed)
+
     if args.n and args.stress:
         asyncio.run(main(get_dummy_data(args.n, args.o)))
     elif args.file:
@@ -62,5 +67,9 @@ if __name__ == "__main__":
             filepath = os.path.join(args.dir, filename)
             with open(filepath) as f:
                 all_prompts.extend([Prompt(**p) for p in json.load(f)])
+        
+        if args.seed:
+            random.shuffle(all_prompts)
+
         asyncio.run(main(all_prompts))
 
