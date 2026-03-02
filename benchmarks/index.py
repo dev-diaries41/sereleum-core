@@ -7,8 +7,6 @@ import os
 import argparse
 import random
 
-from dataclasses import asdict
-
 from benchmarks.constants import BENCHMARK_CHROMADB_PATH, BENCHMARK_DIR
 
 from smartscan.models.model_manager import ModelManager
@@ -21,7 +19,6 @@ from sereleum.data import get_dummy_data
 from sereleum.store.helpers import get_embedding_store_persistent_file
 
 BENCHMARK_NAME = "indexing_benchmarks"
-BENCHMARK_OUTPUT_PATH = os.path.join(BENCHMARK_DIR, f"{BENCHMARK_NAME}.jsonl")
 LOG_FILE_PATH = f"logs/{BENCHMARK_NAME}.log"
 
 os.makedirs("logs", exist_ok=True)
@@ -37,10 +34,7 @@ async def main(labelled_prompts: list[Prompt]):
     prompt_embedding_store =  get_embedding_store_persistent_file(BENCHMARK_CHROMADB_PATH, 'prompt', 'all-minilm-l6-v2', text_embedder.embedding_dim) 
     indexer =  PromptIndexer(text_embedder, listener=ProgressBarIndexerListener(), embeddings_store=prompt_embedding_store, batch_size=100, max_concurrency=4)
     result =  await indexer.run(labelled_prompts)
-    result_dict = {k: v for k, v in asdict(result).items() if k != "error"}
     logger.info(f"time_elpased: {result.time_elapsed} | processed: {result.total_processed}")
-    with open(BENCHMARK_OUTPUT_PATH, "a") as f:
-        f.write(json.dumps(result_dict, indent=None) + "\n")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
