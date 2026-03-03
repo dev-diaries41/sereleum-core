@@ -13,7 +13,7 @@ import numpy as np
 from dataclasses import asdict
 
 from smartscan import ClusterResult
-from smartscan.cluster import calculate_cluster_accuracy
+from smartscan.cluster import calculate_cluster_accuracy, IncrementalClusterer
 
 from benchmarks.constants import BENCHMARK_CHROMADB_PATH, BENCHMARK_DIR
 from benchmarks.utils import with_time
@@ -27,7 +27,7 @@ from sereleum.prompts.clusters_manager import PromptClustersManager
 from sereleum.providers.llm.openai import OpenAIClient
 from sereleum.schemas.llm import LLMClientConfig
 from sereleum.store.helpers import get_embedding_store_persistent_file
-from sereleum.cluster import plot_clusters, plot_clusters_with_prototypes, get_true_labels, IncrementalClusterer
+from sereleum.cluster import plot_clusters, plot_clusters_with_prototypes, get_true_labels
 from sereleum.utils.file import get_new_filename
 from sereleum.logs import getLogger
 
