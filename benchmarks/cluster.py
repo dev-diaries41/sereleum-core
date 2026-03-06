@@ -7,13 +7,13 @@ import random
 import json
 import os
 import asyncio
-import numpy as np
 import time
+import numpy as np
 
 from dataclasses import asdict
 
 from smartscan import ClusterResult
-from smartscan.cluster import IncrementalClusterer, calculate_cluster_accuracy
+from smartscan.cluster import calculate_cluster_accuracy, IncrementalClusterer
 
 from benchmarks.constants import BENCHMARK_CHROMADB_PATH, BENCHMARK_DIR
 from benchmarks.utils import with_time
@@ -27,13 +27,13 @@ from sereleum.prompts.clusters_manager import PromptClustersManager
 from sereleum.providers.llm.openai import OpenAIClient
 from sereleum.schemas.llm import LLMClientConfig
 from sereleum.store.helpers import get_embedding_store_persistent_file
-from sereleum.cluster import plot_clusters, plot_clusters_with_prototypes, get_assignments_and_labels
+from sereleum.cluster import plot_clusters, plot_clusters_with_prototypes, get_true_labels
 from sereleum.utils.file import get_new_filename
 from sereleum.logs import getLogger
 
 BENCHMARK_NAME = "clustering_benchmarks"
 LOG_FILE_PATH = f"logs/{BENCHMARK_NAME}.log"
-BENCHMARK_OUTPUT_PATH = os.path.join(BENCHMARK_DIR, f"{BENCHMARK_NAME}.jsonl")
+
 BENCHMARK_ASSIGNMENTS_PATH = os.path.join(BENCHMARK_DIR, f"assignments_{BENCHMARK_NAME}.jsonl")
 BENCHMARK_PLOTS_DIR = os.path.join(BENCHMARK_DIR, "plots")
 BENCHMARK_CLUSTERS_PLOT =  "prompt_clusters"
@@ -56,13 +56,12 @@ async def run(items_manager: ItemsManager, clusters_manager: ClustersManager, mo
     # before each clustering run to ensure reproducible results.
     random.seed(32)
     
-    ids, metadatas, embeddings = items_manager.get_samples(1e5, exclude_clustered=False)
+    ids, _, embeddings = items_manager.get_samples(1e5, exclude_clustered=True)
     if not ids:
         logger.debug("No prompts to cluster")
         return
     existing_clusters = clusters_manager.get_all_clusters()
-    existing_assignments = {prompt_id : metadata.cluster_id for prompt_id, metadata in zip(ids, metadatas)}
-    clusterer = IncrementalClusterer(default_threshold=default_threshold, merge_threshold=merge_threshold, top_k=top_k, existing_assignments=existing_assignments, existing_clusters=existing_clusters, benchmarking=True)  
+    clusterer = IncrementalClusterer(default_threshold=default_threshold, merge_threshold=merge_threshold, top_k=top_k, existing_clusters=existing_clusters, benchmarking=True)  
     result,time = cluster(clusterer, ids, embeddings)
     logger.debug(f"Number assignments: {len(result.assignments)} | Number clusters: {len(result.clusters)}")
     if result.assignments:
@@ -72,24 +71,26 @@ async def run(items_manager: ItemsManager, clusters_manager: ClustersManager, mo
         logger.debug(f"Number unlabelled clusters: {len(unlabelled)}")
     # if len(unlabelled) > 0:
     #    await clusters_manager.label_and_update(unlabelled)
-    if ids and embeddings:
-        plot_clusters(ids, embeddings, result.assignments, output_path=plot_output)
+    
+    # get updated items
+    ids, meta, embeddings = items_manager.get_samples(1e5, exclude_clustered=False)
+    assignments = {item_id: meta.cluster_id for item_id, meta in zip(ids, meta)}
 
-        cluster_ids = list(result.clusters.keys())
-        prototype_embeddings = np.stack([result.clusters[cid].embedding for cid in cluster_ids], axis=0)
-        filename = f"{os.path.basename(plot_output)}_with_proto"
-        output = get_new_filename(BENCHMARK_PLOTS_DIR, filename, ".png")
+    plot_clusters(ids, embeddings, assignments, output_path=plot_output)
+    cluster_ids = list(result.clusters.keys())
+    prototype_embeddings = np.stack([result.clusters[cid].embedding for cid in cluster_ids], axis=0)
+    filename = f"{os.path.basename(plot_output)}_with_proto"
+    output = get_new_filename(BENCHMARK_PLOTS_DIR, filename, ".png")
+    plot_clusters_with_prototypes(ids, embeddings, assignments, cluster_ids, prototype_embeddings, output_path=output)
 
-        plot_clusters_with_prototypes(ids=ids, embeddings=embeddings, assignments=result.assignments, prototype_embeddings=prototype_embeddings, prototype_ids=cluster_ids, output_path=output)
-    true_labels, assignments = get_assignments_and_labels(items_manager)
+    true_labels = get_true_labels(ids)
     acc_info = calculate_cluster_accuracy(true_labels, assignments)
     bench = {"accuracy": asdict(acc_info), "clustering_speed": time}
     results[model] = bench
     logger.info(results)
 
     with open(BENCHMARK_ASSIGNMENTS_PATH, "w") as f:
-        json.dump(result.assignments, f, indent=1, sort_keys=True)
-
+        json.dump(assignments, f, indent=1, sort_keys=True)
 
 
 def get_prompt_manager():

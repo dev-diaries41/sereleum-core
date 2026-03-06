@@ -1,25 +1,24 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from typing import Optional, List
+from typing import Optional
 from io import BytesIO
 from sklearn.manifold import TSNE
 from sklearn.decomposition import PCA
+
 from smartscan import Assignments, ItemId
 from smartscan.cluster import IncrementalClusterer
+
 from sereleum.store.items_manager import ItemsManager
 from sereleum.store.clusters_manager import ClustersManager
 
 
-## TODO: return n_label
 async def cluster_items(items_manager: ItemsManager, cluster_manager: ClustersManager, auto_label: bool = True, auto_merge_threshold: float = 0.9, initial_threshold: float = 0.3):
-    ids, metadatas, embeddings = items_manager.get_samples(1e5)
+    ids, _, embeddings = items_manager.get_samples(1e5, exclude_clustered=True)
     existing_clusters = cluster_manager.get_all_clusters()
-    existing_assignments = {prompt_id : metadata.cluster_id for prompt_id, metadata in zip(ids, metadatas)}
     clusterer = IncrementalClusterer(
         default_threshold=initial_threshold,
         merge_threshold=auto_merge_threshold,
-        existing_assignments=existing_assignments,
         existing_clusters=existing_clusters,
     )
     result = clusterer.cluster(ids, embeddings)
@@ -31,35 +30,34 @@ async def cluster_items(items_manager: ItemsManager, cluster_manager: ClustersMa
             n_labelled = await cluster_manager.label_and_update(unlabelled)
     return result
 
-def get_assignments_and_labels(item_manager):
+## temp solution in prod use user selected labels
+def get_true_labels(item_ids: list[str]):
         true_labels: dict[ItemId, str] = {}
-        assignments: Assignments = {}
-        for item in  item_manager.stream():
-            ## temp solution
-            assignments[item.id] = item.metadata.cluster_id
-            label = item.id.split("_")[0]
+        for id in  item_ids:
+            label = id.split("_")[0]
             if not label: 
-                print(f"[WARNING] {item.id} is not a valid labelled item.")
+                print(f"[WARNING] {id} is not a valid labelled item.")
                 continue
-            true_labels[item.id] = label
-        return true_labels, assignments
+            true_labels[id] = label
+        return true_labels
 
  
-def get_cluster_plot(items_manager: ItemsManager) -> Optional[bytes]:
-    ids, metadatas, embeddings = items_manager.get_samples(1e5)
+def get_cluster_plot(cluster_manager: ClustersManager, items_manager: ItemsManager, n: int = 6) -> Optional[bytes]:
+    top_clusters = cluster_manager.get_top_clusters(n)
+    ids, metadatas, embeddings = items_manager.get_samples(1e5, cluster_ids=list(top_clusters.keys()))
     if not ids:
         return None
     existing_assignments = {item_id : metadata.cluster_id for item_id, metadata in zip(ids, metadatas)}
     return plot_clusters_bytes(ids, embeddings, existing_assignments)
 
 
-def plot_clusters(ids: List[str], embeddings: List[np.ndarray], assignments: Assignments, method='tsne', random_state=42, output_path: Optional[str] = None):
+def plot_clusters(ids: list[str], embeddings: list[np.ndarray], assignments: Assignments, method='tsne', random_state=42, output_path: Optional[str] = None):
     """
     Plots clusters from ClusterResult using 2D embeddings.
 
     Args:
-        ids (List[str]): List of item IDs in the same order as embeddings.
-        embeddings (List[np.ndarray]): List of embeddings (any dimension).
+        ids (list[str]): list of item IDs in the same order as embeddings.
+        embeddings (list[np.ndarray]): list of embeddings (any dimension).
         cluster_result (ClusterResult): Result from IncrementalClusterer.
         method (str): Dimensionality reduction method: 'tsne' or 'pca'.
         random_state (int): Random seed for reproducibility.
@@ -100,7 +98,7 @@ def plot_clusters(ids: List[str], embeddings: List[np.ndarray], assignments: Ass
         plt.savefig(output_path)
 
 
-def plot_clusters_bytes(ids: List[str], embeddings: List[np.ndarray], assignments: Assignments, method='tsne', random_state=42) -> bytes:
+def plot_clusters_bytes(ids: list[str], embeddings: list[np.ndarray], assignments: Assignments, method='tsne', random_state=42) -> bytes:
     embeddings_array = np.stack(embeddings, axis=0)
     
     if method == 'tsne':
@@ -135,11 +133,11 @@ def plot_clusters_bytes(ids: List[str], embeddings: List[np.ndarray], assignment
 
 
 def plot_clusters_with_prototypes(
-    ids: List[str],
-    embeddings: List[np.ndarray],
+    ids: list[str],
+    embeddings: list[np.ndarray],
     assignments: dict,
-    prototype_ids: List[str],
-    prototype_embeddings: List[np.ndarray],
+    prototype_ids: list[str],
+    prototype_embeddings: list[np.ndarray],
     method='tsne',
     random_state=42,
     output_path: Optional[str] = None
@@ -148,11 +146,11 @@ def plot_clusters_with_prototypes(
     Plots clusters with prototypes in 2D.
 
     Args:
-        ids (List[str]): List of item IDs.
-        embeddings (List[np.ndarray]): Embeddings corresponding to IDs.
+        ids (list[str]): list of item IDs.
+        embeddings (list[np.ndarray]): Embeddings corresponding to IDs.
         assignments (dict): Mapping from ID to cluster ID.
-        prototype_ids (List[str]): List of prototype IDs.
-        prototype_embeddings (List[np.ndarray]): Prototype embeddings.
+        prototype_ids (list[str]): list of prototype IDs.
+        prototype_embeddings (list[np.ndarray]): Prototype embeddings.
         method (str): 'tsne' or 'pca'.
     """
 
