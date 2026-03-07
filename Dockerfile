@@ -1,7 +1,7 @@
 FROM python:3.12.3-slim-bookworm
 
 RUN apt-get update && \
-    apt-get install -y sqlite3 git && \
+    apt-get install -y sqlite3 git build-essential cmake libgomp1 && \
     rm -rf /var/lib/apt/lists/* && \
     sqlite_version=$(sqlite3 --version | awk '{print $1}') && \
     echo "SQLite version installed: $sqlite_version" && \
@@ -17,7 +17,6 @@ RUN pip install --no-cache-dir .[api]
 RUN mkdir -p /data /data/uploads /data/models && \
     chown -R revelium_user:revelium_user /data
 
-# drop to non-root user so CMD runs as that user
 USER revelium_user
 
 EXPOSE 8000
