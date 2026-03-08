@@ -8,6 +8,7 @@ import os
 import asyncio
 import time
 import numpy as np
+import chromadb
 
 from dataclasses import asdict
 from typing import get_args
@@ -87,8 +88,9 @@ async def run(items_manager: ItemsManager, clusters_manager: ClustersManager, mo
 
 async def run_real_benchmark(embedding_model: TextEmbeddingModel, embed_dim: int, default_threshold: float, top_k: int):
     llm = OpenAIClient(OPENAI_API_KEY, LLMClientConfig(model_name=DEFAULT_OPENAI_MODEL, system_prompt=DEFAULT_SYSTEM_PROMPT))
-    prompts_manager = get_prompt_manager(embedding_model, embed_dim, BENCHMARK_CHROMADB_PATH)
-    clusters_manager = get_cluster_manager(embedding_model, embed_dim, prompts_manager, llm, BENCHMARK_CHROMADB_PATH)
+    client = chromadb.PersistentClient(path=BENCHMARK_CHROMADB_PATH, settings=chromadb.Settings(anonymized_telemetry=False))
+    prompts_manager = get_prompt_manager(client, embedding_model, embed_dim)
+    clusters_manager = get_cluster_manager(client, embedding_model, embed_dim, prompts_manager, llm)
     plot_output = get_new_filename(BENCHMARK_PLOTS_DIR, f"real_{BENCHMARK_CLUSTERS_PLOT}", ".png")
     await run(prompts_manager, clusters_manager, embedding_model, plot_output, default_threshold=default_threshold, top_k=top_k)
 
