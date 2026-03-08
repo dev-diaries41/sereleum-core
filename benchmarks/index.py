@@ -6,6 +6,7 @@ import asyncio
 import os
 import argparse
 import random
+import chromadb
 
 from typing import get_args
 from benchmarks.constants import BENCHMARK_CHROMADB_PATH, BENCHMARK_DIR
@@ -13,12 +14,14 @@ from benchmarks.constants import BENCHMARK_CHROMADB_PATH, BENCHMARK_DIR
 from smartscan.models.model_manager import ModelManager
 from smartscan.index.listener import ProgressBarIndexerListener
 
-from sereleum.logs import getLogger
+
 from sereleum.types import Prompt
-from sereleum.providers.types import TextEmbeddingModel
 from sereleum.prompts.indexer import PromptIndexer
+from sereleum.store.chroma_store import ChromaDBEmbeddingStore
+from sereleum.providers.types import TextEmbeddingModel
 from sereleum.data import get_dummy_data
-from sereleum.store.helpers import get_embedding_store_persistent_file
+from sereleum.logs import getLogger
+from sereleum.helpers import get_embedding_collection_name
 
 BENCHMARK_NAME = "indexing_benchmarks"
 LOG_FILE_PATH = f"logs/{BENCHMARK_NAME}.log"
@@ -27,14 +30,16 @@ os.makedirs("logs", exist_ok=True)
 os.makedirs(BENCHMARK_DIR, exist_ok=True)
 
 logger = getLogger(BENCHMARK_NAME, LOG_FILE_PATH)
+client = chromadb.PersistentClient(path=BENCHMARK_CHROMADB_PATH, settings=chromadb.Settings(anonymized_telemetry=False))
 
 # `prompt_id` must be prefixed with label e.g promptlabel_123
 # this is only for benchmarking
 async def main(labelled_prompts: list[Prompt], model: TextEmbeddingModel):
     text_embedder = ModelManager().get_text_embedder(model)
     text_embedder.init()
-    prompt_embedding_store =  get_embedding_store_persistent_file(BENCHMARK_CHROMADB_PATH, 'prompt', model, text_embedder.embedding_dim) 
-    indexer =  PromptIndexer(text_embedder, listener=ProgressBarIndexerListener(), embeddings_store=prompt_embedding_store, batch_size=100, max_concurrency=4)
+    collection_name = get_embedding_collection_name("prompt", model, text_embedder.embedding_dim)
+    embedding_store = ChromaDBEmbeddingStore(client.get_or_create_collection(collection_name))
+    indexer =  PromptIndexer(text_embedder, listener=ProgressBarIndexerListener(), embeddings_store=embedding_store, batch_size=100, max_concurrency=4)
     result =  await indexer.run(labelled_prompts)
     logger.info(f"time_elpased: {result.time_elapsed} | processed: {result.total_processed}")
 
