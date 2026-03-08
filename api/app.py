@@ -160,7 +160,7 @@ async def get_prompts(req: GetPromptsRequest):
 async def query_prompts(req: QueryPromptsRequest):
     def run_query():
         embedding = text_embedder.embed(req.query)
-        return prompts_manager.query(embedding, req.query, req.cluster_ids, req.limit)
+        return prompts_manager.query(embedding, req.cluster_ids, req.limit)
     prompts = await run_in_threadpool(run_query)
     return JSONResponse(GetPromptsResponse(prompts=prompts).model_dump())
 
