@@ -1,57 +1,56 @@
 import pytest
 import pytest_asyncio
 from sereleum.data import get_dummy_data
-from client.revelium_client import ReveliumClient
+from client.sereleum_client import SereleumClient
 from httpx import HTTPStatusError
-from smartscan import ClusterAccuracy, ClusterNoEmbeddings
+from smartscan import ClusterAccuracy
 
 from sereleum.types import Prompt, PromptsOverviewInfo
-from sereleum.constants.api import Routes
-from sereleum.schemas.api import  GetPromptsRequest, GetClusterRequestParams, UpdateLabelParams, QueryPromptsRequest, UpdatePromptClusterIdParams, AddPromptsResponse
+from sereleum.schemas.api import  AddPromptsResponse
 
 @pytest_asyncio.fixture
 async def setup_client():
-    client = ReveliumClient("http://127.0.0.1:8000")
+    client = SereleumClient("http://127.0.0.1:8000")
     prompts = get_dummy_data(n=5)
     return client, prompts
 
 @pytest.mark.asyncio
 class TestReveliumClient:
 
-    async def test_count_prompts(self, setup_client: tuple[ReveliumClient, list[Prompt]]):
+    async def test_count_prompts(self, setup_client: tuple[SereleumClient, list[Prompt]]):
         client, _ = setup_client
         total_prompts = await client.count_prompts()
         assert isinstance(total_prompts, int)
 
-    async def test_count_clusters(self, setup_client: tuple[ReveliumClient, list[Prompt]]):
+    async def test_count_clusters(self, setup_client: tuple[SereleumClient, list[Prompt]]):
         client, _ = setup_client
         total_clusters = await client.count_clusters()
         assert isinstance(total_clusters, int)
 
-    async def test_get_clusters(self, setup_client: tuple[ReveliumClient, list[Prompt]]):
+    async def test_get_clusters(self, setup_client: tuple[SereleumClient, list[Prompt]]):
         client, _ = setup_client
         clusters = await client.get_clusters("fce4cfdc44b3ea3f")
         assert isinstance(clusters, list)
 
 
-    async def test_get_prompts(self, setup_client: tuple[ReveliumClient, list[Prompt]]):
+    async def test_get_prompts(self, setup_client: tuple[SereleumClient, list[Prompt]]):
         client, prompts = setup_client
         prompt_ids = [p.get("id") if isinstance(p, dict) else p.id for p in prompts]
         retrieved_prompts = await client.get_prompts(ids=prompt_ids)
         assert isinstance(retrieved_prompts, list)
 
-    async def test_query_prompts(self, setup_client: tuple[ReveliumClient, list[Prompt]]):
+    async def test_query_prompts(self, setup_client: tuple[SereleumClient, list[Prompt]]):
         client, _ = setup_client
         retrieved_prompts = await client.query_prompts("facts about physics", limit=10, cluster_ids=None)
         assert isinstance(retrieved_prompts, list)
 
-    async def test_labels(self, setup_client: tuple[ReveliumClient, list[Prompt]]):
+    async def test_labels(self, setup_client: tuple[SereleumClient, list[Prompt]]):
         client, _ = setup_client
         labels = await client.get_existing_labels()
         assert isinstance(labels, list)
 
 
-    async def test_update_cluster_label(self, setup_client: tuple[ReveliumClient, list[Prompt]]):
+    async def test_update_cluster_label(self, setup_client: tuple[SereleumClient, list[Prompt]]):
         client, _ = setup_client
         label = "test label"
 
@@ -64,26 +63,26 @@ class TestReveliumClient:
         except HTTPStatusError as e:
             assert e.response.status_code == 404
 
-    async def test_prompts_overview(self, setup_client: tuple[ReveliumClient, list[Prompt]]):
+    async def test_prompts_overview(self, setup_client: tuple[SereleumClient, list[Prompt]]):
         client, _ = setup_client
         overview = await client.get_prompts_overview()
         assert isinstance(overview, PromptsOverviewInfo)
 
     
-    async def test_add_prompts_file(self, setup_client: tuple[ReveliumClient, list[Prompt]]):
+    async def test_add_prompts_file(self, setup_client: tuple[SereleumClient, list[Prompt]]):
         client, _ = setup_client
         add_file_result = await client.add_prompts_file("output/test_prompts.json", False)
         assert isinstance(add_file_result, AddPromptsResponse)
         async for event in  client.track_prompts_index_progress( add_file_result.job_id):
             pass
         
-    async def test_prompts_overview(self, setup_client: tuple[ReveliumClient, list[Prompt]]):
+    async def test_prompts_overview(self, setup_client: tuple[SereleumClient, list[Prompt]]):
         client, _ = setup_client
         accuracy = await client.get_cluster_accuracy()
         assert isinstance(accuracy, ClusterAccuracy)
 
 
-    async def test_updated_prompt_cluster(self, setup_client: tuple[ReveliumClient, list[Prompt]]):
+    async def test_updated_prompt_cluster(self, setup_client: tuple[SereleumClient, list[Prompt]]):
         client, _ = setup_client
         try:
             test_prompt_id = "test_prompt_id"
@@ -93,7 +92,7 @@ class TestReveliumClient:
         except HTTPStatusError as e:
             assert e.response.status_code == 404
 
-    async def test_get_cluster_plot(self, setup_client: tuple[ReveliumClient, list[Prompt]]):
+    async def test_get_cluster_plot(self, setup_client: tuple[SereleumClient, list[Prompt]]):
         client, _ = setup_client
         count = await client.count_clusters()
         img_bytes = await client.get_cluster_plot()
@@ -104,7 +103,7 @@ class TestReveliumClient:
             assert isinstance(img_bytes, bytes)
 
     
-    async def test_merge_clusters(self, setup_client: tuple[ReveliumClient, list[Prompt]]):
+    async def test_merge_clusters(self, setup_client: tuple[SereleumClient, list[Prompt]]):
         client, _ = setup_client
         try:
             merges = {}
