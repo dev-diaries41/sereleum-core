@@ -12,7 +12,7 @@ class ReveliumClient:
     def __init__(self, base_url: str):
         self.base_url = base_url.rstrip("/")
     
-    async def add_prompts_file(self, file_path: str, auto_label: bool = True, initial_threshold: float = 0.55) -> AddPromptsResponse:
+    async def add_prompts_file(self, file_path: str, auto_label: bool = True, default_threshold: float = 0.55) -> AddPromptsResponse:
         """
         Upload a JSON file containing prompts.
         """
@@ -20,7 +20,7 @@ class ReveliumClient:
         async with httpx.AsyncClient() as client:
             with open(file_path, "rb") as f:
                 files = {"file": (file_path, f, "application/json")}
-                res = await client.post(url, files=files, data=ClusterOptionsForm(auto_label=auto_label, initial_threshold=initial_threshold).model_dump())
+                res = await client.post(url, files=files, data=ClusterOptionsForm(auto_label=auto_label, default_threshold=default_threshold).model_dump())
             res.raise_for_status() 
             return AddPromptsResponse(**res.json())
         

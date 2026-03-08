@@ -96,4 +96,4 @@ class MergeResponse(BaseModel):
 
 class ClusterOptionsForm(BaseModel):
     auto_label: bool 
-    initial_threshold: float
+    default_threshold: float

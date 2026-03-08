@@ -150,11 +150,11 @@ async def track_prompts_cluster_status(request: Request, job_id: str | None = No
     return EventSourceResponse(event_generator())
 
 @app.post(Routes.ADD_PROMPTS_FILE_ENDPOINT) 
-async def add_prompts_file(file: UploadFile = File(...), auto_label: bool = Form(False), initial_threshold: float = Form(0.3)):
+async def add_prompts_file(file: UploadFile = File(...), auto_label: bool = Form(False), default_threshold: float = Form(0.3)):
     with NamedTemporaryFile(dir=UPLOAD_DIR, delete=False, suffix=".json") as tmp:
         tmp.write(await file.read())
         tmp.flush()
-        job = index_prompts_task.send(tmp.name, auto_label, initial_threshold)
+        job = index_prompts_task.send(tmp.name, auto_label, default_threshold)
     return AddPromptsResponse(status='queued', job_id=job.message_id )
 
 @app.post(Routes.BASE_PROMPTS_ENDPOINT)
