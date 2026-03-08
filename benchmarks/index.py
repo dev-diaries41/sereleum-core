@@ -7,6 +7,7 @@ import os
 import argparse
 import random
 
+from typing import get_args
 from benchmarks.constants import BENCHMARK_CHROMADB_PATH, BENCHMARK_DIR
 
 from smartscan.models.model_manager import ModelManager
@@ -14,6 +15,7 @@ from smartscan.index.listener import ProgressBarIndexerListener
 
 from sereleum.logs import getLogger
 from sereleum.types import Prompt
+from sereleum.providers.types import TextEmbeddingModel
 from sereleum.prompts.indexer import PromptIndexer
 from sereleum.data import get_dummy_data
 from sereleum.store.helpers import get_embedding_store_persistent_file
@@ -28,16 +30,17 @@ logger = getLogger(BENCHMARK_NAME, LOG_FILE_PATH)
 
 # `prompt_id` must be prefixed with label e.g promptlabel_123
 # this is only for benchmarking
-async def main(labelled_prompts: list[Prompt]):
-    text_embedder = ModelManager().get_text_embedder('all-minilm-l6-v2')
+async def main(labelled_prompts: list[Prompt], model: TextEmbeddingModel):
+    text_embedder = ModelManager().get_text_embedder(model)
     text_embedder.init()
-    prompt_embedding_store =  get_embedding_store_persistent_file(BENCHMARK_CHROMADB_PATH, 'prompt', 'all-minilm-l6-v2', text_embedder.embedding_dim) 
+    prompt_embedding_store =  get_embedding_store_persistent_file(BENCHMARK_CHROMADB_PATH, 'prompt', model, text_embedder.embedding_dim) 
     indexer =  PromptIndexer(text_embedder, listener=ProgressBarIndexerListener(), embeddings_store=prompt_embedding_store, batch_size=100, max_concurrency=4)
     result =  await indexer.run(labelled_prompts)
     logger.info(f"time_elpased: {result.time_elapsed} | processed: {result.total_processed}")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument("--model","-m", help="Embedding model to use for indexing", default='all-minilm-l6-v2', choices=get_args(TextEmbeddingModel))
     parser.add_argument("-n", type=int, help="number of items to generate", default=100)
     parser.add_argument("-o", type=int, help="dummy data offset", default=0)
     parser.add_argument("--stress", action="store_true", help="stress test")
@@ -54,7 +57,7 @@ if __name__ == "__main__":
     elif args.file:
         with open(args.file) as f:
             prompts = [Prompt(**p) for p in json.load(f)]
-        asyncio.run(main(prompts))
+        asyncio.run(main(prompts, args.model))
     elif args.dir:
         all_prompts = []
         for filename in os.listdir(args.dir):
@@ -63,7 +66,7 @@ if __name__ == "__main__":
                 all_prompts.extend([Prompt(**p) for p in json.load(f)])
         
         if args.seed:
-            random.shuffle(all_prompts)
+            random.shuffle(all_prompts, args.model)
 
-        asyncio.run(main(all_prompts))
+        asyncio.run(main(all_prompts, args.model))
 
