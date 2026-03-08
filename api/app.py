@@ -59,18 +59,18 @@ app.add_middleware(
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 model_manager = ModelManager()
-text_embedder = model_manager.get_text_embedder('all-minilm-l6-v2')
+text_embedder = model_manager.get_text_embedder("all-distilroberta-v1")
 text_embedder.init()
 llm = OpenAIClient(OPENAI_API_KEY, LLMClientConfig(model_name=DEFAULT_OPENAI_MODEL, system_prompt=DEFAULT_SYSTEM_PROMPT))
 
 # TODO: pass client id to get unique collections per client
 def get_prompt_manager():
-    prompt_embedding_store = get_embedding_store( 'prompt', 'all-minilm-l6-v2', text_embedder.embedding_dim) 
+    prompt_embedding_store = get_embedding_store( 'prompt', "all-distilroberta-v1", text_embedder.embedding_dim) 
     return  PromptsManager(embedding_store=prompt_embedding_store)
 
 
 def get_cluster_manager(prompt_manager: PromptsManager):
-    cluster_embedding_store = get_embedding_store('cluster', 'all-minilm-l6-v2', text_embedder.embedding_dim) 
+    cluster_embedding_store = get_embedding_store('cluster', "all-distilroberta-v1", text_embedder.embedding_dim) 
     return  PromptClustersManager(embedding_store=cluster_embedding_store, items_manager=prompt_manager, llm=llm)
 
 
