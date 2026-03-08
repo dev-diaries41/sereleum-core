@@ -46,7 +46,7 @@ def get_cluster_manager(prompt_manager: PromptsManager):
     return  PromptClustersManager(embedding_store=cluster_embedding_store, items_manager=prompt_manager, llm=llm)
 
 @dramatiq.actor(max_retries = 2)
-async def index_prompts_task(file_path: str, auto_label: bool = True, auto_merge_threshold: float = 0.9, initial_threshold: float = 0.55):
+async def index_prompts_task(file_path: str, auto_label: bool = True, initial_threshold: float = 0.55):
     try:
         msg = CurrentMessage().get_current_message()
         current_retries = msg.options.setdefault("retries", 0)
@@ -60,14 +60,14 @@ async def index_prompts_task(file_path: str, auto_label: bool = True, auto_merge
         prompt_embedding_store = get_embedding_store( 'prompt', 'all-minilm-l6-v2', text_embedder.embedding_dim) 
         indexer = PromptIndexer(text_embedder, prompt_embedding_store, listener=PromptIndexListener(msg.message_id, redis_client))
         await indexer.run(prompts)
-        cluster_prompts_task.send(auto_label, auto_merge_threshold, initial_threshold)
+        cluster_prompts_task.send(auto_label, initial_threshold)
     finally:
         os.remove(file_path)
 
 
 # Note: in prod client_id will be passed instead of just using "cluster_job_status"
 @dramatiq.actor(max_retries = 2)
-async def cluster_prompts_task(auto_label: bool = True, auto_merge_threshold: float = 0.9, initial_threshold: float = 0.55):
+async def cluster_prompts_task(auto_label: bool = True, initial_threshold: float = 0.3):
     msg = CurrentMessage().get_current_message()
     current_retries = msg.options.setdefault("retries", 0)
 
@@ -78,5 +78,5 @@ async def cluster_prompts_task(auto_label: bool = True, auto_merge_threshold: fl
     redis_client.set("cluster_job_status", "active", ex=86400)
     prompts_manager = get_prompt_manager()
     clusters_manager = get_cluster_manager(prompts_manager)
-    await cluster_items(prompts_manager, clusters_manager, auto_label=auto_label, auto_merge_threshold=auto_merge_threshold, initial_threshold=initial_threshold)
+    await cluster_items(prompts_manager, clusters_manager, auto_label=auto_label, initial_threshold=initial_threshold)
     redis_client.set("cluster_job_status", "complete", ex=86400)

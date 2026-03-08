@@ -96,7 +96,7 @@ def run_simulated_benchmark(n_items=10000, dim=384):
     """Benchmark the standard IncrementalClusterer."""
     ids = [str(i) for i in range(n_items)]
     embeddings = [np.random.rand(dim).astype(np.float32) for _ in range(n_items)]
-    clusterer = IncrementalClusterer(default_threshold=0.3, top_k=5, merge_threshold=0.9, benchmarking=True)
+    clusterer = IncrementalClusterer(default_threshold=0.3, top_k=5, benchmarking=True)
     start = time.time()
     clusterer.cluster(ids, embeddings)
     end = time.time()

@@ -13,12 +13,11 @@ from sereleum.store.items_manager import ItemsManager
 from sereleum.store.clusters_manager import ClustersManager
 
 
-async def cluster_items(items_manager: ItemsManager, cluster_manager: ClustersManager, auto_label: bool = True, auto_merge_threshold: float = 0.9, initial_threshold: float = 0.3):
+async def cluster_items(items_manager: ItemsManager, cluster_manager: ClustersManager, auto_label: bool = True, initial_threshold: float = 0.3):
     ids, _, embeddings = items_manager.get_samples(1e5, exclude_clustered=True)
     existing_clusters = cluster_manager.get_all_clusters()
     clusterer = IncrementalClusterer(
         default_threshold=initial_threshold,
-        merge_threshold=auto_merge_threshold,
         existing_clusters=existing_clusters,
     )
     result = clusterer.cluster(ids, embeddings)
