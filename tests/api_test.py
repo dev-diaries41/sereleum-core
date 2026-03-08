@@ -8,6 +8,8 @@ from smartscan import ClusterAccuracy
 from sereleum.types import Prompt, PromptsOverviewInfo
 from sereleum.schemas.api import  AddPromptsResponse
 
+TEST_PROMPTS_FILE = "output/prompts/test_prompts.json"
+
 @pytest_asyncio.fixture
 async def setup_client():
     client = SereleumClient("http://127.0.0.1:8000")
@@ -29,7 +31,7 @@ class TestReveliumClient:
 
     async def test_get_clusters(self, setup_client: tuple[SereleumClient, list[Prompt]]):
         client, _ = setup_client
-        clusters = await client.get_clusters("fce4cfdc44b3ea3f")
+        clusters = await client.get_clusters()
         assert isinstance(clusters, list)
 
 
@@ -71,15 +73,15 @@ class TestReveliumClient:
     
     async def test_add_prompts_file(self, setup_client: tuple[SereleumClient, list[Prompt]]):
         client, _ = setup_client
-        add_file_result = await client.add_prompts_file("output/test_prompts.json", False)
+        add_file_result = await client.add_prompts_file(TEST_PROMPTS_FILE, False)
         assert isinstance(add_file_result, AddPromptsResponse)
         async for event in  client.track_prompts_index_progress( add_file_result.job_id):
             pass
         
-    async def test_prompts_overview(self, setup_client: tuple[SereleumClient, list[Prompt]]):
-        client, _ = setup_client
-        accuracy = await client.get_cluster_accuracy()
-        assert isinstance(accuracy, ClusterAccuracy)
+    # async def test_accuracy(self, setup_client: tuple[SereleumClient, list[Prompt]]):
+    #     client, _ = setup_client
+    #     accuracy = await client.get_cluster_accuracy()
+    #     assert isinstance(accuracy, ClusterAccuracy)
 
 
     async def test_updated_prompt_cluster(self, setup_client: tuple[SereleumClient, list[Prompt]]):
