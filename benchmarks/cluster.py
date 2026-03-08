@@ -3,7 +3,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import argparse
-import random
 import json
 import os
 import asyncio
@@ -50,18 +49,13 @@ def cluster(clusterer: IncrementalClusterer, ids, embeddings) -> tuple[ClusterRe
 # `prompt_id` must be prefixed with label e.g promptlabel_123
 # this is only for benchmarking
 async def run(items_manager: ItemsManager, clusters_manager: ClustersManager, model:TextEmbeddingModel, plot_output: str, default_threshold: float = 0.3, merge_threshold: float = 0.9, top_k: int = 5):
-    results = {}
-    ## NOTE: IncrementalClusterer uses random numbers internally. Running multiple models sequentially 
-    # without reseeding causes non-deterministic clustering and lower accuracy. Reseed Python and 
-    # before each clustering run to ensure reproducible results.
-    random.seed(32)
-    
+    results = {}    
     ids, _, embeddings = items_manager.get_samples(1e5, exclude_clustered=True)
     if not ids:
         logger.debug("No prompts to cluster")
         return
     existing_clusters = clusters_manager.get_all_clusters()
-    clusterer = IncrementalClusterer(default_threshold=default_threshold, merge_threshold=merge_threshold, top_k=top_k, existing_clusters=existing_clusters, benchmarking=True)  
+    clusterer = IncrementalClusterer(default_threshold=default_threshold, merge_threshold=merge_threshold, top_k=top_k, existing_clusters=existing_clusters)  
     result,time = cluster(clusterer, ids, embeddings)
     logger.debug(f"Number assignments: {len(result.assignments)} | Number clusters: {len(result.clusters)}")
     if result.assignments:
