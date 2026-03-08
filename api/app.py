@@ -19,13 +19,8 @@ from smartscan.models.model_manager import ModelManager
 from sereleum.constants.models import OPENAI_API_KEY, DEFAULT_SYSTEM_PROMPT, DEFAULT_OPENAI_MODEL
 from sereleum.constants import  UPLOAD_DIR
 from sereleum.constants.api import Routes
-from sereleum.cluster import  get_cluster_plot
 from sereleum.schemas.llm import LLMClientConfig
 from sereleum.schemas.api import FailMessage, CompleteMessage, ProgressMessage
-from sereleum.prompts.prompts_manager import PromptsManager
-from sereleum.prompts.clusters_manager import PromptClustersManager
-from sereleum.prompts.helpers import get_prompts_overview
-from sereleum.store.helpers import get_embedding_store
 from sereleum.providers.llm.openai import OpenAIClient
 from sereleum.errors import ReveliumError, ErrorCode
 from sereleum.schemas.api import (
@@ -43,7 +38,9 @@ from sereleum.schemas.api import (
     MergeClustersRequest,
     MergeResponse
     )
-
+from sereleum.cluster import  get_cluster_plot
+from sereleum.prompts.helpers import get_prompts_overview
+from sereleum.helpers import get_cluster_manager, get_prompt_manager
 MAX_UPLOAD_SIZE = 50 * 1024 * 1024  # 50MB
 
 app = FastAPI()
@@ -62,17 +59,6 @@ model_manager = ModelManager()
 text_embedder = model_manager.get_text_embedder("all-distilroberta-v1")
 text_embedder.init()
 llm = OpenAIClient(OPENAI_API_KEY, LLMClientConfig(model_name=DEFAULT_OPENAI_MODEL, system_prompt=DEFAULT_SYSTEM_PROMPT))
-
-# TODO: pass client id to get unique collections per client
-def get_prompt_manager():
-    prompt_embedding_store = get_embedding_store( 'prompt', "all-distilroberta-v1", text_embedder.embedding_dim) 
-    return  PromptsManager(embedding_store=prompt_embedding_store)
-
-
-def get_cluster_manager(prompt_manager: PromptsManager):
-    cluster_embedding_store = get_embedding_store('cluster', "all-distilroberta-v1", text_embedder.embedding_dim) 
-    return  PromptClustersManager(embedding_store=cluster_embedding_store, items_manager=prompt_manager, llm=llm)
-
 
 @app.get(Routes.SSE_PROMPTS_INDEX_PROGRESS)
 async def track_prompts_index_progress(request: Request, job_id: str | None = None):
@@ -161,29 +147,29 @@ async def add_prompts_file(file: UploadFile = File(...), auto_label: bool = Form
 async def get_prompts(req: GetPromptsRequest):
     if req.prompt_ids and req.limit:
         raise HTTPException(status_code=400, detail="Prompt ids and limit filtering must be used seperately")
-    prompts_manager = get_prompt_manager()
+    prompts_manager = get_prompt_manager("all-distilroberta-v1", text_embedder.embedding_dim)
     prompts = await run_in_threadpool(prompts_manager.get, req.prompt_ids, req.cluster_ids, req.limit, req.offset)
     return JSONResponse(GetPromptsResponse(prompts=prompts).model_dump())
 
 
 @app.post(Routes.QUERY_PROMPTS_ENDPOINT)
 async def query_prompts(req: QueryPromptsRequest):
-    prompts_manager = get_prompt_manager()
+    prompts_manager = get_prompt_manager("all-distilroberta-v1", text_embedder.embedding_dim)
     prompts = await run_in_threadpool(prompts_manager.query_prompts, text_embedder, req.query, req.cluster_ids, req.limit)
     return JSONResponse(GetPromptsResponse(prompts=prompts).model_dump())
 
 
 @app.get(Routes.COUNT_PROMPTS_ENDPOINT)
 async def count_prompts():
-    prompts_manager = get_prompt_manager()
+    prompts_manager = get_prompt_manager("all-distilroberta-v1", text_embedder.embedding_dim)
     count = await run_in_threadpool( prompts_manager.embedding_store.count)
     return JSONResponse(GetCountResponse(count=count).model_dump())
 
 
 @app.get(Routes.GET_PROMPTS_OVERVIEW_ENDPOINT)
 async def get_overview():
-    prompts_manager = get_prompt_manager()
-    clusters_manager = get_cluster_manager(prompts_manager)
+    prompts_manager = get_prompt_manager("all-distilroberta-v1", text_embedder.embedding_dim)
+    clusters_manager = get_cluster_manager(prompts_manager, text_embedder.embedding_dim, prompts_manager, llm)
     overview = await run_in_threadpool( get_prompts_overview, prompts_manager, clusters_manager)
     return JSONResponse(GetPromptsOverviewResponse(**overview.model_dump()).model_dump())
 
@@ -191,7 +177,7 @@ async def get_overview():
 @app.patch(Routes.BASE_PROMPTS_ENDPOINT)
 async def update_prompt_cluster(prompt_id: str, cluster_id: str):
     try:
-        prompts_manager = get_prompt_manager()
+        prompts_manager = get_prompt_manager("all-distilroberta-v1", text_embedder.embedding_dim)
         await run_in_threadpool( prompts_manager.update_prompt_cluster , prompt_id,  cluster_id)
     except ReveliumError as e:
         if e.code == ErrorCode.ITEM_NOT_FOUND:
@@ -207,16 +193,16 @@ async def update_prompt_cluster(prompt_id: str, cluster_id: str):
 async def get_clusters(cluster_id: Optional[str] = None, limit: Optional[str] = None, offset: Optional[str] = None):
     limit_int = int(limit) if limit not in (None, "") else None
     offset_int = int(offset) if offset not in (None, "") else None
-    prompts_manager = get_prompt_manager()
-    clusters_manager = get_cluster_manager(prompts_manager)
+    prompts_manager = get_prompt_manager("all-distilroberta-v1", text_embedder.embedding_dim)
+    clusters_manager = get_cluster_manager(prompts_manager, text_embedder.embedding_dim, prompts_manager, llm)
     clusters = await run_in_threadpool(clusters_manager.get_clusters, cluster_id, limit_int, offset_int, ['metadatas'])
     return JSONResponse(GetClustersResponse(clusters=list(clusters.values())).model_dump())
 
 
 @app.patch(Routes.BASE_CLUSTER_ENDPOINT)
 async def update_cluster_label(cluster_id: str, label: str):
-    prompts_manager = get_prompt_manager()
-    clusters_manager = get_cluster_manager(prompts_manager)
+    prompts_manager = get_prompt_manager("all-distilroberta-v1", text_embedder.embedding_dim)
+    clusters_manager = get_cluster_manager(prompts_manager, text_embedder.embedding_dim, prompts_manager, llm)
     updated = await run_in_threadpool(
         clusters_manager.update_cluster_label, cluster_id, label
     )
@@ -228,31 +214,31 @@ async def update_cluster_label(cluster_id: str, label: str):
 
 @app.get(Routes.COUNT_CLUSTERS_ENDPOINT)
 async def count_clusters():
-    prompts_manager = get_prompt_manager()
-    clusters_manager = get_cluster_manager(prompts_manager)
+    prompts_manager = get_prompt_manager("all-distilroberta-v1", text_embedder.embedding_dim)
+    clusters_manager = get_cluster_manager(prompts_manager, text_embedder.embedding_dim, prompts_manager, llm)
     count = await run_in_threadpool( clusters_manager.embedding_store.count)
     return JSONResponse(GetCountResponse(count=count).model_dump())
 
 @app.get(Routes.GET_CLUSTER_LABELS_ENDPOINT)
 async def get_existing_labels():
-    prompts_manager = get_prompt_manager()
-    clusters_manager = get_cluster_manager(prompts_manager)
+    prompts_manager = get_prompt_manager("all-distilroberta-v1", text_embedder.embedding_dim)
+    clusters_manager = get_cluster_manager(prompts_manager, text_embedder.embedding_dim, prompts_manager, llm)
     labels = await run_in_threadpool(clusters_manager.get_existing_labels)
     return JSONResponse(GetLabelsResponse(labels=labels).model_dump())
 
 
 @app.get(Routes.GET_CLUSTER_ACCURACY_ENDPOINT)
 async def get_cluster_accuracy():
-    prompts_manager = get_prompt_manager()
-    clusters_manager = get_cluster_manager(prompts_manager)
+    prompts_manager = get_prompt_manager("all-distilroberta-v1", text_embedder.embedding_dim)
+    clusters_manager = get_cluster_manager(prompts_manager, text_embedder.embedding_dim, prompts_manager, llm)
     accuracy = await run_in_threadpool(clusters_manager.calculate_cluster_accuracy)
     return JSONResponse(GetClustersAccuracyResponse(accuracy=accuracy).model_dump())
 
 
 @app.get(Routes.GET_CLUSTER_PLOT_ENDPOINT)
 async def get_clusters_plot():
-    prompts_manager = get_prompt_manager()
-    clusters_manager = get_cluster_manager(prompts_manager)
+    prompts_manager = get_prompt_manager("all-distilroberta-v1", text_embedder.embedding_dim)
+    clusters_manager = get_cluster_manager(prompts_manager, text_embedder.embedding_dim, prompts_manager, llm)
     img_bytes = await run_in_threadpool(get_cluster_plot, clusters_manager, prompts_manager)
     return Response(status_code=200 if img_bytes else 204, content=img_bytes, media_type="image/png")
 
@@ -261,7 +247,7 @@ async def get_clusters_plot():
 async def merge_clusters(req: MergeClustersRequest):
     if not req.merges:
         raise HTTPException(status_code=400, detail="Merges cannot be empty")
-    prompts_manager = get_prompt_manager()
-    clusters_manager = get_cluster_manager(prompts_manager)
+    prompts_manager = get_prompt_manager("all-distilroberta-v1", text_embedder.embedding_dim)
+    clusters_manager = get_cluster_manager(prompts_manager, text_embedder.embedding_dim, prompts_manager, llm)
     updated_clusters = await run_in_threadpool(clusters_manager.merge_clusters,req.merges)
     return JSONResponse(MergeResponse(updated_clusters=updated_clusters).model_dump())
