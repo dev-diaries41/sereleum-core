@@ -8,7 +8,7 @@ from smartscan.embeds import EmbeddingStore, generate_prototype_embedding
 from sereleum.providers.llm.llm_client import LLMClient
 from sereleum.schemas.llm import LLMClassificationResult
 from sereleum.store.items_manager import ItemsManager
-from sereleum.utils.batch import   paginate_until
+from sereleum.store.helpers import   paginate_until
 from sereleum.store.types import TData, TItem, TMetadata
 
 from abc import abstractmethod
@@ -89,7 +89,7 @@ class ClustersManager(Generic[TItem, TData, TMetadata]):
 
         return len(labelled_clusters)
     
-    @ abstractmethod
+    @abstractmethod
     def label(self, cluster_id: str, sample_size: int, existing_labels: list[str]) -> LLMClassificationResult:
         raise NotImplementedError
     
