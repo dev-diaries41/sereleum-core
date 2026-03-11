@@ -76,8 +76,7 @@ class ItemsManager(Generic[TItem, TData, TMetadata]):
             )
         self.embedding_store.update(updated_items)
 
-    # Designed to limit reads whilst covering all "sections" of the db
-    # This helps prevents large number of reads for large number of trades or high meomry usage whehn plotting cluster plots
+    # Prevents large number of reads whilst maximising data coverage
     def get_samples(self, sample_size: int, cluster_ids: Optional[List[str]] = None, batch_size: int= 100, exclude_clustered: bool = False) -> Tuple[List[ItemId], List[TMetadata], List[ndarray]]:
         id_list, metadata_list, embedding_list = [], [], []
         total_items = self.embedding_store.count()
