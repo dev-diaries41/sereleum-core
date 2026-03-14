@@ -75,10 +75,10 @@ class ClustersManager(Generic[TItem, TData, TMetadata]):
         labelled_clusters: list[ItemEmbeddingUpdate[None, ClusterMetadata]] = []
         
         for cluster in unlabelled_clusters:
-            if isinstance(label_results[cluster.item_id], Exception):
-                print(f"Warning: Error labelling {cluster.item_id}")
+            result = label_results[cluster.item_id]
+            if isinstance(result, Exception):
+                print(f"Warning: Error labelling {cluster.item_id} | Details: {result}")
             else:
-                result = label_results[cluster.item_id]
                 if result.confidence < self.label_confidence_threshold:
                     continue
                 cluster.metadata['label'] = result.label
@@ -95,7 +95,7 @@ class ClustersManager(Generic[TItem, TData, TMetadata]):
     
     async def async_label(self, semaphore:  asyncio.Semaphore, cluster_id: str, sample_size: int, existing_labels: list[str]):
         async with semaphore:
-            return await asyncio.to_thread(self.label, self.llm, self.items_manager, cluster_id, sample_size, existing_labels)
+            return await asyncio.to_thread(self.label, cluster_id, sample_size, existing_labels)
 
 
     def update_label(self, cluster_id: str, label: str) -> bool:
