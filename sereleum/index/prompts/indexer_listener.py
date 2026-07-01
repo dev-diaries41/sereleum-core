@@ -1,10 +1,10 @@
-from tqdm import tqdm
 from redis import Redis
 
 from smartscan import ItemEmbedding
 from smartscan.processor import ProcessorListener
 
-from sereleum.types import Prompt, Status
+from sereleum.types import Status
+from sereleum.schemas.items.prompt import Prompt
 
 
 class PromptIndexListener(ProcessorListener[Prompt, ItemEmbedding]):

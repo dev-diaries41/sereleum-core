@@ -1,9 +1,9 @@
-from sereleum.prompts.clusters_manager import PromptClustersManager
-from sereleum.prompts.prompts_manager import PromptsManager
-from sereleum.types import PromptsOverviewInfo
+from sereleum.clusters.prompt_cluster_manager import PromptClusterManager
+from sereleum.items.prompt_manager import PromptManager
+from sereleum.schemas.items.prompt import PromptsOverviewInfo
 from smartscan import ClusterId
 
-def get_prompts_overview(prompt_manager: PromptsManager, cluster_manager: PromptClustersManager, top_n: int = 6) -> PromptsOverviewInfo:
+def get_prompts_overview(prompt_manager: PromptManager, cluster_manager: PromptClusterManager, top_n: int = 6) -> PromptsOverviewInfo:
         prompt_count = prompt_manager.embedding_store.count()
         cluster_count = cluster_manager.embedding_store.count()
         top_clusters = cluster_manager.get_top_clusters(top_n)
@@ -15,7 +15,7 @@ def get_prompts_overview(prompt_manager: PromptsManager, cluster_manager: Prompt
         return PromptsOverviewInfo(total_prompts=prompt_count, total_clusters=cluster_count, top_cluster_token_counts=token_counts, top_clusters=top_clusters.values())
 
 
-def calculate_avg_tokens_for_cluster(prompts_manager: PromptsManager, cluster_id: str, sample_size: int) -> int:
+def calculate_avg_tokens_for_cluster(prompts_manager: PromptManager, cluster_id: str, sample_size: int) -> int:
     total_tokens = 0
     prompts_count = 0
 

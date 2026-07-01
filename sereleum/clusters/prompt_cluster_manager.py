@@ -1,18 +1,19 @@
 from smartscan.embeds import EmbeddingStore
 
-from sereleum.store.clusters_manager import ClustersManager
-from sereleum.prompts.prompts_manager import PromptsManager
-from sereleum.prompts.types import Prompt, PromptMetadata
-from sereleum.providers.llm.llm_client import LLMClient
-from sereleum.schemas.llm import LLMClassificationResult
-from sereleum.prompts.prompts import get_labelling_prompt
+from llm_connect.providers.llm_provider import LLMProvider
 
-class PromptClustersManager(ClustersManager[Prompt, str, PromptMetadata]):
+from sereleum.clusters.cluster_manager import ClusterManager
+from sereleum.items.prompt_manager import PromptManager
+from sereleum.schemas.items.prompt import Prompt, PromptMetadata
+from sereleum.schemas.llm import LLMClassificationResult
+
+
+class PromptClusterManager(ClusterManager[Prompt, str, PromptMetadata]):
     def __init__(
         self,
         embedding_store: EmbeddingStore,
-        items_manager: PromptsManager,
-        llm: LLMClient,
+        items_manager: PromptManager,
+        llm: LLMProvider,
         label_confidence_threshold: float = 0.8,
         label_concurrency: int = 8,
     ):
@@ -31,6 +32,10 @@ class PromptClustersManager(ClustersManager[Prompt, str, PromptMetadata]):
             raise ValueError("Cluster not found")
         prompts = self.items_manager.embedding_store.query(query_embeds=[clusters[cluster_id].embedding], filter={"cluster_id": cluster_id},  limit=sample_size, include=['documents'])
         sample_prompts = [content for content in prompts.datas]
-        input_prompt = get_labelling_prompt(cluster_id, existing_labels, sample_prompts)
+        input_prompt = self._get_labelling_prompt(cluster_id, existing_labels, sample_prompts)
         return self.llm.generate_json(input_prompt, LLMClassificationResult)
-        
+    
+    @staticmethod
+    def _get_labelling_prompt(cluster_id: str, existing_labels: list[str], sample_prompts: list[str]) -> str:
+        return f"""## ClusterId: {cluster_id}\n\n##Existing labels {existing_labels} Cluster sample_prompts \n\n {sample_prompts}"""
+    

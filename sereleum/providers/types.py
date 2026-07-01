@@ -7,6 +7,3 @@ TextEmbeddingModel: TypeAlias = Literal[
     "text-embedding-3-small",
     "text-embedding-3-large",
 ]
-
-
-JsonOutput = TypeVar("JsonOutput", bound=BaseModel)

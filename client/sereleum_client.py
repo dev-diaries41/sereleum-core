@@ -4,7 +4,7 @@ import json
 
 from smartscan import ClusterAccuracy, ClusterNoEmbeddings, ClusterMerges
 
-from sereleum.types import Prompt, PromptsOverviewInfo
+from sereleum.schemas.items.prompt import Prompt, PromptsOverviewInfo
 from sereleum.constants.api import Routes
 from sereleum.schemas.api import  GetPromptsRequest, GetClusterRequestParams, UpdateLabelParams, QueryPromptsRequest, UpdatePromptClusterIdParams, AddPromptsResponse, MergeClustersRequest, ClusterOptionsForm
 

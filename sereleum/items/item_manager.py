@@ -8,7 +8,7 @@ from typing import List, Optional, Tuple, Any, Generator, Dict, Generic
 from smartscan import ItemEmbedding,Assignments, ClusterMerges, ItemId, ItemEmbeddingUpdate, GetResult, QueryResult
 from smartscan.embeds import EmbeddingStore
 
-from sereleum.store.types import TData, TItem, TMetadata
+from sereleum.schemas.items.item import TData, TItem, TMetadata
 from sereleum.store.helpers import   paginate_until
 from sereleum.errors import ReveliumError, ErrorCode
 from sereleum.constants import UNCLUSTERED
@@ -16,7 +16,7 @@ from sereleum.constants import UNCLUSTERED
 from abc import abstractmethod
 
 
-class ItemsManager(Generic[TItem, TData, TMetadata]):
+class ItemManager(Generic[TItem, TData, TMetadata]):
     def __init__(self, 
         embedding_store: EmbeddingStore,
                  ): 

@@ -5,7 +5,7 @@ from client.sereleum_client import SereleumClient
 from httpx import HTTPStatusError
 from smartscan import ClusterAccuracy
 
-from sereleum.types import Prompt, PromptsOverviewInfo
+from sereleum.schemas.items.prompt import Prompt, PromptsOverviewInfo
 from sereleum.schemas.api import  AddPromptsResponse
 
 TEST_PROMPTS_FILE = "output/prompts/test_prompts.json"

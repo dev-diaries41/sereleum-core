@@ -1,9 +1,10 @@
+from openai.types import ResponsesModel
 from smartscan import ItemEmbedding
 from smartscan.media import chunk_text
 from smartscan.embeds import generate_prototype_embedding, EmbeddingStore
 from smartscan.processor import BatchProcessor
 from smartscan.providers import TextEmbeddingProvider
-from sereleum.types import Prompt, PromptMetadata
+from sereleum.schemas.items.prompt import Prompt, PromptMetadata
 from sereleum.utils.tokens import count_tokens_embedding
 
 class PromptIndexer(BatchProcessor[Prompt, ItemEmbedding[None, PromptMetadata]]):
@@ -11,6 +12,7 @@ class PromptIndexer(BatchProcessor[Prompt, ItemEmbedding[None, PromptMetadata]])
                 text_encoder: TextEmbeddingProvider,
                 embeddings_store: EmbeddingStore,
                 max_chunks: int | None = None,
+                prompt_model: str | ResponsesModel = "gpt-5-mini",
                 **kwargs
                 ):
         super().__init__(**kwargs)
@@ -18,11 +20,12 @@ class PromptIndexer(BatchProcessor[Prompt, ItemEmbedding[None, PromptMetadata]])
         self.max_chunks = max_chunks
         self.max_tokenizer_length = text_encoder.max_tokenizer_length
         self.embeddings_store = embeddings_store
+        self.prompt_model = prompt_model
 
     # All chunks share the same item_id (url or file) so that chunks are group
     # In the on_batch_complete method, the listener can handle use it as metaddata and assign unique ids to each chunk if required
     def on_process(self, item):
-        tokens = count_tokens_embedding(item.data, "gpt-5-mini")
+        tokens = count_tokens_embedding(item.data, self.prompt_model)
         chunks = chunk_text(item.data, self.max_tokenizer_length)
         embeddings = self.text_encoder.embed_batch(chunks)
         text_prototype = generate_prototype_embedding(embeddings)

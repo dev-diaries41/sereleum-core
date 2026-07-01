@@ -4,10 +4,10 @@ from typing import List, Generator, Any
 from smartscan import GetResult, QueryResult
 from smartscan.embeds import EmbeddingStore
 
-from sereleum.store.items_manager import ItemsManager
-from sereleum.prompts.types import Prompt, PromptMetadata
+from sereleum.items.item_manager import ItemManager
+from sereleum.schemas.items.prompt import Prompt, PromptMetadata
 
-class PromptsManager(ItemsManager[Prompt, str, PromptMetadata]):
+class PromptManager(ItemManager[Prompt, str, PromptMetadata]):
     def __init__(self, embedding_store: EmbeddingStore,): 
         super().__init__(embedding_store)     
 

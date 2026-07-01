@@ -1,8 +1,8 @@
 import random
 import string
 from placeholder_data import quantum_mechanics_sentences, nextjs_prompts, ai_prompts, robot_prompts, android_prompts, long_physics_sentences, long_btc_analysis, long_forex_analysis
-from sereleum.types import Prompt
-from sereleum.providers.llm.llm_client import LLMClient
+from sereleum.schemas.items.prompt import Prompt
+from llm_connect.providers.llm_provider import LLMProvider
 
 
 from pydantic import BaseModel
@@ -11,7 +11,7 @@ from typing import List
 class PromptContent(BaseModel):
     prompts: List[str]
     
-def generate_synthetic_prompt_data(llm: LLMClient, label: str, topic: str, n:int, prompt_size:int = 300, prompt: str | None = None):
+def generate_synthetic_prompt_data(llm: LLMProvider, label: str, topic: str, n:int, prompt_size:int = 300, prompt: str | None = None):
     prompt = prompt or f"""Generate {n} realistic example prompts, each {prompt_size} characters long, that a user may have about {topic}"""
     result =  llm.generate_json(prompt, PromptContent)
     return strings_to_prompts(result.prompts, label)

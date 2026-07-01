@@ -3,7 +3,8 @@ from typing import List, Optional
 
 from smartscan import  ClusterAccuracy, ClusterNoEmbeddings, ClusterMerges
 
-from sereleum.types import Prompt, PromptsOverviewInfo, Status
+from sereleum.schemas.items.prompt import Prompt, PromptsOverviewInfo
+from sereleum.types import Status
 
 # Websocksets / SSE
     
