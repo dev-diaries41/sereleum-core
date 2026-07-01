@@ -14,7 +14,6 @@ from benchmarks.constants import BENCHMARK_CHROMADB_PATH, BENCHMARK_DIR
 from smartscan.models.model_manager import ModelManager
 from smartscan.index.listener import ProgressBarIndexerListener
 
-
 from sereleum.types import Prompt
 from sereleum.prompts.indexer import PromptIndexer
 from sereleum.store.chroma_store import ChromaDBEmbeddingStore
@@ -58,7 +57,7 @@ if __name__ == "__main__":
         random.seed(args.seed)
 
     if args.n and args.stress:
-        asyncio.run(main(get_dummy_data(args.n, args.o)))
+        asyncio.run(main(get_dummy_data(args.n, args.o), args.model))
     elif args.file:
         with open(args.file) as f:
             prompts = [Prompt(**p) for p in json.load(f)]

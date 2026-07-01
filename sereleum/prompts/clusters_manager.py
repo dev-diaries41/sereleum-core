@@ -3,7 +3,7 @@ from smartscan.embeds import EmbeddingStore
 from sereleum.store.clusters_manager import ClustersManager
 from sereleum.prompts.prompts_manager import PromptsManager
 from sereleum.prompts.types import Prompt, PromptMetadata
-from sereleum.providers.llm.llm_client import LLMClient
+from llm_connect.providers.llm_provider import LLMProvider
 from sereleum.schemas.llm import LLMClassificationResult
 from sereleum.prompts.prompts import get_labelling_prompt
 
@@ -12,7 +12,7 @@ class PromptClustersManager(ClustersManager[Prompt, str, PromptMetadata]):
         self,
         embedding_store: EmbeddingStore,
         items_manager: PromptsManager,
-        llm: LLMClient,
+        llm: LLMProvider,
         label_confidence_threshold: float = 0.8,
         label_concurrency: int = 8,
     ):

@@ -16,13 +16,13 @@ from api.tasks import index_prompts_task
 from api.redis import redis_client
 
 from smartscan.models.model_manager import ModelManager
+from llm_connect.schemas.llm import LLMProviderConfig
+from llm_connect.providers.openai import OpenAIProvider
 
 from sereleum.constants.models import OPENAI_API_KEY, DEFAULT_SYSTEM_PROMPT, DEFAULT_OPENAI_MODEL
 from sereleum.constants import  UPLOAD_DIR
 from sereleum.constants.api import Routes
-from sereleum.schemas.llm import LLMClientConfig
 from sereleum.schemas.api import FailMessage, CompleteMessage, ProgressMessage
-from sereleum.providers.llm.openai import OpenAIClient
 from sereleum.errors import ReveliumError, ErrorCode
 from sereleum.schemas.api import (
     GetPromptsRequest, 
@@ -59,7 +59,7 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 model_manager = ModelManager()
 text_embedder = model_manager.get_text_embedder("all-distilroberta-v1")
 text_embedder.init()
-llm = OpenAIClient(OPENAI_API_KEY, LLMClientConfig(model_name=DEFAULT_OPENAI_MODEL, system_prompt=DEFAULT_SYSTEM_PROMPT))
+llm = OpenAIProvider(OPENAI_API_KEY, LLMProviderConfig(model=DEFAULT_OPENAI_MODEL, system_prompt=DEFAULT_SYSTEM_PROMPT))
 
 client = chromadb.HttpClient(host='chromadb', port=8000, settings=chromadb.Settings(anonymized_telemetry=False))
 prompts_manager = get_prompt_manager(client, "all-distilroberta-v1", text_embedder.embedding_dim)

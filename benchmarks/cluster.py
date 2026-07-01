@@ -19,12 +19,13 @@ from smartscan.cluster import calculate_cluster_accuracy, IncrementalClusterer
 from benchmarks.constants import BENCHMARK_CHROMADB_PATH, BENCHMARK_DIR
 from benchmarks.utils import with_time
 
+from llm_connect.providers.openai import OpenAIProvider
+from llm_connect.schemas.llm import LLMProviderConfig
+
 from sereleum.constants.models import OPENAI_API_KEY, DEFAULT_SYSTEM_PROMPT, DEFAULT_OPENAI_MODEL
 from sereleum.providers.types import TextEmbeddingModel
 from sereleum.store.items_manager import ItemsManager
 from sereleum.store.clusters_manager import ClustersManager
-from sereleum.providers.llm.openai import OpenAIClient
-from sereleum.schemas.llm import LLMClientConfig
 from sereleum.helpers import get_prompt_manager, get_cluster_manager
 from sereleum.cluster import plot_clusters, plot_clusters_with_prototypes, get_true_labels
 from sereleum.utils.file import get_new_filename
@@ -87,7 +88,7 @@ async def run(items_manager: ItemsManager, clusters_manager: ClustersManager, mo
 
 
 async def run_real_benchmark(embedding_model: TextEmbeddingModel, embed_dim: int, default_threshold: float, top_k: int):
-    llm = OpenAIClient(OPENAI_API_KEY, LLMClientConfig(model_name=DEFAULT_OPENAI_MODEL, system_prompt=DEFAULT_SYSTEM_PROMPT))
+    llm = OpenAIProvider(OPENAI_API_KEY, LLMProviderConfig(model=DEFAULT_OPENAI_MODEL, system_prompt=DEFAULT_SYSTEM_PROMPT))
     client = chromadb.PersistentClient(path=BENCHMARK_CHROMADB_PATH, settings=chromadb.Settings(anonymized_telemetry=False))
     prompts_manager = get_prompt_manager(client, embedding_model, embed_dim)
     clusters_manager = get_cluster_manager(client, embedding_model, embed_dim, prompts_manager, llm)

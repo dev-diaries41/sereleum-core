@@ -11,8 +11,9 @@ from smartscan.models.model_manager import ModelManager
 from sereleum.types import Prompt
 from sereleum.prompts.indexer import PromptIndexer
 from sereleum.prompts.indexer_listener import PromptIndexListener
-from sereleum.providers.llm.openai import OpenAIClient
-from sereleum.schemas.llm import LLMClientConfig
+from llm_connect.providers.openai import OpenAIProvider
+from llm_connect.schemas.llm import LLMProviderConfig
+
 from sereleum.cluster import cluster_items
 from sereleum.helpers import get_cluster_manager, get_prompt_manager
 from sereleum.constants.models import OPENAI_API_KEY, DEFAULT_SYSTEM_PROMPT, DEFAULT_OPENAI_MODEL
@@ -32,7 +33,7 @@ dramatiq.set_broker(redis_broker)
 model_manager = ModelManager()
 text_embedder = model_manager.get_text_embedder("all-distilroberta-v1")
 text_embedder.init()
-llm = OpenAIClient(OPENAI_API_KEY, LLMClientConfig(model_name=DEFAULT_OPENAI_MODEL, system_prompt=DEFAULT_SYSTEM_PROMPT))
+llm = OpenAIProvider(OPENAI_API_KEY, LLMProviderConfig(model=DEFAULT_OPENAI_MODEL, system_prompt=DEFAULT_SYSTEM_PROMPT))
 client = chromadb.HttpClient(host='chromadb', port=8000, settings=chromadb.Settings(anonymized_telemetry=False))
 prompts_manager = get_prompt_manager(client, "all-distilroberta-v1", text_embedder.embedding_dim)
 clusters_manager = get_cluster_manager(client, "all-distilroberta-v1", text_embedder.embedding_dim, prompts_manager, llm)

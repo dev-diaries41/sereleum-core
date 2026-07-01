@@ -5,7 +5,7 @@ from typing import List, Dict, Optional, Generic
 from smartscan import ItemEmbedding, Cluster, ClusterNoEmbeddings, ClusterMetadata, ClusterMerges, ClusterId, ItemEmbeddingUpdate, Include, GetResult, QueryResult
 from smartscan.embeds import EmbeddingStore, generate_prototype_embedding
 
-from sereleum.providers.llm.llm_client import LLMClient
+from llm_connect.providers.llm_provider import LLMProvider
 from sereleum.schemas.llm import LLMClassificationResult
 from sereleum.store.items_manager import ItemsManager
 from sereleum.store.helpers import   paginate_until
@@ -17,7 +17,7 @@ class ClustersManager(Generic[TItem, TData, TMetadata]):
     def __init__(self, 
         embedding_store: EmbeddingStore,
         items_manager: ItemsManager[TItem, TData, TMetadata],
-        llm: LLMClient, 
+        llm: LLMProvider, 
         label_confidence_threshold: float = 0.8,
         label_concurrency: int = 8,
                  ): 
