@@ -14,7 +14,6 @@ from llm_connect.schemas.llm import LLMProviderConfig
 from sereleum.schemas.items.prompt import Prompt
 from sereleum.index.prompts.indexer import PromptIndexer
 from sereleum.index.prompts.indexer_listener import PromptIndexListener
-from sereleum.cluster import cluster_items
 from sereleum.helpers import get_cluster_manager, get_prompt_manager
 from sereleum.constants.models import OPENAI_API_KEY, DEFAULT_SYSTEM_PROMPT, DEFAULT_OPENAI_MODEL
 
@@ -68,5 +67,5 @@ async def cluster_prompts_task(auto_label: bool = True, default_threshold: float
         return
 
     redis_client.set("cluster_job_status", "active", ex=86400)
-    await cluster_items(prompts_manager, clusters_manager, auto_label=auto_label, default_threshold=default_threshold)
+    await clusters_manager.cluster(auto_label=auto_label, default_threshold=default_threshold)
     redis_client.set("cluster_job_status", "complete", ex=86400)

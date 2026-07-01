@@ -1,7 +1,7 @@
 import random
 import string
 from placeholder_data import quantum_mechanics_sentences, nextjs_prompts, ai_prompts, robot_prompts, android_prompts, long_physics_sentences, long_btc_analysis, long_forex_analysis
-from sereleum.types import Prompt
+from sereleum.schemas.items.prompt import Prompt
 from llm_connect.providers.llm_provider import LLMProvider
 
 
