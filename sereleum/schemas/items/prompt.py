@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from pydantic import BaseModel, Field
 from typing import Optional, Dict, List, ClassVar
 from smartscan import ClusterNoEmbeddings
-from sereleum.store.types import Item
+from sereleum.schemas.items.item import Item
 
 class PromptMetadata(BaseModel):
     UNCLUSTERED: ClassVar = "unclustered"

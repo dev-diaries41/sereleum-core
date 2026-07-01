@@ -12,10 +12,9 @@ from llm_connect.schemas.llm import LLMProviderConfig
 from llm_connect.providers.llm_provider import LLMProvider
 
 from sereleum.constants.models import DEFAULT_SYSTEM_PROMPT, OPENAI_API_KEY, DEFAULT_OPENAI_MODEL
-from sereleum.prompts.prompts_manager import PromptsManager
-from sereleum.prompts.clusters_manager import PromptClustersManager
+from sereleum.items.prompt_manager import PromptManager
+from sereleum.clusters.prompt_cluster_manager import PromptClusterManager
 from sereleum.store.helpers import get_embedding_store_persistent_file
-from sereleum.prompts.prompts import get_labelling_prompt
 from sereleum.schemas.llm import LLMClassificationResult
 
 
@@ -25,19 +24,16 @@ os.makedirs(BENCHMARK_DIR, exist_ok=True)
 
 
 
-def label_cluster(llm: LLMProvider, cluster_manager: PromptClustersManager, prompts_manager: PromptsManager, cluster_id: str, sample_size: int, existing_labels: list[str]) -> LLMClassificationResult:
+def label_cluster(llm: LLMProvider, cluster_manager: PromptClusterManager, prompts_manager: PromptManager, cluster_id: str, sample_size: int, existing_labels: list[str]) -> LLMClassificationResult:
     clusters = cluster_manager.get_clusters(cluster_ids=[cluster_id], include=['embeddings'])
     if not clusters:
         raise ValueError("Cluster not found")
     prompts = prompts_manager.embedding_store.query(query_embeds=[clusters[cluster_id].embedding], filter={"cluster_id": cluster_id},  limit=sample_size, include=['documents'])
     print(f"Found {len(prompts.ids)} similar prompts_____________\n")
     print(prompts.ids)
+    return cluster_manager.label(cluster_id, sample_size, existing_labels)
 
-    sample_prompts = [content for content in prompts.datas]
-    input_prompt = get_labelling_prompt(cluster_id, existing_labels, sample_prompts)
-    return  LLMClassificationResult(item_id="test", label="test label", confidence=0.8)
-
-def run(llm: OpenAIProvider, cm: PromptClustersManager, pm: PromptsManager, cluster_id: str, sample_size: int):
+def run(llm: OpenAIProvider, cm: PromptClusterManager, pm: PromptManager, cluster_id: str, sample_size: int):
     result = label_cluster(llm, cm, pm, cluster_id, sample_size, [])
     print(result)
     
@@ -52,11 +48,11 @@ def main():
 
 def get_prompt_manager():
     embedding_store = get_embedding_store_persistent_file(BENCHMARK_CHROMADB_PATH, 'prompt', 'all-minilm-l6-v2', 384) 
-    return PromptsManager(embedding_store=embedding_store)
+    return PromptManager(embedding_store=embedding_store)
 
-def get_cluster_manager(prompt_manager: PromptsManager, llm):
+def get_cluster_manager(prompt_manager: PromptManager, llm):
     embedding_store = get_embedding_store_persistent_file(BENCHMARK_CHROMADB_PATH, 'cluster', 'all-minilm-l6-v2', 384)
-    return PromptClustersManager(embedding_store=embedding_store, items_manager=prompt_manager, llm=llm)
+    return PromptClusterManager(embedding_store=embedding_store, items_manager=prompt_manager, llm=llm)
 
 if __name__ == "__main__":
     main()

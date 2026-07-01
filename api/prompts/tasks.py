@@ -8,12 +8,12 @@ from dramatiq.brokers.redis import RedisBroker
 
 from smartscan.models.model_manager import ModelManager
 
-from sereleum.types import Prompt
-from sereleum.prompts.indexer import PromptIndexer
-from sereleum.prompts.indexer_listener import PromptIndexListener
 from llm_connect.providers.openai import OpenAIProvider
 from llm_connect.schemas.llm import LLMProviderConfig
 
+from sereleum.schemas.items.prompt import Prompt
+from sereleum.index.prompts.indexer import PromptIndexer
+from sereleum.index.prompts.indexer_listener import PromptIndexListener
 from sereleum.cluster import cluster_items
 from sereleum.helpers import get_cluster_manager, get_prompt_manager
 from sereleum.constants.models import OPENAI_API_KEY, DEFAULT_SYSTEM_PROMPT, DEFAULT_OPENAI_MODEL

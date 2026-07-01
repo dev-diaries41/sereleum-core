@@ -21,3 +21,14 @@ def with_time(func):
         return result, time_elapsed
     return wrapper
 
+
+## temp solution in prod use user selected labels
+def get_true_labels(item_ids: list[str]):
+        true_labels: dict[str, str] = {}
+        for id in  item_ids:
+            label = id.split("_")[0]
+            if not label: 
+                print(f"[WARNING] {id} is not a valid labelled item.")
+                continue
+            true_labels[id] = label
+        return true_labels

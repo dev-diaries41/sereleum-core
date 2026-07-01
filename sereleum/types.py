@@ -1,5 +1,4 @@
 from typing import Literal
-from sereleum.prompts.types import Prompt, PromptMetadata, PromptsOverviewInfo
 
 # Long running jobs
 FinishedStatus = Literal['complete', 'failed']

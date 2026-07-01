@@ -15,7 +15,7 @@ from smartscan.models.model_manager import ModelManager
 from smartscan.index.listener import ProgressBarIndexerListener
 
 from sereleum.types import Prompt
-from sereleum.prompts.indexer import PromptIndexer
+from sereleum.index.prompts.indexer import PromptIndexer
 from sereleum.store.chroma_store import ChromaDBEmbeddingStore
 from sereleum.providers.types import TextEmbeddingModel
 from sereleum.data import get_dummy_data

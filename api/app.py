@@ -12,10 +12,12 @@ from sse_starlette import EventSourceResponse
 from typing import Optional
 from tempfile import NamedTemporaryFile
 
-from api.tasks import index_prompts_task
 from api.redis import redis_client
+from api.prompts.tasks import index_prompts_task
+from api.prompts.helpers import get_prompts_overview
 
 from smartscan.models.model_manager import ModelManager
+
 from llm_connect.schemas.llm import LLMProviderConfig
 from llm_connect.providers.openai import OpenAIProvider
 
@@ -39,9 +41,9 @@ from sereleum.schemas.api import (
     MergeClustersRequest,
     MergeResponse
     )
-from sereleum.cluster import  get_cluster_plot
-from sereleum.prompts.helpers import get_prompts_overview
+from sereleum.clusters.plot import  get_cluster_plot
 from sereleum.helpers import get_cluster_manager, get_prompt_manager
+
 
 MAX_UPLOAD_SIZE = 50 * 1024 * 1024  # 50MB
 

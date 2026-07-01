@@ -6,42 +6,14 @@ from io import BytesIO
 from sklearn.manifold import TSNE
 from sklearn.decomposition import PCA
 
-from smartscan import Assignments, ItemId
-from smartscan.cluster import IncrementalClusterer
+from smartscan import Assignments
 
-from sereleum.store.items_manager import ItemsManager
-from sereleum.store.clusters_manager import ClustersManager
+from sereleum.items.item_manager import ItemManager
+from sereleum.clusters.cluster_manager import ClusterManager
 
 
-async def cluster_items(items_manager: ItemsManager, cluster_manager: ClustersManager, auto_label: bool = True, default_threshold: float = 0.3):
-    ids, _, embeddings = items_manager.get_samples(1e5, exclude_clustered=True)
-    existing_clusters = cluster_manager.get_all_clusters()
-    clusterer = IncrementalClusterer(
-        default_threshold=default_threshold,
-        existing_clusters=existing_clusters,
-    )
-    result = clusterer.cluster(ids, embeddings)
-    if result.assignments:
-        items_manager.update_from_assignments(result.assignments, result.merges)
-    if result.clusters:
-        unlabelled = await cluster_manager.update(result.clusters, result.merges)
-        if len(unlabelled) > 0 and auto_label:
-            n_labelled = await cluster_manager.label_and_update(unlabelled)
-    return result
 
-## temp solution in prod use user selected labels
-def get_true_labels(item_ids: list[str]):
-        true_labels: dict[ItemId, str] = {}
-        for id in  item_ids:
-            label = id.split("_")[0]
-            if not label: 
-                print(f"[WARNING] {id} is not a valid labelled item.")
-                continue
-            true_labels[id] = label
-        return true_labels
-
- 
-def get_cluster_plot(cluster_manager: ClustersManager, items_manager: ItemsManager, n: int = 6) -> Optional[bytes]:
+def get_cluster_plot(cluster_manager: ClusterManager, items_manager: ItemManager, n: int = 6) -> Optional[bytes]:
     top_clusters = cluster_manager.get_top_clusters(n)
     ids, metadatas, embeddings = items_manager.get_samples(1e5, cluster_ids=list(top_clusters.keys()))
     if not ids:

@@ -2,21 +2,23 @@ import asyncio
 import numpy as np
 from typing import List, Dict, Optional, Generic
 
-from smartscan import ItemEmbedding, Cluster, ClusterNoEmbeddings, ClusterMetadata, ClusterMerges, ClusterId, ItemEmbeddingUpdate, Include, GetResult, QueryResult
+from smartscan import ItemEmbedding, Cluster, ClusterNoEmbeddings, ClusterMetadata, ClusterMerges, ClusterId, ItemEmbeddingUpdate, Include, GetResult, QueryResult, ClusterResult
 from smartscan.embeds import EmbeddingStore, generate_prototype_embedding
+from smartscan.cluster import IncrementalClusterer
 
 from llm_connect.providers.llm_provider import LLMProvider
+
 from sereleum.schemas.llm import LLMClassificationResult
-from sereleum.store.items_manager import ItemsManager
+from sereleum.items.item_manager import ItemManager
 from sereleum.store.helpers import   paginate_until
-from sereleum.store.types import TData, TItem, TMetadata
+from sereleum.schemas.items.item import TData, TItem, TMetadata
 
 from abc import abstractmethod
 
-class ClustersManager(Generic[TItem, TData, TMetadata]):
+class ClusterManager(Generic[TItem, TData, TMetadata]):
     def __init__(self, 
         embedding_store: EmbeddingStore,
-        items_manager: ItemsManager[TItem, TData, TMetadata],
+        items_manager: ItemManager[TItem, TData, TMetadata],
         llm: LLMProvider, 
         label_confidence_threshold: float = 0.8,
         label_concurrency: int = 8,
@@ -27,9 +29,25 @@ class ClustersManager(Generic[TItem, TData, TMetadata]):
         self.label_confidence_threshold = label_confidence_threshold
         self.label_concurrency = label_concurrency
     
+    async def cluster(self, auto_label: bool = True, default_threshold: float = 0.3) -> ClusterResult:
+        ids, _, embeddings = self.items_manager.get_samples(1e5, exclude_clustered=True)
+        existing_clusters = self.get_all_clusters()
+        clusterer = IncrementalClusterer(
+            default_threshold=default_threshold,
+            existing_clusters=existing_clusters,
+        )
+        result = clusterer.cluster(ids, embeddings)
+        if result.assignments:
+            self.items_manager.update_from_assignments(result.assignments, result.merges)
+        if result.clusters:
+            unlabelled = await self.update(result.clusters, result.merges)
+            if len(unlabelled) > 0 and auto_label:
+                n_labelled = await self.label_and_update(unlabelled)
+        return result
+
     async def update(self, clusters: Dict[str, Cluster], merges: ClusterMerges) -> List[ItemEmbeddingUpdate[None, ClusterMetadata]]:
         """
-        Update the embedding store with clusters, applying merges if provided.
+        Update the embedding store with clusters, applying merges if providWed.
         Old clusters that have been merged are removed from the store.
         """
         effective_clusters: Dict[str, Cluster] = clusters.copy()
@@ -262,4 +280,3 @@ class ClustersManager(Generic[TItem, TData, TMetadata]):
             return [Cluster(prototype_id=c.item_id, embedding=c.embedding, metadata=c.metadata, label=c.metadata['label']) for c in updated_clusters]
         else:
             return [ClusterNoEmbeddings(prototype_id=c.item_id, metadata=c.metadata, label=c.metadata['label']) for c in updated_clusters]
-

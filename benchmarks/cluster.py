@@ -17,17 +17,17 @@ from smartscan import ClusterResult
 from smartscan.cluster import calculate_cluster_accuracy, IncrementalClusterer
 
 from benchmarks.constants import BENCHMARK_CHROMADB_PATH, BENCHMARK_DIR
-from benchmarks.utils import with_time
+from benchmarks.utils import with_time, get_true_labels
 
 from llm_connect.providers.openai import OpenAIProvider
 from llm_connect.schemas.llm import LLMProviderConfig
 
 from sereleum.constants.models import OPENAI_API_KEY, DEFAULT_SYSTEM_PROMPT, DEFAULT_OPENAI_MODEL
 from sereleum.providers.types import TextEmbeddingModel
-from sereleum.store.items_manager import ItemsManager
-from sereleum.store.clusters_manager import ClustersManager
+from sereleum.items.item_manager import ItemManager
+from sereleum.clusters.cluster_manager import ClusterManager
 from sereleum.helpers import get_prompt_manager, get_cluster_manager
-from sereleum.cluster import plot_clusters, plot_clusters_with_prototypes, get_true_labels
+from sereleum.clusters.plot import plot_clusters, plot_clusters_with_prototypes
 from sereleum.utils.file import get_new_filename
 from sereleum.logs import getLogger
 
@@ -48,7 +48,7 @@ def cluster(clusterer: IncrementalClusterer, ids, embeddings) -> tuple[ClusterRe
     return clusterer.cluster(ids, embeddings)
 
 # ids must be prefixed with label e.g promptlabel_123 for testing accuracy
-async def run(items_manager: ItemsManager, clusters_manager: ClustersManager, model:TextEmbeddingModel, plot_output: str, default_threshold: float = 0.3, top_k: int = 5):
+async def run(items_manager: ItemManager, clusters_manager: ClusterManager, model:TextEmbeddingModel, plot_output: str, default_threshold: float = 0.3, top_k: int = 5):
     results = {}    
     ids, _, embeddings = items_manager.get_samples(1e5, exclude_clustered=True)
     if not ids:
