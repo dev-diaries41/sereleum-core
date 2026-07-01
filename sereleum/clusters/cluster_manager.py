@@ -46,10 +46,6 @@ class ClusterManager(Generic[TItem, TData, TMetadata]):
         return result
 
     async def update(self, clusters: Dict[str, Cluster], merges: ClusterMerges) -> List[ItemEmbeddingUpdate[None, ClusterMetadata]]:
-        """
-        Update the embedding store with clusters, applying merges if providWed.
-        Old clusters that have been merged are removed from the store.
-        """
         effective_clusters: Dict[str, Cluster] = clusters.copy()
 
         if merges:
@@ -117,10 +113,6 @@ class ClusterManager(Generic[TItem, TData, TMetadata]):
 
 
     def update_label(self, cluster_id: str, label: str) -> bool:
-        """
-        Update the embedding store with clusters, applying merges if provided.
-        Old clusters that have been merged are removed from the store.
-        """
         result = self.get_clusters(cluster_ids=[cluster_id], include=['metadatas'])
         if(len(result)) == 0: return False
         updated_meta=result[cluster_id].metadata
