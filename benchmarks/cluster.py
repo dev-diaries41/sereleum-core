@@ -59,9 +59,9 @@ async def run(items_manager: ItemManager, clusters_manager: ClusterManager, mode
     result,time = cluster(clusterer, ids, embeddings)
     logger.debug(f"Assignments: {len(result.assignments)} | Clusters: {len(result.clusters)} | Merges: {len(result.merges)}")
     if result.assignments:
-        items_manager.update_from_assignments(result.assignments, result.merges)
+        items_manager.assign(result)
     if result.clusters:
-        unlabelled =  await clusters_manager.update(result.clusters, result.merges)
+        unlabelled =  await clusters_manager._update_from_result(result)
         logger.debug(f"Number unlabelled clusters: {len(unlabelled)}")
     # if len(unlabelled) > 0:
     #    await clusters_manager.label_and_update(unlabelled)

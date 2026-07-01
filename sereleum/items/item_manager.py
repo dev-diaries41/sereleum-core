@@ -5,7 +5,7 @@ from numpy import ndarray
 from datetime import datetime
 from typing import List, Optional, Tuple, Any, Generator, Dict, Generic
 
-from smartscan import ItemEmbedding,Assignments, ClusterMerges, ItemId, ItemEmbeddingUpdate, GetResult, QueryResult
+from smartscan import ItemEmbedding, ClusterMerges, ItemId, ItemEmbeddingUpdate, GetResult, QueryResult, ClusterResult
 from smartscan.embeds import EmbeddingStore
 
 from sereleum.schemas.items.item import TData, TItem, TMetadata
@@ -22,7 +22,7 @@ class ItemManager(Generic[TItem, TData, TMetadata]):
                  ): 
         self.embedding_store = embedding_store
         
-    def update_item_cluster(self, item_id: str, new_cluster_id: str) -> None:
+    def reassign_item(self, item_id: str, new_cluster_id: str) -> None:
         items = self.get_by_ids([item_id])
         if len(items) == 0:
             raise ReveliumError("Item not found", code=ErrorCode.ITEM_NOT_FOUND)
@@ -34,15 +34,16 @@ class ItemManager(Generic[TItem, TData, TMetadata]):
         self.embedding_store.update([updated_metadata]) 
 
 
-    def update_from_assignments(self, assignments: Assignments, merges: ClusterMerges) -> None:
-        item_ids = [str(k) for k in assignments.keys()]
+    def assign(self, result: ClusterResult) -> None:
+        if not result.assignments: return
+        item_ids = [str(k) for k in result.assignments.keys()]
         updated_items: list[ItemEmbedding] = []
 
         for item_id, metadata in self.stream_metadata_by_ids(item_ids):
-            original_cluster = assignments[item_id]
+            original_cluster = result.assignments[item_id]
 
             new_cluster_id = next(
-                (mid for mid, clusters in merges.items()
+                (mid for mid, clusters in result.merges.items()
                 if original_cluster in clusters),
                 original_cluster,
             )
@@ -56,7 +57,7 @@ class ItemManager(Generic[TItem, TData, TMetadata]):
         self.embedding_store.update(updated_items)
 
 
-    def update_from_merges(self, merges: ClusterMerges) -> None:
+    def reassign_from_merges(self, merges: ClusterMerges) -> None:
         all_target_cluster_ids = [cid for targets in merges.values() for cid in targets]
         updated_items: list[ItemEmbedding] = []
 

@@ -1,5 +1,6 @@
 import asyncio 
 import numpy as np
+import math
 from typing import List, Dict, Optional, Generic
 
 from smartscan import ItemEmbedding, Cluster, ClusterNoEmbeddings, ClusterMetadata, ClusterMerges, ClusterId, ItemEmbeddingUpdate, Include, GetResult, QueryResult, ClusterResult
@@ -29,7 +30,7 @@ class ClusterManager(Generic[TItem, TData, TMetadata]):
         self.label_confidence_threshold = label_confidence_threshold
         self.label_concurrency = label_concurrency
     
-    async def cluster(self, auto_label: bool = True, default_threshold: float = 0.3) -> ClusterResult:
+    async def cluster(self, auto_label: bool = True, default_threshold: float = 0.3) -> List[ItemEmbeddingUpdate[None, ClusterMetadata]]:
         ids, _, embeddings = self.items_manager.get_samples(1e5, exclude_clustered=True)
         existing_clusters = self.get_all_clusters()
         clusterer = IncrementalClusterer(
@@ -37,44 +38,11 @@ class ClusterManager(Generic[TItem, TData, TMetadata]):
             existing_clusters=existing_clusters,
         )
         result = clusterer.cluster(ids, embeddings)
-        if result.assignments:
-            self.items_manager.update_from_assignments(result.assignments, result.merges)
-        if result.clusters:
-            unlabelled = await self.update(result.clusters, result.merges)
-            if len(unlabelled) > 0 and auto_label:
-                n_labelled = await self.label_and_update(unlabelled)
-        return result
+        unlabelled = await self._update_from_result(result)
+        if len(unlabelled) > 0 and auto_label:
+           await self.label_and_update(unlabelled)
+        return unlabelled
 
-    async def update(self, clusters: Dict[str, Cluster], merges: ClusterMerges) -> List[ItemEmbeddingUpdate[None, ClusterMetadata]]:
-        effective_clusters: Dict[str, Cluster] = clusters.copy()
-
-        if merges:
-            merged_ids = {cid for targets in merges.values() for cid in targets}
-            for mid in merged_ids:
-                effective_clusters.pop(mid, None)
-     
-      
-        updated_clusters: list[ItemEmbedding[None, ClusterMetadata]] = []
-        unlabelled_clusters: list[ItemEmbeddingUpdate[None, ClusterMetadata]] = []
-
-        for cluster in effective_clusters.values():
-            updated_cluster = ItemEmbedding[None, ClusterMetadata](
-                cluster.prototype_id,
-                cluster.embedding,
-                metadata={**cluster.metadata.model_dump()} 
-            )
-            updated_clusters.append(updated_cluster)
-
-            if cluster.label== Cluster.UNLABELLED:
-                unlabelled_clusters.append(ItemEmbeddingUpdate(item_id=updated_cluster.item_id, metadata=updated_cluster.metadata, data=updated_cluster.data))
-             
-        if merges:
-            self.embedding_store.delete(list(merged_ids))
-
-        if len(updated_clusters) > 0:
-            self.embedding_store.upsert(updated_clusters)
-        
-        return unlabelled_clusters
     
     async def label_and_update(self, unlabelled_clusters: List[ItemEmbeddingUpdate[None, ClusterMetadata]], sample_size: int = 10) -> int:
         existing_labels = self.get_existing_labels()
@@ -107,7 +75,7 @@ class ClusterManager(Generic[TItem, TData, TMetadata]):
     def label(self, cluster_id: str, sample_size: int, existing_labels: list[str]) -> LLMClassificationResult:
         raise NotImplementedError
     
-    async def async_label(self, semaphore:  asyncio.Semaphore, cluster_id: str, sample_size: int, existing_labels: list[str]):
+    async def async_label(self, semaphore:  asyncio.Semaphore, cluster_id: str, sample_size: int, existing_labels: list[str]) -> LLMClassificationResult:
         async with semaphore:
             return await asyncio.to_thread(self.label, cluster_id, sample_size, existing_labels)
 
@@ -122,37 +90,14 @@ class ClusterManager(Generic[TItem, TData, TMetadata]):
         return True
 
     def merge(self, merges: ClusterMerges) -> List[ClusterNoEmbeddings]:
-        self.items_manager.update_from_merges(merges)
+        self.items_manager.reassign_from_merges(merges)
         merged_clustered_ids = {cid for targets in merges.values() for cid in targets}
-        all_clusters = self.get_all_clusters()
-
-       # MUST happen after get all clusters!!!
         self.embedding_store.delete(list(merged_clustered_ids)) 
-
         updated_clusters: List[ItemEmbedding[None, ClusterMetadata]] = []
 
         for merge_id in merges.keys():
-            cluster = self.get_clusters(cluster_ids=[merge_id], include=['metadatas'])[merge_id]
-            _, _, embeds  = self.items_manager.get_samples(1e5, cluster_ids=[merge_id])
-            new_protoype_embed = generate_prototype_embedding(embeds)
-            new_mean_similarity = np.mean(np.dot(embeds, new_protoype_embed))
-            new_prototype_size = len(embeds)
-            all_cluster_embeds = np.stack([c.embedding for cid, c in all_clusters.items() if cid != merge_id],axis=0)
-            nearest_sim = float(np.max(np.dot(all_cluster_embeds, new_protoype_embed)))
-            
-            updated_clusters.append(
-                ItemEmbedding[None, ClusterMetadata](
-                item_id = cluster.prototype_id,
-                embedding=new_protoype_embed,
-                metadata=ClusterMetadata(
-                    prototype_size=new_prototype_size,
-                    mean_similarity=new_mean_similarity,
-                    label = cluster.label,
-                    nearest_other_similarity=nearest_sim,
-                    separation_margin=new_mean_similarity - nearest_sim
-                    ).model_dump()
-                    )
-                )
+            cluster = self._sync(merge_id)
+            updated_clusters.append(cluster)
         self.embedding_store.upsert(updated_clusters)
 
         return self._to_clusters_from_item_embeddings(updated_clusters, with_embeddings=False)
@@ -259,7 +204,66 @@ class ClusterManager(Generic[TItem, TData, TMetadata]):
                 )
 
         return top_clusters
+    
 
+    async def _update_from_result(self, result: ClusterResult) -> List[ItemEmbeddingUpdate[None, ClusterMetadata]]:
+        self.items_manager.assign(result)
+        effective_clusters: Dict[str, Cluster] = result.clusters.copy()
+
+        if result.merges:
+            merged_ids = {cid for targets in result.merges.values() for cid in targets}
+            for mid in merged_ids:
+                effective_clusters.pop(mid, None)
+     
+        cluster_updates: list[ItemEmbedding[None, ClusterMetadata]] = []
+        unlabelled_clusters: list[ItemEmbeddingUpdate[None, ClusterMetadata]] = []
+
+        for cluster in effective_clusters.values():
+            updated_cluster = ItemEmbedding[None, ClusterMetadata](
+                cluster.prototype_id,
+                cluster.embedding,
+                metadata={**cluster.metadata.model_dump()} 
+            )
+            cluster_updates.append(updated_cluster)
+
+            if cluster.label== Cluster.UNLABELLED:
+                unlabelled_clusters.append(ItemEmbeddingUpdate(item_id=updated_cluster.item_id, metadata=updated_cluster.metadata, data=updated_cluster.data))
+             
+        if len(cluster_updates) > 0:
+            self.embedding_store.upsert(cluster_updates)
+        
+        if result.merges:
+            clusters_updates_from_merge: List[ItemEmbedding[None, ClusterMetadata]] = []
+            for merge_id in result.merges.keys():
+                cluster = self._sync(merge_id)
+                clusters_updates_from_merge.append(cluster)
+
+            self.embedding_store.upsert(clusters_updates_from_merge)
+
+        return unlabelled_clusters
+
+    def _sync(self, cluster_id: ClusterId) -> ItemEmbedding[None, ClusterMetadata]:
+        cluster = self.get_clusters(cluster_ids=[cluster_id], include=['metadatas'])[cluster_id]
+        _, _, embeds = self.items_manager.get(cluster_ids=[cluster_id])
+        new_protoype_embed, new_mean_sim, new_std_sim = self._compute_cluster_metrics(embeds)
+        
+        return ItemEmbedding[None, ClusterMetadata](
+            item_id = cluster.prototype_id,
+            embedding=new_protoype_embed,
+            metadata=ClusterMetadata(
+                prototype_size=len(embeds),
+                mean_similarity=new_mean_sim,
+                std_similarity=new_std_sim,
+                label = cluster.label
+                ).model_dump()
+            )
+
+    def _compute_cluster_metrics(self, embeds: List[np.ndarray]):
+        new_protoype_embed = generate_prototype_embedding(embeds)
+        sims = np.dot(embeds, new_protoype_embed)
+        new_mean_sim = float(np.mean(sims))
+        new_std_sim = math.sqrt(np.mean([(float(sim) - new_mean_sim)**2 for sim in sims]))
+        return new_protoype_embed, new_mean_sim, new_std_sim
     
     def _to_clusters_dict(self, results: QueryResult[None, ClusterMetadata] | GetResult[None, ClusterMetadata], with_embeddings: bool = False) -> (Dict[ClusterId, Cluster] | Dict[ClusterId, ClusterNoEmbeddings]):
         if with_embeddings:
