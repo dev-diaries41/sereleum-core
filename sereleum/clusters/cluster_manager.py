@@ -44,10 +44,18 @@ class ClusterManager(Generic[TItem, TData, TMetadata]):
         return unlabelled
 
     
+    @abstractmethod
+    def label(self, cluster_id: str, sample_size: int) -> LLMClassificationResult:
+        raise NotImplementedError
+    
+    async def async_label(self, semaphore:  asyncio.Semaphore, cluster_id: str, sample_size: int) -> LLMClassificationResult:
+        async with semaphore:
+            return await asyncio.to_thread(self.label, cluster_id, sample_size)
+
+
     async def label_and_update(self, unlabelled_clusters: List[ItemEmbeddingUpdate[None, ClusterMetadata]], sample_size: int = 10) -> int:
-        existing_labels = self.get_existing_labels()
         sem = asyncio.Semaphore(self.label_concurrency)
-        label_tasks = {cluster.item_id: self.async_label(sem, cluster.item_id, sample_size, existing_labels) for cluster in unlabelled_clusters}
+        label_tasks = {cluster.item_id: self.async_label(sem, cluster.item_id, sample_size) for cluster in unlabelled_clusters}
         label_results = {}
         
         if label_tasks:
@@ -59,9 +67,10 @@ class ClusterManager(Generic[TItem, TData, TMetadata]):
         for cluster in unlabelled_clusters:
             result = label_results[cluster.item_id]
             if isinstance(result, Exception):
-                print(f"Warning: Error labelling {cluster.item_id} | Details: {result}")
+                print(f"[WARNING] Error labelling {cluster.item_id} | Details: {result}")
             else:
                 if result.confidence < self.label_confidence_threshold:
+                    print(f"[WARNING] Cluster {cluster.item_id} not labelled | Details: Below confidence threshold: confidence={result.confidence}")
                     continue
                 cluster.metadata['label'] = result.label
                 labelled_clusters.append(cluster)
@@ -71,14 +80,6 @@ class ClusterManager(Generic[TItem, TData, TMetadata]):
 
         return len(labelled_clusters)
     
-    @abstractmethod
-    def label(self, cluster_id: str, sample_size: int, existing_labels: list[str]) -> LLMClassificationResult:
-        raise NotImplementedError
-    
-    async def async_label(self, semaphore:  asyncio.Semaphore, cluster_id: str, sample_size: int, existing_labels: list[str]) -> LLMClassificationResult:
-        async with semaphore:
-            return await asyncio.to_thread(self.label, cluster_id, sample_size, existing_labels)
-
 
     def update_label(self, cluster_id: str, label: str) -> bool:
         result = self.get_clusters(cluster_ids=[cluster_id], include=['metadatas'])

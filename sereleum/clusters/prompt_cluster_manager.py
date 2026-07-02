@@ -26,16 +26,16 @@ class PromptClusterManager(ClusterManager[Prompt, str, PromptMetadata]):
         )
    
     
-    def label(self, cluster_id, sample_size, existing_labels) -> LLMClassificationResult:
+    def label(self, cluster_id, sample_size) -> LLMClassificationResult:
         clusters = self.get_clusters(cluster_ids=[cluster_id], include=['embeddings'])
         if not clusters:
             raise ValueError("Cluster not found")
         prompts = self.items_manager.embedding_store.query(query_embeds=[clusters[cluster_id].embedding], filter={"cluster_id": cluster_id},  limit=sample_size, include=['documents'])
         sample_prompts = [content for content in prompts.datas]
-        input_prompt = self._get_labelling_prompt(cluster_id, existing_labels, sample_prompts)
+        input_prompt = self._get_labelling_prompt(cluster_id, sample_prompts)
         return self.llm.generate_json(input_prompt, LLMClassificationResult)
     
     @staticmethod
-    def _get_labelling_prompt(cluster_id: str, existing_labels: list[str], sample_prompts: list[str]) -> str:
-        return f"""## ClusterId: {cluster_id}\n\n##Existing labels {existing_labels} Cluster sample_prompts \n\n {sample_prompts}"""
+    def _get_labelling_prompt(cluster_id: str, sample_prompts: list[str]) -> str:
+        return f"""## ClusterId: {cluster_id}\n\n Cluster sample_prompts \n\n {sample_prompts}"""
     

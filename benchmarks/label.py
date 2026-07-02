@@ -34,7 +34,7 @@ def run(model: TextEmbeddingModel, embed_dim: int):
         raise ValueError("No existing clusters")
     sample_size = 10
     cluser_id = list(clusters.keys())[0]
-    result = clusters_manager.label(cluser_id, sample_size, [])
+    result = clusters_manager.label(cluser_id, sample_size)
     print(result)
     
     with open(BENCHMARK_OUTPUT_PATH, "a") as f:
