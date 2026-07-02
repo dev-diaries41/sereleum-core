@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from typing import List, Optional
 
-from smartscan import  ClusterAccuracy, ClusterNoEmbeddings, ClusterMerges
+from smartscan import  ClusterNoEmbeddings, ClusterMerges
 
 from sereleum.schemas.items.prompt import Prompt, PromptsOverviewInfo
 from sereleum.types import Status
@@ -57,8 +57,6 @@ class GetPromptsOverviewResponse(PromptsOverviewInfo):
 class GetCountResponse(BaseModel):
     count: int
 
-class GetLabelsResponse(BaseModel):
-    labels: List[str]
 
 class GetClusterRequestParams(BaseModel):
     cluster_id: Optional[str] = None
@@ -68,9 +66,6 @@ class GetClusterRequestParams(BaseModel):
     
 class GetClustersResponse(BaseModel):
     clusters: List[ClusterNoEmbeddings]
-
-class GetClustersAccuracyResponse(BaseModel):
-    accuracy: ClusterAccuracy
 
 
 class UpdateLabelParams(BaseModel):

@@ -1,9 +1,8 @@
 import pytest
 import pytest_asyncio
-from sereleum.data import get_dummy_data
+from sereleum.utils.data import get_dummy_data
 from client.sereleum_client import SereleumClient
 from httpx import HTTPStatusError
-from smartscan import ClusterAccuracy
 
 from sereleum.schemas.items.prompt import Prompt, PromptsOverviewInfo
 from sereleum.schemas.api import  AddPromptsResponse
@@ -46,12 +45,6 @@ class TestReveliumClient:
         retrieved_prompts = await client.query_prompts("facts about physics", limit=10, cluster_ids=None)
         assert isinstance(retrieved_prompts, list)
 
-    async def test_labels(self, setup_client: tuple[SereleumClient, list[Prompt]]):
-        client, _ = setup_client
-        labels = await client.get_existing_labels()
-        assert isinstance(labels, list)
-
-
     async def test_update_cluster_label(self, setup_client: tuple[SereleumClient, list[Prompt]]):
         client, _ = setup_client
         label = "test label"
@@ -78,11 +71,6 @@ class TestReveliumClient:
         async for event in  client.track_prompts_index_progress( add_file_result.job_id):
             pass
         
-    # async def test_accuracy(self, setup_client: tuple[SereleumClient, list[Prompt]]):
-    #     client, _ = setup_client
-    #     accuracy = await client.get_cluster_accuracy()
-    #     assert isinstance(accuracy, ClusterAccuracy)
-
 
     async def test_updated_prompt_cluster(self, setup_client: tuple[SereleumClient, list[Prompt]]):
         client, _ = setup_client

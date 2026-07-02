@@ -30,11 +30,9 @@ from sereleum.schemas.api import (
     GetPromptsRequest, 
     GetPromptsResponse, 
     GetCountResponse, 
-    GetLabelsResponse, 
     GetClustersResponse, 
     GetPromptsOverviewResponse, 
     UpdateLabelResponse, 
-    GetClustersAccuracyResponse, 
     QueryPromptsRequest, 
     UpdatePromptClusterIdResponse, 
     AddPromptsResponse,
@@ -214,18 +212,6 @@ async def update_cluster_label(cluster_id: str, label: str):
 async def count_clusters():
     count = await run_in_threadpool( clusters_manager.embedding_store.count)
     return JSONResponse(GetCountResponse(count=count).model_dump())
-
-@app.get(Routes.GET_CLUSTER_LABELS_ENDPOINT)
-async def get_existing_labels():
-    labels = await run_in_threadpool(clusters_manager.get_existing_labels)
-    return JSONResponse(GetLabelsResponse(labels=labels).model_dump())
-
-
-# @app.get(Routes.GET_CLUSTER_ACCURACY_ENDPOINT)
-# async def get_cluster_accuracy():
-#     accuracy = await run_in_threadpool(clusters_manager.calculate_cluster_accuracy)
-#     return JSONResponse(GetClustersAccuracyResponse(accuracy=accuracy).model_dump())
-
 
 @app.get(Routes.GET_CLUSTER_PLOT_ENDPOINT)
 async def get_clusters_plot():

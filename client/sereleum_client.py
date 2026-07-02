@@ -2,7 +2,7 @@ from typing import List, Optional
 import httpx
 import json
 
-from smartscan import ClusterAccuracy, ClusterNoEmbeddings, ClusterMerges
+from smartscan import ClusterNoEmbeddings, ClusterMerges
 
 from sereleum.schemas.items.prompt import Prompt, PromptsOverviewInfo
 from sereleum.constants.api import Routes
@@ -93,20 +93,7 @@ class SereleumClient:
             res.raise_for_status() 
             return res.json().get("count", 0)
 
-    async def get_existing_labels(self) -> List[str]:
-        url = f"{self.base_url}{Routes.GET_CLUSTER_LABELS_ENDPOINT}"
-        async with httpx.AsyncClient() as client:
-            res = await client.get(url)
-            res.raise_for_status() 
-            return res.json().get("labels", [])
-        
-    async def get_cluster_accuracy(self) -> ClusterAccuracy:
-        url = f"{self.base_url}{Routes.GET_CLUSTER_ACCURACY_ENDPOINT}"
-        async with httpx.AsyncClient() as client:
-            res = await client.get(url)
-            res.raise_for_status() 
-            return ClusterAccuracy(**res.json().get("accuracy"))
-        
+
     async def get_cluster_plot(self) -> Optional[bytes]:
         url = f"{self.base_url}{Routes.GET_CLUSTER_PLOT_ENDPOINT}"
         # params = {"method": method}
