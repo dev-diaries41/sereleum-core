@@ -10,6 +10,7 @@ requires-python = ">=3.10"
 
 dependencies = [
     "chromadb==1.3.4",
+    "asyncpg==0.31.0",
     "smartscan @ git+https://github.com/smartscanapp/smartscan-lib.git@dev",
     "llm_connect @ git+https://github.com/dev-diaries41/llm-connect.git",
     "aiosqlite==0.22.1",
