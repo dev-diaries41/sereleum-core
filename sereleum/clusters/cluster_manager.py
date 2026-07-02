@@ -33,8 +33,9 @@ class ClusterManager(Generic[TItem, TData, TMetadata]):
     async def cluster(self, auto_label: bool = True, default_threshold: float = 0.3) -> List[ItemEmbeddingUpdate[None, ClusterMetadata]]:
         ids, _, embeddings = self.items_manager.get_samples(1e5, exclude_clustered=True)
         existing_clusters = self.get_all_clusters()
+        threshold = self._get_default_threshold(List(existing_clusters.values())) if existing_clusters else default_threshold
         clusterer = IncrementalClusterer(
-            default_threshold=default_threshold,
+            default_threshold=threshold,
             existing_clusters=existing_clusters,
         )
         result = clusterer.cluster(ids, embeddings)
@@ -265,6 +266,9 @@ class ClusterManager(Generic[TItem, TData, TMetadata]):
         new_mean_sim = float(np.mean(sims))
         new_std_sim = math.sqrt(np.mean([(float(sim) - new_mean_sim)**2 for sim in sims]))
         return new_protoype_embed, new_mean_sim, new_std_sim
+
+    def _get_default_threshold(self, existing_clusters: List[Cluster]) -> float:
+        return float(np.mean([(c.metadata.mean_similarity - c.metadata.std_similarity) for c in existing_clusters]))
     
     def _to_clusters_dict(self, results: QueryResult[None, ClusterMetadata] | GetResult[None, ClusterMetadata], with_embeddings: bool = False) -> (Dict[ClusterId, Cluster] | Dict[ClusterId, ClusterNoEmbeddings]):
         if with_embeddings:
