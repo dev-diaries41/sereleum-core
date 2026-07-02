@@ -108,12 +108,12 @@ class ItemManager(Generic[TItem, TData, TMetadata]):
         return id_list, metadata_list, embedding_list
     
 
-    def get(self, ids: Optional[List[str]] = None, cluster_ids: Optional[List[str]] = None, limit: Optional[int] = None, offset: Optional[int] = None) -> List[TItem]:
-        if ids:
-            return self.get_by_ids(ids)
+    def get(self, ids: Optional[List[str]] = None, cluster_ids: Optional[List[str]] = None, limit: Optional[int] = None, offset: Optional[int] = None, exclude_clustered: bool = False) -> List[TItem]:
+        if ids: return self.get_by_ids(ids)
         
+        cluster_filter = self._get_cluster_filter(cluster_ids, exclude_clustered)
         result = self.embedding_store.get(
-                filter={"cluster_id": {"$in": cluster_ids}} if cluster_ids else None,
+                filter=cluster_filter,
                 include=["metadatas", "documents"],
                 offset=offset,
                 limit=limit,
@@ -134,11 +134,13 @@ class ItemManager(Generic[TItem, TData, TMetadata]):
         return list(self.stream_by_ids(ids, batch_size))
     
     # This handle cases where the number of ids may be very high
-    def stream_by_ids(self, ids: List[str], batch_size: int= 100) -> Generator[TItem, Any, None]:
+    def stream_by_ids(self, ids: List[str], batch_size: int= 100, exclude_clustered: bool = False) -> Generator[TItem, Any, None]:
+        cluster_filter = self._get_cluster_filter(None, exclude_clustered)
         start = 0
 
         while start < len(ids):
             result = self.embedding_store.get(
+                filter=cluster_filter,
                 ids = ids[start:start + batch_size],
                 include=["metadatas", "documents"],
             )
@@ -147,10 +149,11 @@ class ItemManager(Generic[TItem, TData, TMetadata]):
             yield from self.to_items(result)
             start += batch_size
     
-    def stream(self, cluster_ids: Optional[List[str]] = None, batch_size: int= 100, initial_offset: int = 0) -> Generator[TItem, Any, None]:
+    def stream(self, cluster_ids: Optional[List[str]] = None, batch_size: int= 100, initial_offset: int = 0, exclude_clustered: bool = False) -> Generator[TItem, Any, None]:
+        cluster_filter = self._get_cluster_filter(cluster_ids, exclude_clustered)
         for batch in paginate_until(
             lambda offset, batch_size: self.embedding_store.get(
-                filter={"cluster_id": {"$in": cluster_ids}} if cluster_ids else None,
+                filter=cluster_filter,
                 include=["metadatas", "documents"],
                 offset=offset,
                 limit=batch_size,
@@ -163,11 +166,14 @@ class ItemManager(Generic[TItem, TData, TMetadata]):
             
     
     # Note: tokens in metadata shouldnt be none here
-    def stream_metadata_by_ids(self, ids: list[str], batch_size: int= 100, with_embeddings: bool = False) -> Generator[tuple[str, TMetadata] | tuple[str, TMetadata, ndarray], Any, None]:
+    def stream_metadata_by_ids(self, ids: list[str], batch_size: int= 100, with_embeddings: bool = False, exclude_clustered: bool = False) -> Generator[tuple[str, TMetadata] | tuple[str, TMetadata, ndarray], Any, None]:
+        cluster_filter = self._get_cluster_filter(None, exclude_clustered)
+
         start = 0
 
         while start < len(ids):
             result = self.embedding_store.get(
+                filter=cluster_filter,
                 ids=ids[start:start + batch_size],
                 include=["metadatas"],
             )
@@ -179,13 +185,10 @@ class ItemManager(Generic[TItem, TData, TMetadata]):
     
     # Note: tokens in metadata shouldnt be none here
     def stream_metadata(self, cluster_ids: Optional[List[str]] = None, batch_size: int= 100, initial_offset: int = 0,  with_embeddings: bool = False, exclude_clustered: bool = False) -> Generator[tuple[str, TMetadata] | tuple[str, TMetadata, ndarray], Any, None]:
-        where={"cluster_id": {"$in": cluster_ids}} if cluster_ids else None
-        if exclude_clustered:
-            where = {"cluster_id": {"$eq": UNCLUSTERED}}
-            
+        cluster_filter = self._get_cluster_filter(cluster_ids, exclude_clustered)
         for batch in paginate_until(
             lambda offset, limit: self.embedding_store.get(
-                filter=where,
+                filter=cluster_filter,
                 include=["metadatas", "embeddings"] if with_embeddings else ["metadatas"],
                 offset=offset,
                 limit=limit,
@@ -195,6 +198,8 @@ class ItemManager(Generic[TItem, TData, TMetadata]):
             initial_offset = initial_offset   
                               ):
             yield from self.to_item_tuples(batch, with_embeddings=with_embeddings)
+   
+   
     @staticmethod
     def _update_metadata(old_meta: dict, new_cluster_id: str) -> Dict:
         updated_at = datetime.now().isoformat()
@@ -211,3 +216,8 @@ class ItemManager(Generic[TItem, TData, TMetadata]):
     def to_item_tuples(self, result: GetResult | QueryResult, with_embeddings: bool = False)  -> tuple[str, TMetadata] | tuple[str, TMetadata, ndarray]:
         raise NotImplementedError
     
+    def _get_cluster_filter(self, cluster_ids: Optional[List[str]], exclude_clustered: bool):
+        cluster_filter={"cluster_id": {"$in": cluster_ids}} if cluster_ids else None
+        if exclude_clustered and not cluster_filter:
+            cluster_filter = {"cluster_id": {"$eq": UNCLUSTERED}}
+        return cluster_filter
