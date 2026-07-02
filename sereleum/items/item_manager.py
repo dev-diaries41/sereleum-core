@@ -10,7 +10,7 @@ from smartscan.embeds import EmbeddingStore
 
 from sereleum.schemas.items.item import TData, TItem, TMetadata
 from sereleum.store.helpers import   paginate_until
-from sereleum.errors import ReveliumError, ErrorCode
+from sereleum.errors import SereleumError, ErrorCode
 from sereleum.constants import UNCLUSTERED
 
 from abc import abstractmethod
@@ -25,7 +25,7 @@ class ItemManager(Generic[TItem, TData, TMetadata]):
     def reassign_item(self, item_id: str, new_cluster_id: str) -> None:
         items = self.get_by_ids([item_id])
         if len(items) == 0:
-            raise ReveliumError("Item not found", code=ErrorCode.ITEM_NOT_FOUND)
+            raise SereleumError("Item not found", code=ErrorCode.ITEM_NOT_FOUND)
         item = items[0]
         updated_metadata = ItemEmbeddingUpdate(
                     item_id,

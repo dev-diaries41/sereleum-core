@@ -10,7 +10,7 @@ class ErrorCode(Enum):
     INVALID_ARGUMENT = "INVALID_ARGUMENT"
     MISSING_LLM_CLIENT = "MISSING_LLM_CLIENT"
 
-class ReveliumError(Exception):
+class SereleumError(Exception):
     def __init__(self, message: str, code: Optional[ErrorCode] = None, details: Optional[Union[Dict, str, object]] = None):
         if details is None:
             details = {}

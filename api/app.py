@@ -25,7 +25,7 @@ from sereleum.constants.models import OPENAI_API_KEY, DEFAULT_SYSTEM_PROMPT, DEF
 from sereleum.constants import  UPLOAD_DIR
 from sereleum.constants.api import Routes
 from sereleum.schemas.api import FailMessage, CompleteMessage, ProgressMessage
-from sereleum.errors import ReveliumError, ErrorCode
+from sereleum.errors import SereleumError, ErrorCode
 from sereleum.schemas.api import (
     GetPromptsRequest, 
     GetPromptsResponse, 
@@ -183,7 +183,7 @@ async def get_overview():
 async def update_prompt_cluster(prompt_id: str, cluster_id: str):
     try:
         await run_in_threadpool( prompts_manager.reassign_item , prompt_id,  cluster_id)
-    except ReveliumError as e:
+    except SereleumError as e:
         if e.code == ErrorCode.ITEM_NOT_FOUND:
             raise HTTPException(status_code=404, detail="Prompt not found")
         else:
