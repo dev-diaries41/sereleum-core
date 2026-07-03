@@ -10,17 +10,27 @@ services:
       - REDIS_HOST=redis
       - REDIS_PASSWORD=${REDIS_PASSWORD}
       - REVELIUM_BASE_DIR=/data
+      - POSTGRES_HOST=db
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
     depends_on:
       - redis
-      - chromadb
+      - db
     restart: unless-stopped
-  chromadb:
-    image: chromadb/chroma
-    volumes:
-      - chroma_data:/data/chroma
+  db:
+    image: pgvector/pgvector:pg18-trixie
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
     ports:
-      - "127.0.0.1:8001:8000"
+      - "5433:5432"
+    volumes:
+      - db_data:/var/lib/postgresql
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
     restart: unless-stopped
+
   dramatiq_worker:
     build: .
     command: dramatiq api.prompts.tasks --processes 1 --threads 1
@@ -66,4 +76,4 @@ volumes:
   # caddy_data:
   # caddy_config:
   shared_data:
-  chroma_data:
+  db_data:
