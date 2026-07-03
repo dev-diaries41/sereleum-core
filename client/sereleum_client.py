@@ -2,11 +2,12 @@ from typing import List, Optional
 import httpx
 import json
 
-from smartscan import ClusterNoEmbeddings, ClusterMerges
+from smartscan import ClusterMerges
 
+from sereleum.schemas.cluster import StoredClusterMetadata
 from sereleum.schemas.items.prompt import Prompt, PromptsOverviewInfo
 from sereleum.constants.api import Routes
-from sereleum.schemas.api import  GetPromptsRequest, GetClusterRequestParams, UpdateLabelParams, QueryPromptsRequest, UpdatePromptClusterIdParams, AddPromptsResponse, MergeClustersRequest, ClusterOptionsForm
+from sereleum.schemas.api import  GetPromptsRequest, GetPromptsByIdsRequest, GetClusterRequestParams, UpdateLabelParams, QueryPromptsRequest, UpdatePromptClusterIdParams, AddPromptsResponse, MergeClustersRequest, ClusterOptionsForm
 
 class SereleumClient:
     def __init__(self, base_url: str):
@@ -24,14 +25,24 @@ class SereleumClient:
             res.raise_for_status() 
             return AddPromptsResponse(**res.json())
         
-    async def get_prompts(self, ids: Optional[List[str]] = None, cluster_ids: Optional[List[str]] = None, limit: Optional[int] = None, offset: Optional[int] = None) -> List[Prompt]:
+    async def get_prompts(self, cluster_ids: Optional[List[str]] = None, limit: Optional[int] = None, offset: Optional[int] = None) -> List[Prompt]:
         url = f"{self.base_url}{Routes.BASE_PROMPTS_ENDPOINT}"
-        payload = GetPromptsRequest(prompt_ids=ids, cluster_ids=cluster_ids, limit=limit, offset=offset)
+        payload = GetPromptsRequest(cluster_ids=cluster_ids, limit=limit, offset=offset)
 
         async with httpx.AsyncClient() as client:
             res = await client.post(url, json=payload.model_dump())
             res.raise_for_status() 
             return [Prompt(**p) for p in res.json().get('prompts', [])]
+        
+    async def get_prompts_by_ids(self, ids: List[str]) -> List[Prompt]:
+        url = f"{self.base_url}{Routes.BASE_PROMPTS_ENDPOINT}"
+        payload = GetPromptsByIdsRequest(prompt_ids=ids)
+
+        async with httpx.AsyncClient() as client:
+            res = await client.post(url, json=payload.model_dump())
+            res.raise_for_status() 
+            return [Prompt(**p) for p in res.json().get('prompts', [])]
+        
         
     async def query_prompts(self, query: str, cluster_ids: Optional[List[str]] = None, limit: Optional[int] = None) -> List[Prompt]:
         url = f"{self.base_url}{Routes.QUERY_PROMPTS_ENDPOINT}"
@@ -59,14 +70,14 @@ class SereleumClient:
             return res.json().get("updated_cluster_id")
 
 
-    async def get_clusters(self, cluster_id: Optional[str] = None, limit: Optional[str] = None, offset: Optional[str] = None ) -> List[ClusterNoEmbeddings]:
+    async def get_clusters(self, cluster_id: Optional[str] = None, limit: Optional[str] = None, offset: Optional[str] = None ) -> List[StoredClusterMetadata]:
         url = f"{self.base_url}{Routes.BASE_CLUSTER_ENDPOINT}"
         params = GetClusterRequestParams(cluster_id=cluster_id, limit=limit, offset=offset)
 
         async with httpx.AsyncClient() as client:
             res = await client.get(url, params=params.model_dump())
             res.raise_for_status() 
-            return [ClusterNoEmbeddings(**c) for c in res.json().get('clusters', [])]
+            return [StoredClusterMetadata(**c) for c in res.json().get('clusters', [])]
         
 
     async def update_cluster_label(self, cluster_id: str, label: str) -> str:
@@ -107,14 +118,14 @@ class SereleumClient:
             res.raise_for_status()
             return res.content 
         
-    async def merge_clusters(self, merges: ClusterMerges) -> List[ClusterNoEmbeddings]:
+    async def merge_clusters(self, merges: ClusterMerges) -> List[StoredClusterMetadata]:
         url = f"{self.base_url}{Routes.MERGE_CLUSTERS_ENDPOINT}"
         payload = MergeClustersRequest(merges=merges)
 
         async with httpx.AsyncClient() as client:
             res = await client.post(url, json=payload.model_dump())
             res.raise_for_status() 
-            return [ClusterNoEmbeddings(**c) for c in res.json().get('updated_clusters', [])]
+            return [StoredClusterMetadata(**c) for c in res.json().get('updated_clusters', [])]
         
         
     async def track_prompts_index_progress(self, job_id: str):
