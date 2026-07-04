@@ -43,7 +43,7 @@ class ClusterManager(Generic[TItem, TItemFilter]):
     async def cluster(self, auto_label: bool = True, default_threshold: float = 0.3) -> ClusterResult:
         # TEMP solution instead get clustered items using join
         uncluster_embeds = await self._get_unclustered_items()
-        if not uncluster_embeds: return [] 
+        if not uncluster_embeds: return ClusterResult()
         all_meta = await self.cluster_store.get()
         all_cluster_embeds = await self.cluster_embedding_store.get()
         existing_clusters = { emb.item_id: Cluster(
