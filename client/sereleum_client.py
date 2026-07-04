@@ -35,7 +35,7 @@ class SereleumClient:
             return [Prompt(**p) for p in res.json().get('prompts', [])]
         
     async def get_prompts_by_ids(self, ids: List[str]) -> List[Prompt]:
-        url = f"{self.base_url}{Routes.BASE_PROMPTS_ENDPOINT}"
+        url = f"{self.base_url}{Routes.GET_PROMPTS_BY_IDS_ENDPOINT}"
         payload = GetPromptsByIdsRequest(prompt_ids=ids)
 
         async with httpx.AsyncClient() as client:
@@ -129,7 +129,7 @@ class SereleumClient:
         
         
     async def track_prompts_index_progress(self, job_id: str):
-        url = f"{self.base_url}/{Routes.SSE_PROMPTS_INDEX_PROGRESS}?job_id={job_id}"
+        url = f"{self.base_url}{Routes.SSE_PROMPTS_INDEX_PROGRESS}?job_id={job_id}"
 
         async with httpx.AsyncClient(timeout=None) as client:
             async with client.stream("GET", url) as response:
@@ -142,7 +142,7 @@ class SereleumClient:
                         yield json.loads(data_str)
 
     async def track_prompts_cluster_status(self, job_id: str):
-        url = f"{self.base_url}/{Routes.SSE_PROMPTS_CLUSTER_STATUS}?job_id={job_id}"
+        url = f"{self.base_url}{Routes.SSE_PROMPTS_CLUSTER_STATUS}?job_id={job_id}"
 
         async with httpx.AsyncClient(timeout=None) as client:
             async with client.stream("GET", url) as response:
