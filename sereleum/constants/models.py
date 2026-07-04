@@ -1,8 +1,5 @@
 import os
 
-from dotenv import load_dotenv
-load_dotenv()
-
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 DEFAULT_OPENAI_MODEL = "gpt-5-mini"
 DEFAULT_TEXT_EMBEDDER = "all-minilm-l6-v2"

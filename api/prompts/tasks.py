@@ -3,7 +3,6 @@ import dramatiq
 import os
 
 from dramatiq.middleware import AsyncIO, CurrentMessage
-from dramatiq.brokers.redis import RedisBroker
 
 from smartscan.models.model_manager import ModelManager
 
@@ -16,14 +15,9 @@ from sereleum.index.prompts.indexer_listener import PromptIndexListener
 from sereleum.constants.models import OPENAI_API_KEY, DEFAULT_SYSTEM_PROMPT, DEFAULT_OPENAI_MODEL
 from sereleum.data.db_config import get_config
 from sereleum.clusters.helpers import get_prompt_cluster_manager
-from api.redis import REDIS_HOST, REDIS_PASSWORD, REDIS_PORT, redis_client
+from api.redis import redis_client, get_broker
 
-redis_broker = RedisBroker(
-    host=REDIS_HOST,
-    port=REDIS_PORT,
-    password=REDIS_PASSWORD,
-)
-
+redis_broker = get_broker()
 redis_broker.add_middleware(AsyncIO())
 redis_broker.add_middleware(CurrentMessage())
 dramatiq.set_broker(redis_broker)
