@@ -18,14 +18,24 @@ async def setup_client():
 @pytest.mark.asyncio
 class TestReveliumClient:
 
+    async def test_add_prompts_file(self, setup_client: tuple[SereleumClient, list[Prompt]]):
+            client, _ = setup_client
+            add_file_result = await client.add_prompts_file(TEST_PROMPTS_FILE, False)
+            assert isinstance(add_file_result, AddPromptsResponse)
+            async for event in  client.track_prompts_index_progress( add_file_result.job_id):
+                print(f"EVNT: {event}")
+                
+            
     async def test_count_prompts(self, setup_client: tuple[SereleumClient, list[Prompt]]):
         client, _ = setup_client
         total_prompts = await client.count_prompts()
+        print(f"TOTAL PROMPTS: {total_prompts}")
         assert isinstance(total_prompts, int)
 
     async def test_count_clusters(self, setup_client: tuple[SereleumClient, list[Prompt]]):
         client, _ = setup_client
         total_clusters = await client.count_clusters()
+        print(f"TOTAL CLUSTERS: {total_clusters}")
         assert isinstance(total_clusters, int)
 
     async def test_get_clusters(self, setup_client: tuple[SereleumClient, list[Prompt]]):
@@ -37,8 +47,12 @@ class TestReveliumClient:
     async def test_get_prompts(self, setup_client: tuple[SereleumClient, list[Prompt]]):
         client, prompts = setup_client
         prompt_ids = [p.get("id") if isinstance(p, dict) else p.id for p in prompts]
-        retrieved_prompts = await client.get_prompts(ids=prompt_ids)
-        assert isinstance(retrieved_prompts, list)
+        prompts_from_ids = await client.get_prompts_by_ids(ids=prompt_ids)
+        assert isinstance(prompts_from_ids, list)
+
+        prompts_batch = await client.get_prompts(limit=2)
+        assert isinstance(prompts_batch, list)
+        assert len(prompts_batch) == 2
 
     async def test_query_prompts(self, setup_client: tuple[SereleumClient, list[Prompt]]):
         client, _ = setup_client
@@ -62,14 +76,6 @@ class TestReveliumClient:
         client, _ = setup_client
         overview = await client.get_prompts_overview()
         assert isinstance(overview, PromptsOverviewInfo)
-
-    
-    async def test_add_prompts_file(self, setup_client: tuple[SereleumClient, list[Prompt]]):
-        client, _ = setup_client
-        add_file_result = await client.add_prompts_file(TEST_PROMPTS_FILE, False)
-        assert isinstance(add_file_result, AddPromptsResponse)
-        async for event in  client.track_prompts_index_progress( add_file_result.job_id):
-            pass
         
 
     async def test_updated_prompt_cluster(self, setup_client: tuple[SereleumClient, list[Prompt]]):

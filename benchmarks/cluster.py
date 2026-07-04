@@ -8,15 +8,14 @@ import os
 import asyncio
 import time
 import numpy as np
-import chromadb
 
 from dataclasses import asdict
 from typing import get_args
 
-from smartscan import ClusterResult
+from smartscan import ClusterResult, Cluster, ClusterMetadata
 from smartscan.cluster import calculate_cluster_accuracy, IncrementalClusterer
 
-from benchmarks.constants import BENCHMARK_CHROMADB_PATH, BENCHMARK_DIR
+from benchmarks.constants import  BENCHMARK_DIR
 from benchmarks.utils import with_time, get_true_labels
 
 from llm_connect.providers.openai import OpenAIProvider
@@ -24,12 +23,12 @@ from llm_connect.schemas.llm import LLMProviderConfig
 
 from sereleum.constants.models import OPENAI_API_KEY, DEFAULT_SYSTEM_PROMPT, DEFAULT_OPENAI_MODEL
 from sereleum.providers.types import TextEmbeddingModel
-from sereleum.items.item_manager import ItemManager
 from sereleum.clusters.cluster_manager import ClusterManager
-from sereleum.helpers import get_prompt_manager, get_cluster_manager
 from sereleum.clusters.plot import plot_clusters, plot_clusters_with_prototypes
 from sereleum.utils.file import get_new_filename
 from sereleum.logs import getLogger
+from sereleum.data.db_config import get_config
+from sereleum.clusters.helpers import get_prompt_cluster_manager
 
 BENCHMARK_NAME = "clustering_benchmarks"
 LOG_FILE_PATH = f"logs/{BENCHMARK_NAME}.log"
@@ -47,53 +46,59 @@ logger = getLogger(BENCHMARK_NAME, LOG_FILE_PATH)
 def cluster(clusterer: IncrementalClusterer, ids, embeddings) -> tuple[ClusterResult, float]:
     return clusterer.cluster(ids, embeddings)
 
+async def get_all_clusters(cluster_manager: ClusterManager):
+    all_meta = await cluster_manager.cluster_store.get()
+    all_cluster_embeds = await cluster_manager.cluster_embedding_store.get()
+    return  { emb.item_id: Cluster(
+        prototype_id=emb.item_id,
+        embedding=emb.embedding,
+        label = meta.label,
+        metadata=ClusterMetadata(
+            prototype_size=meta.prototype_size,
+            mean_similarity=meta.mean_similarity,
+            std_similarity=meta.std_similarity,
+            label=meta.label
+        )
+    ) for emb, meta in zip(all_cluster_embeds, all_meta)}
+    
 # ids must be prefixed with label e.g promptlabel_123 for testing accuracy
-async def run(items_manager: ItemManager, clusters_manager: ClusterManager, model:TextEmbeddingModel, plot_output: str, default_threshold: float = 0.3, top_k: int = 5):
+async def run(cluster_manager: ClusterManager, model:TextEmbeddingModel, plot_output: str, default_threshold: float = 0.3, top_k: int = 5):
     results = {}    
-    ids, _, embeddings = items_manager.get_samples(1e5, exclude_clustered=True)
-    if not ids:
+    uncluster_embeds = await cluster_manager._get_unclustered_items()
+    if not uncluster_embeds:
         logger.debug("No prompts to cluster")
         return
-    existing_clusters = clusters_manager.get_all_clusters()
-    clusterer = IncrementalClusterer(default_threshold=default_threshold, top_k=top_k, existing_clusters=existing_clusters)  
-    result,time = cluster(clusterer, ids, embeddings)
-    logger.debug(f"Assignments: {len(result.assignments)} | Clusters: {len(result.clusters)} | Merges: {len(result.merges)}")
-    if result.assignments:
-        items_manager.assign(result)
-    if result.clusters:
-        unlabelled =  await clusters_manager._update_from_result(result)
-        logger.debug(f"Number unlabelled clusters: {len(unlabelled)}")
+    cluster_result = await cluster_manager.cluster(auto_label=False)
+    logger.debug(f"Assignments: {len(cluster_result.assignments)} | Clusters: {len(cluster_result.clusters)} | Merges: {len(cluster_result.merges)}")
+
     # if len(unlabelled) > 0:
     #    await clusters_manager.label_and_update(unlabelled)
-    
-    # get updated items
-    ids, meta, embeddings = items_manager.get_samples(1e5, exclude_clustered=False)
-    assignments = {item_id: meta.cluster_id for item_id, meta in zip(ids, meta)}
-
-    plot_clusters(ids, embeddings, assignments, output_path=plot_output)
-    cluster_ids = list(result.clusters.keys())
-    prototype_embeddings = np.stack([result.clusters[cid].embedding for cid in cluster_ids], axis=0)
+    ids = list(cluster_result.assignments.keys())
+    stored_embeds = await cluster_manager.item_embedding_store.get(ids)
+    embeds = [e.embedding for e in stored_embeds]
+    plot_clusters(ids, embeds, cluster_result.assignments, output_path=plot_output)
+    cluster_ids = list(cluster_result.clusters.keys())
+    prototype_embeddings = np.stack([cluster_result.clusters[cid].embedding for cid in cluster_ids], axis=0)
     filename = f"{os.path.basename(plot_output)}_with_proto"
     output = get_new_filename(BENCHMARK_PLOTS_DIR, filename, ".png")
-    plot_clusters_with_prototypes(ids, embeddings, assignments, cluster_ids, prototype_embeddings, output_path=output)
+    plot_clusters_with_prototypes(ids, embeds, cluster_result.assignments, cluster_ids, prototype_embeddings, output_path=output)
 
     true_labels = get_true_labels(ids)
-    acc_info = calculate_cluster_accuracy(true_labels, assignments)
+    acc_info = calculate_cluster_accuracy(true_labels, cluster_result.assignments)
     bench = {"accuracy": asdict(acc_info), "clustering_speed": time}
     results[model] = bench
     logger.info(results)
 
     with open(BENCHMARK_ASSIGNMENTS_PATH, "w") as f:
-        json.dump(assignments, f, indent=1, sort_keys=True)
+        json.dump(cluster_result.assignments, f, indent=1, sort_keys=True)
 
 
 async def run_real_benchmark(embedding_model: TextEmbeddingModel, embed_dim: int, default_threshold: float, top_k: int):
     llm = OpenAIProvider(OPENAI_API_KEY, LLMProviderConfig(model=DEFAULT_OPENAI_MODEL, system_prompt=DEFAULT_SYSTEM_PROMPT))
-    client = chromadb.PersistentClient(path=BENCHMARK_CHROMADB_PATH, settings=chromadb.Settings(anonymized_telemetry=False))
-    prompts_manager = get_prompt_manager(client, embedding_model, embed_dim)
-    clusters_manager = get_cluster_manager(client, embedding_model, embed_dim, prompts_manager, llm)
+    db_config = get_config()
+    cluster_manager = get_prompt_cluster_manager(db_config, embed_dim=embed_dim, llm=llm)
     plot_output = get_new_filename(BENCHMARK_PLOTS_DIR, f"real_{BENCHMARK_CLUSTERS_PLOT}", ".png")
-    await run(prompts_manager, clusters_manager, embedding_model, plot_output, default_threshold=default_threshold, top_k=top_k)
+    await run(cluster_manager, embedding_model, plot_output, default_threshold=default_threshold, top_k=top_k)
 
 def run_simulated_benchmark(n_items=10000, dim=384):
     """Benchmark the standard IncrementalClusterer."""

@@ -1,10 +1,14 @@
 
-from typing import Generic
-from smartscan.types import TData, TItem, TMetadata
 from pydantic import BaseModel
+from typing import Optional,List 
+from datetime import date
 
-
-class Item(BaseModel, Generic[TData, TMetadata]):
+class Item(BaseModel):
     id: str
-    data: TData
-    metadata: TMetadata
+
+class BaseItemFilter(BaseModel):
+    cluster_ids: Optional[List[str]] = None
+    created_after: Optional[date] = None
+    created_before: Optional[date] = None
+    updated_after: Optional[date] = None
+    updated_before: Optional[date] = None

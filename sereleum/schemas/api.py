@@ -1,9 +1,10 @@
 from pydantic import BaseModel
 from typing import List, Optional
 
-from smartscan import  ClusterNoEmbeddings, ClusterMerges
+from smartscan import  ClusterMerges
 
 from sereleum.schemas.items.prompt import Prompt, PromptsOverviewInfo
+from sereleum.schemas.cluster import StoredClusterMetadata
 from sereleum.types import Status
 
 # Websocksets / SSE
@@ -38,10 +39,13 @@ class AddPromptsResponse(JobReceipt):
     pass
  
 class GetPromptsRequest(BaseModel):
-    prompt_ids: Optional[List[str]] = None
     cluster_ids: Optional[List[str]] = None
     limit: Optional[int] = None
     offset: Optional[int] = None
+
+
+class GetPromptsByIdsRequest(BaseModel):
+    prompt_ids: Optional[List[str]] = None
 
 class QueryPromptsRequest(BaseModel):
     query:str
@@ -65,7 +69,7 @@ class GetClusterRequestParams(BaseModel):
 
     
 class GetClustersResponse(BaseModel):
-    clusters: List[ClusterNoEmbeddings]
+    clusters: List[StoredClusterMetadata]
 
 
 class UpdateLabelParams(BaseModel):
@@ -87,7 +91,7 @@ class MergeClustersRequest(BaseModel):
 
     
 class MergeResponse(BaseModel):
-    updated_clusters: List[ClusterNoEmbeddings]
+    updated_clusters: List[StoredClusterMetadata]
 
 
 class ClusterOptionsForm(BaseModel):

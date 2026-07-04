@@ -8,18 +8,21 @@ from sklearn.decomposition import PCA
 
 from smartscan import Assignments
 
-from sereleum.items.item_manager import ItemManager
 from sereleum.clusters.cluster_manager import ClusterManager
+from sereleum.schemas.cluster import ClusterCrossRefFilter
 
 
-
-def get_cluster_plot(cluster_manager: ClusterManager, items_manager: ItemManager, n: int = 6) -> Optional[bytes]:
-    top_clusters = cluster_manager.get_top_clusters(n)
-    ids, metadatas, embeddings = items_manager.get_samples(1e5, cluster_ids=list(top_clusters.keys()))
-    if not ids:
+# TODO: handle at db level or sample
+async def get_cluster_plot(cluster_manager: ClusterManager, n: int = 6) -> Optional[bytes]:
+    top_clusters = await cluster_manager.get_top_clusters(n)
+    top_cluster_ids = [c.id for c in top_clusters]
+    assignments = {c.item_id: c.cluster_id for c in await cluster_manager.crossrefs_store.get(filter=ClusterCrossRefFilter(include_cluster_ids=top_cluster_ids))}
+    if not assignments:
         return None
-    existing_assignments = {item_id : metadata.cluster_id for item_id, metadata in zip(ids, metadatas)}
-    return plot_clusters_bytes(ids, embeddings, existing_assignments)
+    item_ids = list(assignments.keys())
+    stored_embeds = await cluster_manager.item_embedding_store.get(list(assignments.keys()))
+    embeddings = [emb.embedding for emb in stored_embeds]
+    return plot_clusters_bytes(item_ids, embeddings, assignments)
 
 
 def plot_clusters(ids: list[str], embeddings: list[np.ndarray], assignments: Assignments, method='tsne', random_state=42, output_path: Optional[str] = None):

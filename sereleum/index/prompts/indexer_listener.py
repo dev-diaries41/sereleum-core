@@ -1,13 +1,13 @@
 from redis import Redis
 
-from smartscan import ItemEmbedding
+from smartscan import StoredEmbedding
 from smartscan.processor import ProcessorListener
 
 from sereleum.types import Status
 from sereleum.schemas.items.prompt import Prompt
 
 
-class PromptIndexListener(ProcessorListener[Prompt, ItemEmbedding]):
+class PromptIndexListener(ProcessorListener[Prompt, tuple[StoredEmbedding, Prompt]]):
     def __init__(self, job_id: str, redis_client: Redis):
         self.job_id = job_id
         self.redis = redis_client
