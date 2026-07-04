@@ -140,24 +140,34 @@ class PgVectorEmbeddingStore(EmbeddingStore):
         topK: int,
         ids: Optional[List[str]] = None,
         include_sims: bool = False,
+        threshold: Optional[float] = None,
     ) -> QueryResult:
         await self._init()
 
-        params: List = [self._to_list(query_embed), topK]
-        where = ""
+        where_sql = []
+        params = [self._to_list(query_embed), topK]
 
-        if ids:
+        if ids is not None:
             params.append(ids)
-            where = "WHERE item_id = ANY($3)"
+            where_sql.append(f"item_id = ANY(${len(params)})")
+
+        if threshold is not None:
+            params.append(threshold)
+            where_sql.append(f"sim <= ${len(params)}")
+
+        where_clause = f"WHERE {' AND '.join(where_sql)}" if where_sql else ""
 
         async with self._pool.acquire() as conn:
             rows = await conn.fetch(
                 f"""
-                SELECT item_id,
-                       embedding <=> $1 AS sim
-                FROM embeddings
-                {where}
-                ORDER BY embedding <=> $1
+                SELECT item_id, sim
+                FROM (
+                    SELECT item_id,
+                        embedding <=> $1 AS sim
+                    FROM embeddings
+                ) t
+                {where_clause}
+                ORDER BY sim
                 LIMIT $2
                 """,
                 *params,
@@ -167,6 +177,7 @@ class PgVectorEmbeddingStore(EmbeddingStore):
             ids=[r["item_id"] for r in rows],
             sims=[r["sim"] for r in rows] if include_sims else None,
         )
+        
 
     async def update(self, items: List[StoredEmbedding]) -> None:
         await self._init()
