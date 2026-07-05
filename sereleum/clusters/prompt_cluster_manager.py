@@ -3,19 +3,20 @@ from smartscan.embeds import EmbeddingStore
 from llm_connect.providers.llm_provider import LLMProvider
 
 from sereleum.clusters.cluster_manager import ClusterManager
-from sereleum.schemas.items.prompt import Prompt, PromptFilter
+from sereleum.schemas.items.prompt import PromptFilter
 from sereleum.schemas.llm import LLMClassificationResult
-from sereleum.data.prompts.prompt_store import PromptStore
-from sereleum.data.prompts.prompt_cluster_store import PromptClusterStore
-from sereleum.data.prompts.prompt_cluster_crossrefs_store import PromptClusterCrossRefsStore
+from sereleum.data.prompts import PromptStore, PromptClusterStore, PromptClusterCrossRefStore
+from sereleum.data.models import PromptClusterModel, PromptModel, PromptClusterCrossRefModel
 from sereleum.schemas.cluster import ClusterCrossRefFilter
+from sereleum.data.converters.prompt import cluster_to_orm, cluster_from_orm,  crossref_from_prompt_orm, crossref_to_prompt_orm
 
-class PromptClusterManager(ClusterManager[Prompt, PromptFilter]):
+
+class PromptClusterManager(ClusterManager[PromptModel, PromptFilter, PromptClusterModel, PromptClusterCrossRefModel]):
     def __init__(
         self,
         cluster_embedding_store: EmbeddingStore,
         cluster_store: PromptClusterStore,
-        crossrefs_store: PromptClusterCrossRefsStore,
+        crossrefs_store: PromptClusterCrossRefStore,
         item_embedding_store: EmbeddingStore,
         item_store: PromptStore,
         llm: LLMProvider, 
@@ -48,6 +49,18 @@ class PromptClusterManager(ClusterManager[Prompt, PromptFilter]):
         sample_prompts = [prompt.content for prompt in await self.item_store.get_by_ids(query_result.ids)]
         input_prompt = self._get_labelling_prompt(cluster_id, sample_prompts)
         return self.llm.generate_json(input_prompt, LLMClassificationResult)
+    
+    def to_cluster_orm(self, metadata):
+        return cluster_to_orm(metadata)
+    
+    def to_crossref_orm(self, crossref):
+        return crossref_to_prompt_orm(crossref)
+    
+    def from_cluster_orm(self, cluster_orm):
+        return cluster_from_orm(cluster_orm)
+    
+    def from_crossref_orm(self, crossref_orm):
+        return crossref_from_prompt_orm(crossref_orm)
     
     @staticmethod
     def _get_labelling_prompt(cluster_id: str, sample_prompts: list[str]) -> str:

@@ -1,7 +1,7 @@
-import os
-
 from dataclasses import dataclass
 from typing import Optional
+
+from sereleum.constants.db import POSTGRES_DB, POSTGRES_DSN, POSTGRES_HOST, POSTGRES_PASSWORD, POSTGRES_USER
 
 @dataclass(frozen=True)
 class DbConfig:
@@ -14,13 +14,9 @@ class DbConfig:
     min_pool_size: int = 1
     max_pool_size: int = 10
 
-def get_config():
-    POSTGRES_HOST=os.environ.get("POSTGRES_HOST")
-    POSTGRES_USER=os.environ.get("POSTGRES_USER")
-    POSTGRES_PASSWORD=os.environ.get("POSTGRES_PASSWORD")
-    POSTGRES_DB=os.environ.get("POSTGRES_DB")
-    
+def get_config(): 
     return DbConfig(
+        dsn=POSTGRES_DSN,
         host=POSTGRES_HOST,
         user=POSTGRES_USER,
         password=POSTGRES_PASSWORD,

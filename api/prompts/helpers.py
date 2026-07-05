@@ -6,6 +6,9 @@ async def get_prompts_overview(cluster_manager: PromptClusterManager, top_n: int
         prompt_count = await cluster_manager.item_store.count()
         cluster_count = await cluster_manager.cluster_store.count()
         top_clusters = await cluster_manager.get_top_clusters(top_n)
+        prompt_embed_count = await cluster_manager.item_embedding_store.count()
+        if (prompt_count != prompt_embed_count):
+            raise ValueError(f"Prompt count does not match prompt embed count: Prompts {prompt_count} | Prompt embeds: {prompt_embed_count}")
 
         token_counts: dict[ClusterId, int] = {}
         for metadata in top_clusters:

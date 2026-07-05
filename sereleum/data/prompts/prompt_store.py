@@ -1,54 +1,45 @@
-from sereleum.schemas.items.prompt import Prompt, PromptFilter
+from sqlalchemy import exists, select
+
 from sereleum.data.base_store import BaseStore
-from typing import Optional
-from sereleum.data.prompts.prompt_entitiy import PromptEntity
-from sereleum.data.table_names import TableNames
+from sereleum.data.models.prompt import PromptModel
+from sereleum.data.models.prompt_cluster_crossref import PromptClusterCrossRefModel
+from sereleum.schemas.items.prompt import PromptFilter
 
 
-class PromptStore(BaseStore[Prompt, PromptFilter]):
-    def __init__(self, **kwargs):
-        super().__init__(entity=PromptEntity(), **kwargs)
+class PromptStore(BaseStore[PromptModel, PromptFilter]):
+    model = PromptModel
+    primary_key = "id"
 
-        self._cluster_crossref_table = TableNames.PROMPT_CLUSTER_CROSSREFS.value
-
-    def add_filters(self, query: str, f: Optional[PromptFilter] = None):
-        params = []
+    def apply_filters(self, stmt, f: PromptFilter | None):
         if not f:
-            return query, params
-        
+            return stmt
+
         if f.cluster_ids:
-            params.append(f.cluster_ids)
-            query += f"""
-            AND EXISTS (
-                SELECT 1
-                FROM {self._cluster_crossref_table} c
-                WHERE c.item_id = prompts.id
-                AND c.cluster_id = ANY(${len(params)})
+            stmt = stmt.where(
+                exists(
+                    select(1).where(
+                        PromptClusterCrossRefModel.item_id == PromptModel.id,
+                        PromptClusterCrossRefModel.cluster_id.in_(f.cluster_ids),
+                    )
+                )
             )
-            """
 
         if f.min_tokens is not None:
-            params.append(f.min_tokens)
-            query += f" AND tokens >= ${len(params)}"
+            stmt = stmt.where(PromptModel.tokens >= f.min_tokens)
 
         if f.max_tokens is not None:
-            params.append(f.max_tokens)
-            query += f" AND tokens <= ${len(params)}"
+            stmt = stmt.where(PromptModel.tokens <= f.max_tokens)
 
         if f.created_after is not None:
-            params.append(f.created_after)
-            query += f" AND created_at >= ${len(params)}"
+            stmt = stmt.where(PromptModel.created_at >= f.created_after)
 
         if f.created_before is not None:
-            params.append(f.created_before)
-            query += f" AND created_at <= ${len(params)}"
+            stmt = stmt.where(PromptModel.created_at <= f.created_before)
 
         if f.updated_after is not None:
-            params.append(f.updated_after)
-            query += f" AND updated_at >= ${len(params)}"
+            stmt = stmt.where(PromptModel.updated_at >= f.updated_after)
 
         if f.updated_before is not None:
-            params.append(f.updated_before)
-            query += f" AND updated_at <= ${len(params)}"
+            stmt = stmt.where(PromptModel.updated_at <= f.updated_before)
 
-        return query, params
+        return stmt

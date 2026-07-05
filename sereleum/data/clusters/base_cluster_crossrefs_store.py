@@ -1,26 +1,34 @@
+from abc import ABC
+
+from sqlalchemy import Select
+
 from sereleum.data.base_store import BaseStore
-from sereleum.schemas.cluster import ClusterCrossRef, ClusterCrossRefFilter
-from typing import Optional
+from sereleum.schemas.cluster import ClusterCrossRefFilter
+from sereleum.data.types import TCrossRefModel
 
 
 class BaseClusterCrossRefStore(
-    BaseStore[ClusterCrossRef, ClusterCrossRefFilter]
+    BaseStore[TCrossRefModel, ClusterCrossRefFilter],
+    ABC,
 ):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    primary_key = "item_id"
 
-    def add_filters(self, query: str, f: Optional[ClusterCrossRefFilter] = None):
-        params = []
-
+    def apply_filters(
+        self,
+        stmt: Select,
+        f: ClusterCrossRefFilter | None,
+    ) -> Select:
         if not f:
-            return query, params
+            return stmt
 
         if f.include_cluster_ids:
-            params.append(f.include_cluster_ids)
-            query += f" AND cluster_id = ANY(${len(params)})"
+            stmt = stmt.where(
+                self.model.cluster_id.in_(f.include_cluster_ids)
+            )
 
         if f.exclude_cluster_ids:
-            params.append(f.exclude_cluster_ids)
-            query += f" AND cluster_id != ALL(${len(params)})"
+            stmt = stmt.where(
+                ~self.model.cluster_id.in_(f.exclude_cluster_ids)
+            )
 
-        return query, params
+        return stmt

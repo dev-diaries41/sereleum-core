@@ -5,11 +5,10 @@ from typing import Optional, Dict, List
 from sereleum.schemas.items.item import Item, BaseItemFilter
 from sereleum.schemas.cluster import StoredClusterMetadata
 
-
 class Prompt(Item):
     content: str
-    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
-    updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     tokens: Optional[int] = None
 
 class PromptFilter(BaseItemFilter):

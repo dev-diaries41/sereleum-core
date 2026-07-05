@@ -7,6 +7,7 @@ from smartscan.providers import TextEmbeddingProvider
 from sereleum.schemas.items.prompt import Prompt
 from sereleum.utils.tokens import count_tokens_embedding
 from sereleum.data.prompts.prompt_store import PromptStore
+from sereleum.data.converters.prompt import prompt_to_orm
 
 class PromptIndexer(BatchProcessor[Prompt, tuple[StoredEmbedding, Prompt]]):
     def __init__(self, 
@@ -40,4 +41,4 @@ class PromptIndexer(BatchProcessor[Prompt, tuple[StoredEmbedding, Prompt]]):
             return
         embeds, prompts = zip(*batch)
         await self.embeddings_store.add(embeds)
-        await self.prompt_store.add(prompts)
+        await self.prompt_store.add([prompt_to_orm(p) for p in prompts])

@@ -1,6 +1,8 @@
 from pydantic import BaseModel
 from typing import TypeVar
-from sereleum.schemas.items.item import Item
+from sereleum.data.base import Base
 
-TItem = TypeVar("TItem", bound=Item)
-TItemFilter = TypeVar("TItemFilter", bound=BaseModel)
+TItemModel = TypeVar("TItemModel", bound=Base)
+TQueryFilter = TypeVar("TQueryFilter", bound=BaseModel)
+TCrossRefModel = TypeVar("TCrossRefModel", bound=Base)
+TClusterModel = TypeVar("TClusterModel", bound=Base)

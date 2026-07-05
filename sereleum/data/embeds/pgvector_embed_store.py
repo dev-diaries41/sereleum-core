@@ -6,10 +6,12 @@ from numpy.typing import NDArray
 
 from smartscan.embeds.types import StoredEmbedding, QueryResult
 from smartscan.embeds.embedding_store import EmbeddingStore
-
 from pgvector.asyncpg import register_vector
 
+
 class PgVectorEmbeddingStore(EmbeddingStore):
+    table_name: str
+
     def __init__(
         self,
         dim: int,
@@ -51,7 +53,7 @@ class PgVectorEmbeddingStore(EmbeddingStore):
         try:
             await conn.execute("CREATE EXTENSION IF NOT EXISTS vector")
             await conn.execute(f"""
-                CREATE TABLE IF NOT EXISTS embeddings (
+                CREATE TABLE IF NOT EXISTS {self.table_name} (
                     item_id TEXT PRIMARY KEY,
                     embedding VECTOR({self.dim}) NOT NULL,
                     created_at TIMESTAMPTZ NOT NULL
@@ -93,8 +95,8 @@ class PgVectorEmbeddingStore(EmbeddingStore):
         async with self._lock:
             async with self._pool.acquire() as conn:
                 await conn.executemany(
-                    """
-                    INSERT INTO embeddings (item_id, embedding, created_at)
+                    f"""
+                    INSERT INTO {self.table_name} (item_id, embedding, created_at)
                     VALUES ($1, $2, $3)
                     ON CONFLICT (item_id) DO NOTHING
                     """,
@@ -112,16 +114,16 @@ class PgVectorEmbeddingStore(EmbeddingStore):
                 rows = await conn.fetch(
                     f"""
                     SELECT item_id, embedding, created_at
-                    FROM embeddings
+                    FROM {self.table_name}
                     WHERE item_id = ANY($1)
                     """,
                     ids,
                 )
             else:
                 rows = await conn.fetch(
-                    """
+                    f"""
                     SELECT item_id, embedding, created_at
-                    FROM embeddings
+                    FROM {self.table_name}
                     """
                 )
 
@@ -164,7 +166,7 @@ class PgVectorEmbeddingStore(EmbeddingStore):
                 FROM (
                     SELECT item_id,
                         embedding <=> $1 AS sim
-                    FROM embeddings
+                    FROM {self.table_name}
                 ) t
                 {where_clause}
                 ORDER BY sim
@@ -188,8 +190,8 @@ class PgVectorEmbeddingStore(EmbeddingStore):
             async with self._pool.acquire() as conn:
                 for i in items:
                     await conn.execute(
-                        """
-                        UPDATE embeddings
+                        f"""
+                        UPDATE {self.table_name}
                         SET embedding = $2,
                             created_at = $3
                         WHERE item_id = $1
@@ -207,8 +209,8 @@ class PgVectorEmbeddingStore(EmbeddingStore):
         async with self._lock:
             async with self._pool.acquire() as conn:
                 await conn.executemany(
-                    """
-                    INSERT INTO embeddings (item_id, embedding, created_at)
+                    f"""
+                    INSERT INTO {self.table_name} (item_id, embedding, created_at)
                     VALUES ($1, $2, $3)
                     ON CONFLICT (item_id)
                     DO UPDATE SET
@@ -228,7 +230,7 @@ class PgVectorEmbeddingStore(EmbeddingStore):
 
         async with self._pool.acquire() as conn:
             await conn.execute(
-                "DELETE FROM embeddings WHERE item_id = ANY($1)",
+                f"DELETE FROM {self.table_name} WHERE item_id = ANY($1)",
                 ids,
             )
 
@@ -236,5 +238,5 @@ class PgVectorEmbeddingStore(EmbeddingStore):
         await self._init()
 
         async with self._pool.acquire() as conn:
-            row = await conn.fetchrow("SELECT COUNT(*) AS c FROM embeddings")
+            row = await conn.fetchrow(f"SELECT COUNT(*) AS c FROM {self.table_name}")
             return row["c"]

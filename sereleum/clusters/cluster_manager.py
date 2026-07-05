@@ -2,6 +2,8 @@ import asyncio
 import numpy as np
 import math
 
+from sqlalchemy.exc import IntegrityError
+
 from numpy.typing import NDArray
 from abc import abstractmethod
 from typing import List, Dict, Generic
@@ -17,15 +19,18 @@ from sereleum.data.clusters.base_cluster_crossrefs_store import BaseClusterCross
 from sereleum.data.clusters.base_cluster_store import BaseClusterStore
 from sereleum.schemas.cluster import ClusterCrossRef, StoredClusterMetadata, ClusterCrossRefFilter
 from sereleum.data.base_store import BaseStore
-from sereleum.data.types import TItem, TItemFilter
+from sereleum.errors import SereleumError, ErrorCode
+from sereleum.data.types import TItemModel, TQueryFilter, TCrossRefModel, TClusterModel
 
-class ClusterManager(Generic[TItem, TItemFilter]):
+
+
+class ClusterManager(Generic[TItemModel, TQueryFilter, TClusterModel, TCrossRefModel]):
     def __init__(self, 
         cluster_embedding_store: EmbeddingStore,
-        cluster_store: BaseClusterStore,
-        crossrefs_store: BaseClusterCrossRefStore,
+        cluster_store: BaseClusterStore[TClusterModel],
+        crossrefs_store: BaseClusterCrossRefStore[TCrossRefModel],
         item_embedding_store: EmbeddingStore,
-        item_store: BaseStore[TItem, TItemFilter],
+        item_store: BaseStore[TItemModel, TQueryFilter],
         llm: LLMProvider, 
         label_confidence_threshold: float = 0.8,
         label_concurrency: int = 8
@@ -44,7 +49,8 @@ class ClusterManager(Generic[TItem, TItemFilter]):
         # TEMP solution instead get clustered items using join
         uncluster_embeds = await self._get_unclustered_items()
         if not uncluster_embeds: return ClusterResult()
-        all_meta = await self.cluster_store.get()
+        clusters_orm = await self.cluster_store.get()
+        all_meta = self.from_cluster_orm_list(clusters_orm)
         all_cluster_embeds = await self.cluster_embedding_store.get()
         existing_clusters = { emb.item_id: Cluster(
             prototype_id=emb.item_id,
@@ -69,9 +75,16 @@ class ClusterManager(Generic[TItem, TItemFilter]):
         return result
 
     
-    async def assign(self, assignments: Assignments) -> None:
+    async def assign(self, assignments: Assignments) -> None:        
         crossrefs = [ClusterCrossRef(item_id=item_id, cluster_id=cluster_id) for item_id, cluster_id in assignments.items()]
-        await self.crossrefs_store.update(crossrefs)
+        try:
+            await self.crossrefs_store.add(self.to_crossref_orm_list(crossrefs))
+        except IntegrityError as e:
+            raise SereleumError(
+                    "Foreign key violation in assign",
+                    code=ErrorCode.INVALID_ARGUMENT,
+                    details={"error": str(e)},
+                )
 
     @abstractmethod
     async def label(self, cluster_id: str, sample_size: int) -> LLMClassificationResult:
@@ -100,16 +113,17 @@ class ClusterManager(Generic[TItem, TItemFilter]):
                 cluster.label = result.label
                 labelled_clusters.append(cluster)
 
-        await self.cluster_store.update(labelled_clusters)
+        await self.cluster_store.update(self.to_cluster_orm_list(labelled_clusters))
         return len(labelled_clusters)
     
 
     async def update_label(self, cluster_id: str, label: str) -> bool:
         result = await self.cluster_store.get_by_ids([cluster_id])
         if(len(result)) == 0: return False
-        updated_meta=result[0]
-        updated_meta.label = label
-        await self.cluster_store.update([updated_meta])
+        cluster_orm=result[0]
+        metadata = self.from_cluster_orm(cluster_orm)
+        metadata.label = label
+        await self.cluster_store.update([self.to_cluster_orm(metadata)])
         return True
 
     async def merge(self, merges: ClusterMerges) -> List[StoredClusterMetadata]:
@@ -128,19 +142,21 @@ class ClusterManager(Generic[TItem, TItemFilter]):
                 cluster_metadata_updates.append(meta)
             
         await self.cluster_embedding_store.update(cluster_embed_updates)
-        await self.cluster_store.update(cluster_metadata_updates)
+        await self.cluster_store.update(self.to_cluster_orm_list(cluster_metadata_updates))
         return cluster_metadata_updates
      
 
     async def get_top_clusters(self, n: int) -> List[StoredClusterMetadata]:
-        return await self.cluster_store.get(order_by="prototype_size", ascending=False, limit=n)
+        results =  await self.cluster_store.get(order_by="prototype_size", ascending=False, limit=n)
+        return self.from_cluster_orm_list(results)
 
 
     async def _assign_from_merges(self, merges: ClusterMerges) -> None:
         all_target_cluster_ids = [cid for targets in merges.values() for cid in targets]
         cross_refs: list[ClusterCrossRef] = []
 
-        for crossref in await self.crossrefs_store.get(filter=ClusterCrossRefFilter(include_cluster_ids=all_target_cluster_ids)):
+        for crossref_orm in await self.crossrefs_store.get(filter=ClusterCrossRefFilter(include_cluster_ids=all_target_cluster_ids)):
+            crossref = self.from_crossref_orm(crossref_orm)
             original_cluster = crossref.cluster_id
             new_cluster_id = next(
                 (mid for mid, clusters in merges.items()
@@ -150,7 +166,7 @@ class ClusterManager(Generic[TItem, TItemFilter]):
             crossref.cluster_id = new_cluster_id
             cross_refs.append(crossref)
 
-        self.crossrefs_store.update(cross_refs)
+        await self.crossrefs_store.update(self.to_crossref_orm_list(cross_refs))
 
     # MUST update clusters firsts before assignments!!!
     async def _update_clusters_and_assisgn(self, result: ClusterResult, existing_clusters_ids: set[str]) -> List[StoredClusterMetadata]:
@@ -180,8 +196,8 @@ class ClusterManager(Generic[TItem, TItemFilter]):
             if cluster.metadata.label== Cluster.UNLABELLED:
                 unlabelled_clusters.append(updated_meta)
              
-        await self.cluster_store.update(existing_cluster_metadata_updates)
-        await self.cluster_store.add(new_cluster_metadata_updates)
+        await self.cluster_store.update(self.to_cluster_orm_list(existing_cluster_metadata_updates))
+        await self.cluster_store.add(self.to_cluster_orm_list(new_cluster_metadata_updates))
         await self.cluster_embedding_store.update(existing_cluster_embed_updates)
         await self.cluster_embedding_store.add(new_cluster_embed_updates)
         await self.assign(result.assignments)
@@ -191,8 +207,8 @@ class ClusterManager(Generic[TItem, TItemFilter]):
         result = await self.cluster_store.get_by_ids([cluster_id])
         if len(result) == 0:
             return None
-        cluster_metadata = result[0]
-        crossrefs = await self.crossrefs_store.get(filter=ClusterCrossRefFilter(include_cluster_ids=[cluster_id]))
+        crossrefs_orm = await self.crossrefs_store.get(filter=ClusterCrossRefFilter(include_cluster_ids=[cluster_id]))
+        crossrefs = self.from_crossref_orm_list(crossrefs_orm)
         if len(crossrefs) == 0:
             await self.cluster_store.delete([cluster_id])
             return None
@@ -200,19 +216,21 @@ class ClusterManager(Generic[TItem, TItemFilter]):
         embeds = await self.item_embedding_store.get(ids=item_ids)
         new_protoype_embed, new_mean_sim, new_std_sim = self._compute_cluster_metrics(np.stack([e.embedding for e in embeds], axis=0))
         
-        meta = StoredClusterMetadata(
-            id = cluster_metadata.id,
+        old_cluster_metadata = self.from_cluster_orm(result[0])
+        new_meta = StoredClusterMetadata(
+            id = old_cluster_metadata.id,
             prototype_size=len(embeds),
             mean_similarity=new_mean_sim,
             std_similarity=new_std_sim,
-            label = cluster_metadata.label
+            label = old_cluster_metadata.label
             )
-        stored_embed = StoredEmbedding(item_id=meta.id, embedding=new_protoype_embed)
-        return stored_embed, meta
+        stored_embed = StoredEmbedding(item_id=new_meta.id, embedding=new_protoype_embed)
+        return stored_embed, new_meta
     
     async def _get_unclustered_items(self) -> Dict[str, NDArray]:
         stored_embeds  = await self.item_embedding_store.get()
-        clustered_items = {c.item_id for c in await self.crossrefs_store.get()}
+        crossrefs_orm = await self.crossrefs_store.get()
+        clustered_items = {c.item_id for c in self.from_crossref_orm_list(crossrefs_orm)}
         return {emb.item_id: emb.embedding for emb in stored_embeds if emb.item_id not in clustered_items}
 
     def _compute_cluster_metrics(self, embeds: List[NDArray]):
@@ -228,3 +246,33 @@ class ClusterManager(Generic[TItem, TItemFilter]):
     async def _label_with_sem(self, semaphore:  asyncio.Semaphore, cluster_id: str, sample_size: int) -> LLMClassificationResult:
         async with semaphore:
             return await self.label(cluster_id, sample_size)
+        
+
+    @abstractmethod
+    def to_cluster_orm(self, cluster: StoredClusterMetadata)-> TClusterModel:
+        ...
+
+    @abstractmethod
+    def to_crossref_orm(self, crossref: ClusterCrossRef) -> TCrossRefModel:
+        ...
+
+    @abstractmethod
+    def from_cluster_orm(self, cluster_orm: TClusterModel)-> StoredClusterMetadata:
+        ...
+
+    @abstractmethod
+    def from_crossref_orm(self, crossref_orm: TCrossRefModel) -> ClusterCrossRef:
+        ...
+
+    def from_cluster_orm_list(self, clusters_orm: List[TClusterModel])-> List[StoredClusterMetadata]:
+        return [self.from_cluster_orm(c) for c in clusters_orm]
+
+    def to_cluster_orm_list(self, clusters: List[StoredClusterMetadata])-> List[TClusterModel]:
+        return [self.to_cluster_orm(c) for c in clusters]
+
+    
+    def from_crossref_orm_list(self, crossrefs_orm: List[TCrossRefModel])-> List[ClusterCrossRef]:
+        return [self.from_crossref_orm(c) for c in crossrefs_orm]
+
+    def to_crossref_orm_list(self, crossrefs: List[ClusterCrossRef])-> List[TCrossRefModel]:
+        return [self.to_crossref_orm(c) for c in crossrefs]

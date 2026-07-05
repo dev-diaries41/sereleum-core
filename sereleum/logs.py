@@ -1,6 +1,11 @@
 import logging
+import os
 
-def getLogger(logger_name, log_filename):
+def getLogger(logger_name: str, log_filename: str):
+    dirname = os.path.dirname(log_filename)
+    if dirname:
+        os.makedirs(dirname, exist_ok=True)
+
     logger = logging.getLogger(logger_name)
     if not logger.hasHandlers():
         logger.setLevel(logging.DEBUG)
