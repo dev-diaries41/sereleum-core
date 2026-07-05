@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Literal
 
 from smartscan import  ClusterMerges
 
@@ -8,21 +8,27 @@ from sereleum.schemas.cluster import StoredClusterMetadata
 from sereleum.types import Status
 
 # Websocksets / SSE
-    
 class ProgressMessage(BaseModel):
+    event: Literal["progress"] = "progress"
     progress: float
 
 class ErrorMessage(BaseModel):
+    event: Literal["error"] = "error"
     error: str
     item: str
 
 class FailMessage(BaseModel):
+    event: Literal["failed"] = "failed"
     error: str
 
 class CompleteMessage(BaseModel):
-    total_processed: int
-    time_elapsed: float
+    event: Literal["complete"] = "complete"
+    total_processed: Optional[int] = None
+    time_elapsed: Optional[float] = None
 
+class ActiveMessage(BaseModel):
+    event: Literal["active"] = "active"
+    
 class JobReceipt(BaseModel):
   status: Status
   job_id: str

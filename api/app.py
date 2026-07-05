@@ -1,5 +1,5 @@
 import os
-import asyncio
+import json
 
 from fastapi import FastAPI, HTTPException, UploadFile, File, Response, Request, Form
 from fastapi.responses import JSONResponse
@@ -22,7 +22,7 @@ from llm_connect.providers.openai import OpenAIProvider
 from sereleum.constants.models import OPENAI_API_KEY, DEFAULT_SYSTEM_PROMPT, DEFAULT_OPENAI_MODEL
 from sereleum.constants import  UPLOAD_DIR
 from sereleum.constants.api import Routes
-from sereleum.schemas.api import FailMessage, CompleteMessage, ProgressMessage
+from sereleum.schemas.api import FailMessage, CompleteMessage, ProgressMessage, ActiveMessage
 from sereleum.errors import SereleumError, ErrorCode
 from sereleum.schemas.api import (
     GetPromptsRequest, 
@@ -45,6 +45,7 @@ from sereleum.clusters.plot import  get_cluster_plot
 from sereleum.clusters.helpers import get_prompt_cluster_manager
 from sereleum.data.converters.prompt import prompt_from_orm
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sereleum.helpers import get_index_progres_key, get_index_status_key, get_cluster_status_key, get_cluster_status_channel, get_index_progress_channel
 
 MAX_UPLOAD_SIZE = 50 * 1024 * 1024  # 50MB
 
@@ -73,76 +74,111 @@ app.add_middleware(
 
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-
-def cluster_job_key(index_job_id: str):
-    return f"cluster_job_status_{index_job_id}"
-
 @app.get(Routes.SSE_PROMPTS_INDEX_PROGRESS)
 async def track_prompts_index_progress(request: Request, job_id: str):
- 
+
     async def event_generator():
-        sent_active_msg = False
+        pubsub = redis_client.pubsub()
+        channel = get_index_progress_channel(job_id)
+
+        progress = await redis_client.get(get_index_progres_key(job_id))
+        status = await redis_client.get(get_index_status_key(job_id))
+
+        if progress is not None:
+            yield {"event": "progress", "data": ProgressMessage(progress=float(progress)).model_dump_json()}
+
+        if status == "active":
+            yield {"event": "active", "data": ActiveMessage().model_dump_json()}
+
+        elif status == "failed":
+            yield {"event": "failed", "data": FailMessage(error="error indexing prompts").model_dump_json()}
+            return
+
+        elif status == "complete":
+            yield {"event": "complete", "data": CompleteMessage().model_dump_json()}
+            return
+
+        await pubsub.subscribe(channel)
+
         try:
             while True:
                 if await request.is_disconnected():
                     break
 
-                progress = redis_client.get(f"progress_{job_id}")
-                status = redis_client.get(f"status_{job_id}")
-                print(f"progress: {progress} | status: {status} | jobid: {job_id}")
+                message = await pubsub.get_message(
+                    ignore_subscribe_messages=True,
+                    timeout=1.0
+                )
+                if not message:
+                    continue
 
-                if status == 'active':
-                    if not sent_active_msg:
-                        yield {"event": "active", "data": {}}
-                        sent_active_msg = True
+                data = json.loads(message["data"])
 
-                if status == 'failed':
-                    raise RuntimeError("Job failed")
+                yield {
+                    "event": data["event"],
+                    "data": json.dumps(data)
+                }
 
-                if progress:
-                    if float(progress) == 1 or status == 'complete':
-                        yield {"event": "progress", "data": ProgressMessage(progress=float(progress)).model_dump_json()}
-                        yield {"event": "complete", "data": {}}
-                        break
-                    yield {"event": "progress", "data": ProgressMessage(progress=float(progress)).model_dump_json()}
-                await asyncio.sleep(1.0)
-        except RuntimeError:
-            yield {"event": "failed", "data": FailMessage(error="error indexing prompts").model_dump_json()}
-            return
+                if data["event"] in ("complete", "failed"):
+                    break
+
+        finally:
+            await pubsub.unsubscribe(channel)
+            await pubsub.close()
 
     return EventSourceResponse(event_generator())
-
 
 @app.get(Routes.SSE_PROMPTS_CLUSTER_STATUS)
 async def track_prompts_cluster_status(request: Request, job_id: str):
 
     async def event_generator():
-        sent_active_msg = False
+        pubsub = redis_client.pubsub()
+        channel = get_cluster_status_channel(job_id)
+
+        status_key = get_cluster_status_key(job_id)
+        status = await redis_client.get(status_key)
+
+        if status == "active":
+            yield {"event": "active", "data": ActiveMessage().model_dump_json()}
+
+        elif status == "failed":
+            yield {
+                "event": "failed",
+                "data": FailMessage(error="error clustering prompts").model_dump_json()
+            }
+            return
+
+        elif status == "complete":
+            yield {"event": "complete", "data": CompleteMessage().model_dump_json()}
+            return
+
+        await pubsub.subscribe(channel)
+
         try:
             while True:
                 if await request.is_disconnected():
                     break
-                
-                status_key = cluster_job_key(job_id)
-                status = redis_client.get(status_key)
-                print(f"STATUS: {status} | status_key: {status_key}")
 
-                if status == 'active':
-                    if not sent_active_msg:
-                        yield {"event": "active", "data": {}}
-                        sent_active_msg = True
+                message = await pubsub.get_message(
+                    ignore_subscribe_messages=True,
+                    timeout=1.0
+                )
+                if not message:
+                    continue
 
-                if status == 'failed':
-                    raise RuntimeError("Job failed")
+                data = json.loads(message["data"])
 
-                if status == 'complete':
-                    yield {"event": "complete", "data": {}}
+                yield {
+                    "event": data["event"],
+                    "data": message["data"]
+                }
+
+                if data["event"] in ("complete", "failed"):
                     break
-                await asyncio.sleep(1.0)
-        except RuntimeError as e:
-            print(e)
-            yield {"event": "failed", "data": FailMessage(error="error clustering prompts").model_dump_json()}
-            return
+
+        finally:
+            await pubsub.unsubscribe(channel)
+            await pubsub.close()
 
     return EventSourceResponse(event_generator())
 
