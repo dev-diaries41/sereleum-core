@@ -43,3 +43,22 @@ class PromptStore(BaseStore[PromptModel, PromptFilter]):
             stmt = stmt.where(PromptModel.updated_at <= f.updated_before)
 
         return stmt
+    
+
+    async def get_unclustered_item_ids(self) -> list[str]:
+        async with self.sessionmaker() as session:
+            pk = getattr(self.model, self.primary_key)
+
+            stmt = (
+                select(pk)
+                .where(
+                    ~exists(
+                        select(1).where(
+                            PromptClusterCrossRefModel.item_id == PromptModel.id
+                        )
+                    )
+                )
+            )
+
+            result = await session.execute(stmt)
+            return list(result.scalars().all())

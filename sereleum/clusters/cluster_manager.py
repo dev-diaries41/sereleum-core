@@ -6,7 +6,7 @@ from sqlalchemy.exc import IntegrityError
 
 from numpy.typing import NDArray
 from abc import abstractmethod
-from typing import List, Dict, Generic
+from typing import List, Dict, Generic, TypeVar
 
 from smartscan import Cluster, ClusterMetadata, ClusterMerges, ClusterId, StoredEmbedding, ClusterResult, Assignments
 from smartscan.embeds import EmbeddingStore, generate_prototype_embedding
@@ -16,21 +16,22 @@ from llm_connect.providers.llm_provider import LLMProvider
 
 from sereleum.schemas.llm import LLMClassificationResult
 from sereleum.data.clusters.base_cluster_crossrefs_store import BaseClusterCrossRefStore
+from sereleum.data.base_store import BaseStore
 from sereleum.data.clusters.base_cluster_store import BaseClusterStore
 from sereleum.schemas.cluster import ClusterCrossRef, StoredClusterMetadata, ClusterCrossRefFilter
-from sereleum.data.base_store import BaseStore
 from sereleum.errors import SereleumError, ErrorCode
-from sereleum.data.types import TItemModel, TQueryFilter, TCrossRefModel, TClusterModel
+from sereleum.data.types import  TCrossRefModel, TClusterModel
 
 
+TItemStore = TypeVar("TItemStore", bound=BaseStore)
 
-class ClusterManager(Generic[TItemModel, TQueryFilter, TClusterModel, TCrossRefModel]):
+class ClusterManager(Generic[TItemStore, TClusterModel, TCrossRefModel]):
     def __init__(self, 
         cluster_embedding_store: EmbeddingStore,
         cluster_store: BaseClusterStore[TClusterModel],
         crossrefs_store: BaseClusterCrossRefStore[TCrossRefModel],
         item_embedding_store: EmbeddingStore,
-        item_store: BaseStore[TItemModel, TQueryFilter],
+        item_store: TItemStore,
         llm: LLMProvider, 
         label_confidence_threshold: float = 0.8,
         label_concurrency: int = 8
@@ -46,7 +47,6 @@ class ClusterManager(Generic[TItemModel, TQueryFilter, TClusterModel, TCrossRefM
 
                 
     async def cluster(self, auto_label: bool = True, default_threshold: float = 0.3) -> ClusterResult:
-        # TEMP solution instead get clustered items using join
         uncluster_embeds = await self._get_unclustered_items()
         if not uncluster_embeds: return ClusterResult()
         clusters_orm = await self.cluster_store.get()
@@ -62,7 +62,7 @@ class ClusterManager(Generic[TItemModel, TQueryFilter, TClusterModel, TCrossRefM
                 label=meta.label
             )
         ) for emb, meta in zip(all_cluster_embeds, all_meta)}
-        ## TODO: to sample cluster to get default threshold if existing clusters dont exist
+        ## TODO: sample run to get default threshold if existing clusters dont exist
         threshold = self._get_default_threshold(all_meta) if existing_clusters else default_threshold
         clusterer = IncrementalClusterer(
             default_threshold=threshold,
@@ -228,10 +228,12 @@ class ClusterManager(Generic[TItemModel, TQueryFilter, TClusterModel, TCrossRefM
         return stored_embed, new_meta
     
     async def _get_unclustered_items(self) -> Dict[str, NDArray]:
-        stored_embeds  = await self.item_embedding_store.get()
-        crossrefs_orm = await self.crossrefs_store.get()
-        clustered_items = {c.item_id for c in self.from_crossref_orm_list(crossrefs_orm)}
-        return {emb.item_id: emb.embedding for emb in stored_embeds if emb.item_id not in clustered_items}
+        unclustered_items_ids = await self.get_unclustered_item_ids()
+        print(f"Unclustered items: {len(unclustered_items_ids)}")
+        if len(unclustered_items_ids) == 0:
+            return {}
+        unclustered_item_embeds  = await self.item_embedding_store.get(unclustered_items_ids)
+        return {emb.item_id: emb.embedding for emb in unclustered_item_embeds}
 
     def _compute_cluster_metrics(self, embeds: List[NDArray]):
         new_protoype_embed = generate_prototype_embedding(embeds)
@@ -247,6 +249,11 @@ class ClusterManager(Generic[TItemModel, TQueryFilter, TClusterModel, TCrossRefM
         async with semaphore:
             return await self.label(cluster_id, sample_size)
         
+
+    # Used so to avoid having to load all stored embeds and then crossrefs
+    @abstractmethod
+    async def get_unclustered_item_ids(self) -> List[str]:
+        ...
 
     @abstractmethod
     def to_cluster_orm(self, cluster: StoredClusterMetadata)-> TClusterModel:

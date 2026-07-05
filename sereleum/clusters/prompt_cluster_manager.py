@@ -3,15 +3,14 @@ from smartscan.embeds import EmbeddingStore
 from llm_connect.providers.llm_provider import LLMProvider
 
 from sereleum.clusters.cluster_manager import ClusterManager
-from sereleum.schemas.items.prompt import PromptFilter
 from sereleum.schemas.llm import LLMClassificationResult
 from sereleum.data.prompts import PromptStore, PromptClusterStore, PromptClusterCrossRefStore
-from sereleum.data.models import PromptClusterModel, PromptModel, PromptClusterCrossRefModel
+from sereleum.data.models import PromptClusterModel, PromptClusterCrossRefModel
 from sereleum.schemas.cluster import ClusterCrossRefFilter
 from sereleum.data.converters.prompt import cluster_to_orm, cluster_from_orm,  crossref_from_prompt_orm, crossref_to_prompt_orm
 
 
-class PromptClusterManager(ClusterManager[PromptModel, PromptFilter, PromptClusterModel, PromptClusterCrossRefModel]):
+class PromptClusterManager(ClusterManager[PromptStore, PromptClusterModel, PromptClusterCrossRefModel]):
     def __init__(
         self,
         cluster_embedding_store: EmbeddingStore,
@@ -49,6 +48,9 @@ class PromptClusterManager(ClusterManager[PromptModel, PromptFilter, PromptClust
         sample_prompts = [prompt.content for prompt in await self.item_store.get_by_ids(query_result.ids)]
         input_prompt = self._get_labelling_prompt(cluster_id, sample_prompts)
         return self.llm.generate_json(input_prompt, LLMClassificationResult)
+    
+    async def get_unclustered_item_ids(self):
+        return await self.item_store.get_unclustered_item_ids()
     
     def to_cluster_orm(self, metadata):
         return cluster_to_orm(metadata)
