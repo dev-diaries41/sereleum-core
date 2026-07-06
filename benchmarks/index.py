@@ -49,7 +49,7 @@ async def main(labelled_prompts: list[Prompt], model: TextEmbeddingModel):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model","-m", help="Embedding model to use for indexing", default='all-minilm-l6-v2', choices=get_args(TextEmbeddingModel))
+    parser.add_argument("--model","-m", help="Embedding model to use for indexing", default='all-distilroberta-v1', choices=get_args(TextEmbeddingModel))
     parser.add_argument("-n", type=int, help="number of items to generate", default=100)
     parser.add_argument("-o", type=int, help="dummy data offset", default=0)
     parser.add_argument("--stress", action="store_true", help="stress test")
