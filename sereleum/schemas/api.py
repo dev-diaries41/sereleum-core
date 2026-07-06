@@ -1,27 +1,34 @@
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Literal
 
-from smartscan import  ClusterAccuracy, ClusterNoEmbeddings, ClusterMerges
+from smartscan import  ClusterMerges
 
 from sereleum.schemas.items.prompt import Prompt, PromptsOverviewInfo
+from sereleum.schemas.cluster import StoredClusterMetadata
 from sereleum.types import Status
 
 # Websocksets / SSE
-    
 class ProgressMessage(BaseModel):
+    event: Literal["progress"] = "progress"
     progress: float
 
 class ErrorMessage(BaseModel):
+    event: Literal["error"] = "error"
     error: str
     item: str
 
 class FailMessage(BaseModel):
+    event: Literal["failed"] = "failed"
     error: str
 
 class CompleteMessage(BaseModel):
-    total_processed: int
-    time_elapsed: float
+    event: Literal["complete"] = "complete"
+    total_processed: Optional[int] = None
+    time_elapsed: Optional[float] = None
 
+class ActiveMessage(BaseModel):
+    event: Literal["active"] = "active"
+    
 class JobReceipt(BaseModel):
   status: Status
   job_id: str
@@ -38,10 +45,13 @@ class AddPromptsResponse(JobReceipt):
     pass
  
 class GetPromptsRequest(BaseModel):
-    prompt_ids: Optional[List[str]] = None
     cluster_ids: Optional[List[str]] = None
     limit: Optional[int] = None
     offset: Optional[int] = None
+
+
+class GetPromptsByIdsRequest(BaseModel):
+    prompt_ids: Optional[List[str]] = None
 
 class QueryPromptsRequest(BaseModel):
     query:str
@@ -57,8 +67,6 @@ class GetPromptsOverviewResponse(PromptsOverviewInfo):
 class GetCountResponse(BaseModel):
     count: int
 
-class GetLabelsResponse(BaseModel):
-    labels: List[str]
 
 class GetClusterRequestParams(BaseModel):
     cluster_id: Optional[str] = None
@@ -67,10 +75,7 @@ class GetClusterRequestParams(BaseModel):
 
     
 class GetClustersResponse(BaseModel):
-    clusters: List[ClusterNoEmbeddings]
-
-class GetClustersAccuracyResponse(BaseModel):
-    accuracy: ClusterAccuracy
+    clusters: List[StoredClusterMetadata]
 
 
 class UpdateLabelParams(BaseModel):
@@ -92,7 +97,7 @@ class MergeClustersRequest(BaseModel):
 
     
 class MergeResponse(BaseModel):
-    updated_clusters: List[ClusterNoEmbeddings]
+    updated_clusters: List[StoredClusterMetadata]
 
 
 class ClusterOptionsForm(BaseModel):

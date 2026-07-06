@@ -1,11 +1,9 @@
 import os
-import asyncio
-import chromadb
+import json
 
 from fastapi import FastAPI, HTTPException, UploadFile, File, Response, Request, Form
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.concurrency import run_in_threadpool
 from fastapi import Request
 from sse_starlette import EventSourceResponse
 
@@ -24,28 +22,46 @@ from llm_connect.providers.openai import OpenAIProvider
 from sereleum.constants.models import OPENAI_API_KEY, DEFAULT_SYSTEM_PROMPT, DEFAULT_OPENAI_MODEL
 from sereleum.constants import  UPLOAD_DIR
 from sereleum.constants.api import Routes
-from sereleum.schemas.api import FailMessage, CompleteMessage, ProgressMessage
+from sereleum.schemas.api import FailMessage, CompleteMessage, ProgressMessage, ActiveMessage
 from sereleum.errors import SereleumError, ErrorCode
 from sereleum.schemas.api import (
     GetPromptsRequest, 
+    GetPromptsByIdsRequest,
     GetPromptsResponse, 
     GetCountResponse, 
-    GetLabelsResponse, 
     GetClustersResponse, 
     GetPromptsOverviewResponse, 
     UpdateLabelResponse, 
-    GetClustersAccuracyResponse, 
     QueryPromptsRequest, 
     UpdatePromptClusterIdResponse, 
     AddPromptsResponse,
     MergeClustersRequest,
     MergeResponse
     )
+from sereleum.schemas.cluster import ClusterCrossRefFilter
+from sereleum.schemas.items.prompt import PromptFilter
+from sereleum.data.db_config import get_config
 from sereleum.clusters.plot import  get_cluster_plot
-from sereleum.helpers import get_cluster_manager, get_prompt_manager
-
+from sereleum.clusters.helpers import get_prompt_cluster_manager
+from sereleum.data.converters.prompt import prompt_from_orm
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sereleum.helpers import get_index_progres_key, get_index_status_key, get_cluster_status_key, get_cluster_status_channel, get_index_progress_channel
 
 MAX_UPLOAD_SIZE = 50 * 1024 * 1024  # 50MB
+
+model_manager = ModelManager()
+text_embedder = model_manager.get_text_embedder("all-distilroberta-v1")
+text_embedder.init()
+llm = OpenAIProvider(OPENAI_API_KEY, LLMProviderConfig(model=DEFAULT_OPENAI_MODEL, system_prompt=DEFAULT_SYSTEM_PROMPT))
+
+db_config = get_config()
+engine = create_async_engine(db_config.dsn, echo=False)
+sessionmaker = async_sessionmaker(
+    engine,
+    expire_on_commit=False,
+)
+
+cluster_manager = get_prompt_cluster_manager(db_config, sessionmaker, embed_dim=text_embedder.embedding_dim, llm=llm)
 
 app = FastAPI()
 app.add_middleware(
@@ -58,87 +74,111 @@ app.add_middleware(
 
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-model_manager = ModelManager()
-text_embedder = model_manager.get_text_embedder("all-distilroberta-v1")
-text_embedder.init()
-llm = OpenAIProvider(OPENAI_API_KEY, LLMProviderConfig(model=DEFAULT_OPENAI_MODEL, system_prompt=DEFAULT_SYSTEM_PROMPT))
-
-client = chromadb.HttpClient(host='chromadb', port=8000, settings=chromadb.Settings(anonymized_telemetry=False))
-prompts_manager = get_prompt_manager(client, "all-distilroberta-v1", text_embedder.embedding_dim)
-clusters_manager = get_cluster_manager(client, "all-distilroberta-v1", text_embedder.embedding_dim, prompts_manager, llm)
-
 @app.get(Routes.SSE_PROMPTS_INDEX_PROGRESS)
-async def track_prompts_index_progress(request: Request, job_id: str | None = None):
-    if not job_id:
-        return EventSourceResponse(
-            [{"event": "failed", "data": FailMessage(error="invalid job id").model_dump_json()}],
-            status_code=400,
-        )
+async def track_prompts_index_progress(request: Request, job_id: str):
 
     async def event_generator():
-        sent_active_msg = False
-        try:
-            while True:
-                if await request.is_disconnected():
-                    break
+        pubsub = redis_client.pubsub()
+        channel = get_index_progress_channel(job_id)
 
-                progress = redis_client.get(f"progress_{job_id}")
-                status = redis_client.get(f"status_{job_id}")
+        progress = await redis_client.get(get_index_progres_key(job_id))
+        status = await redis_client.get(get_index_status_key(job_id))
 
-                if status == 'active':
-                    if not sent_active_msg:
-                        yield {"event": "active", "data": {}}
-                        sent_active_msg = True
+        if progress is not None:
+            yield {"event": "progress", "data": ProgressMessage(progress=float(progress)).model_dump_json()}
 
-                if status == 'failed':
-                    raise RuntimeError("Job failed")
+        if status == "active":
+            yield {"event": "active", "data": ActiveMessage().model_dump_json()}
 
-                if progress:
-                    if float(progress) == 1 or status == 'complete':
-                        yield {"event": "progress", "data": ProgressMessage(progress=float(progress)).model_dump_json()}
-                        yield {"event": "complete", "data": {}}
-                        break
-                    yield {"event": "progress", "data": ProgressMessage(progress=float(progress)).model_dump_json()}
-                await asyncio.sleep(0.5)
-        except RuntimeError:
+        elif status == "failed":
             yield {"event": "failed", "data": FailMessage(error="error indexing prompts").model_dump_json()}
             return
 
-    return EventSourceResponse(event_generator())
+        elif status == "complete":
+            yield {"event": "complete", "data": CompleteMessage().model_dump_json()}
+            return
 
+        await pubsub.subscribe(channel)
 
-@app.get(Routes.SSE_PROMPTS_CLUSTER_STATUS)
-async def track_prompts_cluster_status(request: Request, job_id: str | None = None):
-    if not job_id:
-        return EventSourceResponse(
-            [{"event": "failed", "data": FailMessage(error="invalid job id").model_dump_json()}],
-            status_code=400,
-        )
-
-    async def event_generator():
-        sent_active_msg = False
         try:
             while True:
                 if await request.is_disconnected():
                     break
 
-                status = redis_client.get(f"{job_id}")
+                message = await pubsub.get_message(
+                    ignore_subscribe_messages=True,
+                    timeout=1.0
+                )
+                if not message:
+                    continue
 
-                if status == 'active':
-                    if not sent_active_msg:
-                        yield {"event": "active", "data": {}}
-                        sent_active_msg = True
+                data = json.loads(message["data"])
 
-                if status == 'failed':
-                    raise RuntimeError("Job failed")
+                yield {
+                    "event": data["event"],
+                    "data": json.dumps(data)
+                }
 
-                if status == 'complete':
-                    yield {"event": "complete", "data": {}}
+                if data["event"] in ("complete", "failed"):
                     break
-                await asyncio.sleep(0.5)
-        except RuntimeError:
-            yield {"event": "failed", "data": FailMessage(error="error clustering prompts").model_dump_json()}
+
+        finally:
+            await pubsub.unsubscribe(channel)
+            await pubsub.close()
+
+    return EventSourceResponse(event_generator())
+
+@app.get(Routes.SSE_PROMPTS_CLUSTER_STATUS)
+async def track_prompts_cluster_status(request: Request, job_id: str):
+
+    async def event_generator():
+        pubsub = redis_client.pubsub()
+        channel = get_cluster_status_channel(job_id)
+
+        status_key = get_cluster_status_key(job_id)
+        status = await redis_client.get(status_key)
+
+        if status == "active":
+            yield {"event": "active", "data": ActiveMessage().model_dump_json()}
+
+        elif status == "failed":
+            yield {
+                "event": "failed",
+                "data": FailMessage(error="error clustering prompts").model_dump_json()
+            }
             return
+
+        elif status == "complete":
+            yield {"event": "complete", "data": CompleteMessage().model_dump_json()}
+            return
+
+        await pubsub.subscribe(channel)
+
+        try:
+            while True:
+                if await request.is_disconnected():
+                    break
+
+                message = await pubsub.get_message(
+                    ignore_subscribe_messages=True,
+                    timeout=1.0
+                )
+                if not message:
+                    continue
+
+                data = json.loads(message["data"])
+
+                yield {
+                    "event": data["event"],
+                    "data": message["data"]
+                }
+
+                if data["event"] in ("complete", "failed"):
+                    break
+
+        finally:
+            await pubsub.unsubscribe(channel)
+            await pubsub.close()
 
     return EventSourceResponse(event_generator())
 
@@ -147,45 +187,55 @@ async def add_prompts_file(file: UploadFile = File(...), auto_label: bool = Form
     with NamedTemporaryFile(dir=UPLOAD_DIR, delete=False, suffix=".json") as tmp:
         tmp.write(await file.read())
         tmp.flush()
-        job = index_prompts_task.send(tmp.name, auto_label, default_threshold)
+    job = index_prompts_task.send(tmp.name, auto_label, default_threshold)
     return AddPromptsResponse(status='queued', job_id=job.message_id )
 
 @app.post(Routes.BASE_PROMPTS_ENDPOINT)
 async def get_prompts(req: GetPromptsRequest):
-    if req.prompt_ids and req.limit:
-        raise HTTPException(status_code=400, detail="Prompt ids and limit filtering must be used seperately")
-    prompts = await run_in_threadpool(prompts_manager.get, req.prompt_ids, req.cluster_ids, req.limit, req.offset)
-    return JSONResponse(GetPromptsResponse(prompts=prompts).model_dump())
+    query_filter = PromptFilter(cluster_ids=req.cluster_ids) if req.cluster_ids else None
+    prompts_orm = await cluster_manager.item_store.get(filter=query_filter, limit=req.limit, offset=req.offset)
+    prompts = [prompt_from_orm(p) for p in prompts_orm]
+    return JSONResponse(GetPromptsResponse(prompts=prompts).model_dump(mode="json"))
 
+
+@app.post(Routes.GET_PROMPTS_BY_IDS_ENDPOINT)
+async def get_prompts_by_ids(req: GetPromptsByIdsRequest):
+    prompts_orm = await cluster_manager.item_store.get_by_ids(req.prompt_ids)
+    prompts = [prompt_from_orm(p) for p in prompts_orm]
+    return JSONResponse(GetPromptsResponse(prompts=prompts).model_dump(mode="json"))
 
 @app.post(Routes.QUERY_PROMPTS_ENDPOINT)
 async def query_prompts(req: QueryPromptsRequest):
-    def run_query():
-        embedding = text_embedder.embed(req.query)
-        return prompts_manager.query(embedding, req.cluster_ids, req.limit)
-    prompts = await run_in_threadpool(run_query)
-    return JSONResponse(GetPromptsResponse(prompts=prompts).model_dump())
+    embedding = text_embedder.embed(req.query)
+    ids = None
+    if req.cluster_ids:
+        crossrefs_orm = await cluster_manager.crossrefs_store.get(filter=ClusterCrossRefFilter(include_cluster_ids=req.cluster_ids))
+        ids = [c.item_id for c in cluster_manager.from_crossref_orm_list(crossrefs_orm)]
+    query_result = await cluster_manager.item_embedding_store.query(embedding, topK=req.limit, ids=ids)
+    prompts_orm = await cluster_manager.item_store.get_by_ids(query_result.ids)
+    prompts = [prompt_from_orm(p) for p in prompts_orm]
+    return JSONResponse(GetPromptsResponse(prompts=prompts).model_dump(mode="json"))
 
 
 @app.get(Routes.COUNT_PROMPTS_ENDPOINT)
 async def count_prompts():
-    count = await run_in_threadpool( prompts_manager.embedding_store.count)
+    count = await cluster_manager.item_store.count()
     return JSONResponse(GetCountResponse(count=count).model_dump())
 
 
 @app.get(Routes.GET_PROMPTS_OVERVIEW_ENDPOINT)
 async def get_overview():
-    overview = await run_in_threadpool( get_prompts_overview, prompts_manager, clusters_manager)
+    overview = await get_prompts_overview(cluster_manager)
     return JSONResponse(GetPromptsOverviewResponse(**overview.model_dump()).model_dump())
 
 
 @app.patch(Routes.BASE_PROMPTS_ENDPOINT)
 async def update_prompt_cluster(prompt_id: str, cluster_id: str):
     try:
-        await run_in_threadpool( prompts_manager.reassign_item , prompt_id,  cluster_id)
+        await  cluster_manager.assign({prompt_id : cluster_id})
     except SereleumError as e:
-        if e.code == ErrorCode.ITEM_NOT_FOUND:
-            raise HTTPException(status_code=404, detail="Prompt not found")
+        if e.code == ErrorCode.INVALID_ARGUMENT:
+            raise HTTPException(status_code=400, detail="Prompt or cluster id doesnt exist")
         else:
             raise e
     return JSONResponse(UpdatePromptClusterIdResponse(updated_cluster_id=cluster_id).model_dump())
@@ -197,13 +247,17 @@ async def update_prompt_cluster(prompt_id: str, cluster_id: str):
 async def get_clusters(cluster_id: Optional[str] = None, limit: Optional[str] = None, offset: Optional[str] = None):
     limit_int = int(limit) if limit not in (None, "") else None
     offset_int = int(offset) if offset not in (None, "") else None
-    clusters = await run_in_threadpool(clusters_manager.get_clusters, cluster_id, limit_int, offset_int, ['metadatas'])
-    return JSONResponse(GetClustersResponse(clusters=list(clusters.values())).model_dump())
+    if not cluster_id :
+        clusters_orm = await cluster_manager.cluster_store.get(limit=limit_int, offset=offset_int)
+    else:
+        clusters_orm = await cluster_manager.cluster_store.get_by_ids([cluster_id])
+    clusters = cluster_manager.from_cluster_orm_list(clusters_orm)
+    return JSONResponse(GetClustersResponse(clusters=clusters).model_dump())
 
 
 @app.patch(Routes.BASE_CLUSTER_ENDPOINT)
 async def update_cluster_label(cluster_id: str, label: str):
-    updated = await run_in_threadpool(clusters_manager.update_label, cluster_id, label)
+    updated = await cluster_manager.update_label(cluster_id, label)
     if not updated:
         raise HTTPException(status_code=404, detail="Label doesn't exist")
 
@@ -212,24 +266,12 @@ async def update_cluster_label(cluster_id: str, label: str):
 
 @app.get(Routes.COUNT_CLUSTERS_ENDPOINT)
 async def count_clusters():
-    count = await run_in_threadpool( clusters_manager.embedding_store.count)
+    count = await cluster_manager.cluster_store.count()
     return JSONResponse(GetCountResponse(count=count).model_dump())
-
-@app.get(Routes.GET_CLUSTER_LABELS_ENDPOINT)
-async def get_existing_labels():
-    labels = await run_in_threadpool(clusters_manager.get_existing_labels)
-    return JSONResponse(GetLabelsResponse(labels=labels).model_dump())
-
-
-# @app.get(Routes.GET_CLUSTER_ACCURACY_ENDPOINT)
-# async def get_cluster_accuracy():
-#     accuracy = await run_in_threadpool(clusters_manager.calculate_cluster_accuracy)
-#     return JSONResponse(GetClustersAccuracyResponse(accuracy=accuracy).model_dump())
-
 
 @app.get(Routes.GET_CLUSTER_PLOT_ENDPOINT)
 async def get_clusters_plot():
-    img_bytes = await run_in_threadpool(get_cluster_plot, clusters_manager, prompts_manager)
+    img_bytes = await get_cluster_plot(cluster_manager)
     return Response(status_code=200 if img_bytes else 204, content=img_bytes, media_type="image/png")
 
 
@@ -237,5 +279,5 @@ async def get_clusters_plot():
 async def merge_clusters(req: MergeClustersRequest):
     if not req.merges:
         raise HTTPException(status_code=400, detail="Merges cannot be empty")
-    updated_clusters = await run_in_threadpool(clusters_manager.merge,req.merges)
+    updated_clusters = await cluster_manager.merge(req.merges)
     return JSONResponse(MergeResponse(updated_clusters=updated_clusters).model_dump())

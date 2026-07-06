@@ -1,21 +1,22 @@
 from datetime import datetime, timezone
 from pydantic import BaseModel, Field
-from typing import Optional, Dict, List, ClassVar
-from smartscan import ClusterNoEmbeddings
-from sereleum.schemas.items.item import Item
+from typing import Optional, Dict, List
 
-class PromptMetadata(BaseModel):
-    UNCLUSTERED: ClassVar = "unclustered"
-    cluster_id: str = UNCLUSTERED
-    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
-    updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+from sereleum.schemas.items.item import Item, BaseItemFilter
+from sereleum.schemas.cluster import StoredClusterMetadata
+
+class Prompt(Item):
+    content: str
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     tokens: Optional[int] = None
 
-class Prompt(Item[str, PromptMetadata]):
-    metadata: PromptMetadata = Field(default_factory=PromptMetadata)
-
+class PromptFilter(BaseItemFilter):
+    min_tokens: Optional[int] = None
+    max_tokens: Optional[int] = None
+ 
 class PromptsOverviewInfo(BaseModel):
     total_prompts: int
     total_clusters: int
-    top_clusters: List[ClusterNoEmbeddings]
+    top_clusters: List[StoredClusterMetadata]
     top_cluster_token_counts: Dict[str, int]
