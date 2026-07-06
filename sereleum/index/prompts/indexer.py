@@ -21,7 +21,6 @@ class PromptIndexer(BatchProcessor[Prompt, tuple[StoredEmbedding, Prompt]]):
         super().__init__(**kwargs)
         self.text_encoder = text_encoder
         self.max_chunks = max_chunks
-        self.max_tokenizer_length = text_encoder.max_tokenizer_length
         self.embeddings_store = embeddings_store
         self.prompt_model = prompt_model
         self.prompt_store = prompt_store
@@ -30,7 +29,7 @@ class PromptIndexer(BatchProcessor[Prompt, tuple[StoredEmbedding, Prompt]]):
     # In the on_batch_complete method, the listener can handle use it as metaddata and assign unique ids to each chunk if required
     def on_process(self, item):
         tokens = count_tokens_embedding(item.content, self.prompt_model)
-        chunks = chunk_text(item.content, self.max_tokenizer_length)
+        chunks = chunk_text(item.content, self.text_encoder.max_tokens)
         embeddings = self.text_encoder.embed_batch(chunks)
         text_prototype = generate_prototype_embedding(embeddings)
         item.tokens = tokens
