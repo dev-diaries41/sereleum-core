@@ -1,6 +1,3 @@
-from dotenv import load_dotenv
-load_dotenv()
-
 import json
 import asyncio
 import os
@@ -15,13 +12,14 @@ from smartscan.models.model_manager import ModelManager
 from smartscan.index.listener import ProgressBarIndexerListener
 
 from sereleum.data.prompts.prompt_store import PromptStore
-from sereleum.data.embeds.pgvector_embed_store import PgVectorEmbeddingStore
 from sereleum.schemas.items.prompt import Prompt
 from sereleum.index.prompts.indexer import PromptIndexer
 from sereleum.providers.types import TextEmbeddingModel
 from sereleum.utils.data import get_dummy_data
 from sereleum.logs import getLogger
 from sereleum.data.db_config import get_config
+from benchmarks.utils import get_test_prompt_embed_store
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 BENCHMARK_NAME = "indexing_benchmarks"
 LOG_FILE_PATH = f"logs/{BENCHMARK_NAME}.log"
@@ -38,8 +36,13 @@ async def main(labelled_prompts: list[Prompt], model: TextEmbeddingModel):
     text_embedder.init()
     db_config = get_config()
     config_dict = asdict(db_config)
-    prompt_store = PromptStore(**config_dict)
-    prompt_embed_store = PgVectorEmbeddingStore(**config_dict, dim=text_embedder.embedding_dim)
+    engine = create_async_engine(db_config.dsn, echo=False)
+    sessionmaker = async_sessionmaker(
+        engine,
+        expire_on_commit=False,
+    )
+    prompt_store = PromptStore(sessionmaker)
+    prompt_embed_store = get_test_prompt_embed_store(model, config_dict, text_embedder.embedding_dim)
     indexer =  PromptIndexer(text_embedder, listener=ProgressBarIndexerListener(), embeddings_store=prompt_embed_store, prompt_store=prompt_store, batch_size=100, max_concurrency=4)
     result =  await indexer.run(labelled_prompts)
     logger.info(f"time_elpased: {result.time_elapsed} | processed: {result.total_processed}")
