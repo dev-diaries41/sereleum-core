@@ -23,6 +23,9 @@ class PgVectorEmbeddingStore(EmbeddingStore):
         port: int = 5432,
         min_pool_size: int = 1,
         max_pool_size: int = 10,
+        hnsw_m: int = 16,
+        hnsw_ef_construction: int = 64,
+        hnsw_ef_search: int = 100,
     ):
         self.dim = dim
         self.dsn = dsn
@@ -44,6 +47,10 @@ class PgVectorEmbeddingStore(EmbeddingStore):
         self.min_pool_size = min_pool_size
         self.max_pool_size = max_pool_size
 
+        self.hnsw_m = hnsw_m
+        self.hnsw_ef_construction = hnsw_ef_construction
+        self.hnsw_ef_search = hnsw_ef_search
+
     async def _init(self):
         if self._init_done:
             return
@@ -52,6 +59,7 @@ class PgVectorEmbeddingStore(EmbeddingStore):
 
         try:
             await conn.execute("CREATE EXTENSION IF NOT EXISTS vector")
+
             await conn.execute(f"""
                 CREATE TABLE IF NOT EXISTS {self.table_name} (
                     item_id TEXT PRIMARY KEY,
@@ -59,9 +67,19 @@ class PgVectorEmbeddingStore(EmbeddingStore):
                     created_at TIMESTAMPTZ NOT NULL
                 )
             """)
+
+            await conn.execute(f"""
+                CREATE INDEX IF NOT EXISTS {self.table_name}_embedding_hnsw_idx
+                ON {self.table_name}
+                USING hnsw (embedding vector_cosine_ops)
+                WITH (
+                    m = {self.hnsw_m},
+                    ef_construction = {self.hnsw_ef_construction}
+                )
+            """)
+
         finally:
             await conn.close()
-
 
         if self._pool is None:
             if self.dsn:
@@ -83,6 +101,7 @@ class PgVectorEmbeddingStore(EmbeddingStore):
 
     async def _init_conn(self, conn):
         await register_vector(conn)
+        await conn.execute(f"SET hnsw.ef_search = {self.hnsw_ef_search}")
 
     def _to_list(self, emb: NDArray) -> List[float]:
         return emb.tolist() if hasattr(emb, "tolist") else list(emb)
@@ -179,7 +198,6 @@ class PgVectorEmbeddingStore(EmbeddingStore):
             ids=[r["item_id"] for r in rows],
             sims=[r["sim"] for r in rows] if include_sims else None,
         )
-        
 
     async def update(self, items: List[StoredEmbedding]) -> None:
         await self._init()
