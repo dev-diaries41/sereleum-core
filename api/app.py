@@ -206,7 +206,7 @@ async def get_prompts_by_ids(req: GetPromptsByIdsRequest):
 
 @app.post(Routes.QUERY_PROMPTS_ENDPOINT)
 async def query_prompts(req: QueryPromptsRequest):
-    embedding = text_embedder.embed(req.query)
+    embedding = text_embedder.embed(req.query)[0]
     ids = None
     if req.cluster_ids:
         crossrefs_orm = await cluster_manager.crossrefs_store.get(filter=ClusterCrossRefFilter(include_cluster_ids=req.cluster_ids))
