@@ -30,7 +30,7 @@ class PromptIndexer(BatchProcessor[Prompt, tuple[StoredEmbedding, Prompt]]):
     def on_process(self, item):
         tokens = count_tokens_embedding(item.content, self.prompt_model)
         chunks = chunk_text(item.content, self.text_encoder.max_tokens)
-        embeddings = self.text_encoder.embed_batch(chunks)
+        embeddings = self.text_encoder.embed(chunks)
         text_prototype = generate_prototype_embedding(embeddings)
         item.tokens = tokens
         return StoredEmbedding(item.id, text_prototype), item
