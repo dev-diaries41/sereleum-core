@@ -21,17 +21,17 @@ class OpenAITextEmbedder(TextEmbeddingProvider):
     def max_tokenizer_length(self) -> int:
         return self._max_len
 
-    def embed(self, data: str) -> np.ndarray:
+        
+    def embed(self, data):
+
         response = self.openai.embeddings.create(
             input=data,
             model=self.model
         )
-        return response.data[0].embedding
+        embeds = [ emb.embedding for emb in response.data]
+        return np.stack(embeds, axis=0)
     
 
-    def embed_batch(self, data: list[str])-> np.ndarray:
-        return np.stack([self.embed(text) for text in data], axis=0)
-    
     def close_session(self):
         pass
 
