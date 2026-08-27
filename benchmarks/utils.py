@@ -65,7 +65,7 @@ def get_test_prompt_cluster_manager(db_config: DbConfig, session_maker: async_se
     class TestPromptClusterEmbedStore(PgVectorEmbeddingStore):
         table_name = f"prompt_cluster_embeds_{safe_model}"
 
-    prompt_embed_store = get_test_prompt_embed_store(safe_model, **config_dict, dim=embed_dim)
+    prompt_embed_store = get_test_prompt_embed_store(safe_model, config_dict, embed_dim=embed_dim)
     prompt_cluster_embed_store = TestPromptClusterEmbedStore(**config_dict, dim=embed_dim)
     return PromptClusterManager(
         cluster_embedding_store=prompt_cluster_embed_store,
