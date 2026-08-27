@@ -46,8 +46,9 @@ def get_true_labels(item_ids: list[str]):
 
 
 def get_test_prompt_embed_store(model: TextEmbeddingModel, config_dict: dict, embed_dim: int):
+    safe_model = model.replace("-", "_")
     class TestPromptEmbedStore(PgVectorEmbeddingStore):
-        table_name = f"prompt_embeds_{model}"
+        table_name = f"prompt_embeds_{safe_model}"
     config_dict["dsn"] = None # required
     return TestPromptEmbedStore(**config_dict, dim=embed_dim)
     
@@ -59,11 +60,12 @@ def get_test_prompt_cluster_manager(db_config: DbConfig, session_maker: async_se
 
     ## Simpler to use connect params for embed stores
     config_dict["dsn"] = None
+    safe_model = model.replace("-", "_")
 
     class TestPromptClusterEmbedStore(PgVectorEmbeddingStore):
-        table_name = f"prompt_cluster_embeds_{model}"
+        table_name = f"prompt_cluster_embeds_{safe_model}"
 
-    prompt_embed_store = get_test_prompt_embed_store(model, **config_dict, dim=embed_dim)
+    prompt_embed_store = get_test_prompt_embed_store(safe_model, **config_dict, dim=embed_dim)
     prompt_cluster_embed_store = TestPromptClusterEmbedStore(**config_dict, dim=embed_dim)
     return PromptClusterManager(
         cluster_embedding_store=prompt_cluster_embed_store,
