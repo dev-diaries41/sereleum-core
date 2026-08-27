@@ -4,6 +4,9 @@ import os
 import argparse
 import random
 
+from dotenv import load_dotenv
+load_dotenv('.env.dev')
+
 from dataclasses import asdict
 from typing import get_args
 from benchmarks.constants import BENCHMARK_DIR
