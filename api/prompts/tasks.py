@@ -14,16 +14,14 @@ from llm_connect.schemas.llm import LLMProviderConfig
 from sereleum.schemas.items.prompt import Prompt
 from sereleum.index.prompts.indexer import PromptIndexer
 from sereleum.index.prompts.indexer_listener import PromptIndexListener
+from sereleum.constants.db import POSTGRES_DSN
 from sereleum.constants.models import OPENAI_API_KEY, DEFAULT_SYSTEM_PROMPT, DEFAULT_OPENAI_MODEL
-from sereleum.data.db_config import get_config
 from sereleum.clusters.helpers import get_prompt_cluster_manager
 from api.redis import redis_client, get_broker
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sereleum.logs import getLogger
 from sereleum.helpers import get_cluster_status_key, get_cluster_status_channel
 from sereleum.schemas.api import FailMessage, CompleteMessage, ActiveMessage
-
-
+from sereleum.data.helpers import create_sessionmaker
 
 redis_broker = get_broker()
 redis_broker.add_middleware(AsyncIO())
@@ -34,15 +32,9 @@ model_manager = ModelManager()
 text_embedder = model_manager.get_text_embedder("all-distilroberta-v1")
 text_embedder.init()
 llm = OpenAIProvider(OPENAI_API_KEY, LLMProviderConfig(model=DEFAULT_OPENAI_MODEL, system_prompt=DEFAULT_SYSTEM_PROMPT))
-db_config = get_config()
+sessionmaker = create_sessionmaker(POSTGRES_DSN)
 
-engine = create_async_engine(db_config.dsn, echo=False)
-sessionmaker = async_sessionmaker(
-    engine,
-    expire_on_commit=False,
-)
-
-cluster_manager = get_prompt_cluster_manager(db_config, sessionmaker, embed_dim=text_embedder.embedding_dim, llm=llm)
+cluster_manager = get_prompt_cluster_manager(sessionmaker, embed_dim=text_embedder.embedding_dim, llm=llm)
 logger = getLogger("tasks", "logs/tasks.log")
 
 @dramatiq.actor(max_retries = 2)

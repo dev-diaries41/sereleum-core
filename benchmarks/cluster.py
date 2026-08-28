@@ -19,15 +19,14 @@ from benchmarks.utils import get_true_labels, get_test_prompt_cluster_manager
 from llm_connect.providers.openai import OpenAIProvider
 from llm_connect.schemas.llm import LLMProviderConfig
 
+from sereleum.constants.db import POSTGRES_DSN
 from sereleum.constants.models import OPENAI_API_KEY, DEFAULT_SYSTEM_PROMPT, DEFAULT_OPENAI_MODEL
 from sereleum.providers.types import TextEmbeddingModel
 from sereleum.clusters.cluster_manager import ClusterManager
 from sereleum.clusters.plot import plot_clusters, plot_clusters_with_prototypes
 from sereleum.utils.file import get_new_filename
 from sereleum.logs import getLogger
-from sereleum.data.db_config import get_config
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-
+from sereleum.data.helpers import create_sessionmaker
 
 BENCHMARK_NAME = "clustering_benchmarks"
 LOG_FILE_PATH = f"logs/{BENCHMARK_NAME}.log"
@@ -72,13 +71,8 @@ async def run(cluster_manager: ClusterManager, model:TextEmbeddingModel, plot_ou
 
 async def run_real_benchmark(model: TextEmbeddingModel, embed_dim: int, default_threshold: float, top_k: int):
     llm = OpenAIProvider(OPENAI_API_KEY, LLMProviderConfig(model=DEFAULT_OPENAI_MODEL, system_prompt=DEFAULT_SYSTEM_PROMPT))
-    db_config = get_config()
-    engine = create_async_engine(db_config.dsn, echo=False)
-    sessionmaker = async_sessionmaker(
-        engine,
-        expire_on_commit=False,
-    )
-    cluster_manager = get_test_prompt_cluster_manager(db_config, sessionmaker, embed_dim, model, llm)
+    sessionmaker =create_sessionmaker(POSTGRES_DSN)
+    cluster_manager = get_test_prompt_cluster_manager(sessionmaker, embed_dim, model, llm)
     plot_output = get_new_filename(BENCHMARK_PLOTS_DIR, f"real_{BENCHMARK_CLUSTERS_PLOT}", ".png")
     await run(cluster_manager, model, plot_output, default_threshold=default_threshold, top_k=top_k)
 

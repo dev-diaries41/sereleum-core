@@ -5,10 +5,8 @@ from sereleum.data.embeds.pgvector_embed_store import PgVectorEmbeddingStore
 from sereleum.providers.types import TextEmbeddingModel
 from sereleum.data.prompts import PromptStore, PromptClusterCrossRefStore, PromptClusterStore
 from sereleum.clusters.prompt_cluster_manager import PromptClusterManager
-from sereleum.data.db_config import DbConfig
 
 from llm_connect.providers.llm_provider import LLMProvider
-from dataclasses import asdict
 
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
@@ -45,28 +43,24 @@ def get_true_labels(item_ids: list[str]):
 
 
 
-def get_test_prompt_embed_store(model: TextEmbeddingModel, config_dict: dict, embed_dim: int):
+def get_test_prompt_embed_store(model: TextEmbeddingModel, sessionmaker: async_sessionmaker, embed_dim: int):
     safe_model = model.replace("-", "_")
     class TestPromptEmbedStore(PgVectorEmbeddingStore):
         table_name = f"prompt_embeds_{safe_model}"
-    config_dict["dsn"] = None # required
-    return TestPromptEmbedStore(**config_dict, dim=embed_dim)
+    return TestPromptEmbedStore(sessionmaker=sessionmaker, dim=embed_dim)
     
-def get_test_prompt_cluster_manager(db_config: DbConfig, session_maker: async_sessionmaker, embed_dim:int, model: TextEmbeddingModel, llm: LLMProvider):
-    config_dict = asdict(db_config)
-    prompt_store = PromptStore(session_maker)
-    prompt_cluster_store = PromptClusterStore(session_maker)
-    prompt_crossref_store = PromptClusterCrossRefStore(session_maker)
+def get_test_prompt_cluster_manager(sessionmaker: async_sessionmaker, embed_dim:int, model: TextEmbeddingModel, llm: LLMProvider):
+    prompt_store = PromptStore(sessionmaker)
+    prompt_cluster_store = PromptClusterStore(sessionmaker)
+    prompt_crossref_store = PromptClusterCrossRefStore(sessionmaker)
 
-    ## Simpler to use connect params for embed stores
-    config_dict["dsn"] = None
     safe_model = model.replace("-", "_")
 
     class TestPromptClusterEmbedStore(PgVectorEmbeddingStore):
         table_name = f"prompt_cluster_embeds_{safe_model}"
 
-    prompt_embed_store = get_test_prompt_embed_store(safe_model, config_dict, embed_dim=embed_dim)
-    prompt_cluster_embed_store = TestPromptClusterEmbedStore(**config_dict, dim=embed_dim)
+    prompt_embed_store = get_test_prompt_embed_store(safe_model, sessionmaker, embed_dim=embed_dim)
+    prompt_cluster_embed_store = TestPromptClusterEmbedStore(sessionmaker=sessionmaker, dim=embed_dim)
     return PromptClusterManager(
         cluster_embedding_store=prompt_cluster_embed_store,
         cluster_store=prompt_cluster_store,

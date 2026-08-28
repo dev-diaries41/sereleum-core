@@ -1,12 +1,14 @@
-import asyncpg
 import asyncio
-
 from typing import List, Optional
-from numpy.typing import NDArray
 
-from smartscan.embeds.types import StoredEmbedding, QueryResult
+from numpy.typing import NDArray
+from pgvector.sqlalchemy import Vector
+from sqlalchemy import Column, DateTime, Index, MetaData, String, Table, delete, func, select, update
+from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
+
 from smartscan.embeds.embedding_store import EmbeddingStore
-from pgvector.asyncpg import register_vector
+from smartscan.embeds.types import QueryResult, StoredEmbedding
 
 
 class PgVectorEmbeddingStore(EmbeddingStore):
@@ -15,144 +17,116 @@ class PgVectorEmbeddingStore(EmbeddingStore):
     def __init__(
         self,
         dim: int,
-        dsn: Optional[str] = None,
-        host: Optional[str] = None,
-        user: Optional[str] = None,
-        password: Optional[str] = None,
-        database: Optional[str] = None,
-        port: int = 5432,
-        min_pool_size: int = 1,
-        max_pool_size: int = 10,
+        sessionmaker: async_sessionmaker[AsyncSession],
         hnsw_m: int = 16,
         hnsw_ef_construction: int = 64,
-        hnsw_ef_search: int = 100,
     ):
         self.dim = dim
-        self.dsn = dsn
-        self._conn_params = None
-
-        if dsn is None:
-            self._conn_params = dict(
-                host=host,
-                user=user,
-                password=password,
-                database=database,
-                port=port,
-            )
-
-        self._pool: Optional[asyncpg.pool.Pool] = None
-        self._init_done = False
-        self._lock = asyncio.Lock()
-
-        self.min_pool_size = min_pool_size
-        self.max_pool_size = max_pool_size
-
+        self.sessionmaker = sessionmaker
         self.hnsw_m = hnsw_m
         self.hnsw_ef_construction = hnsw_ef_construction
-        self.hnsw_ef_search = hnsw_ef_search
 
-    async def _init(self):
+        self._metadata = MetaData()
+        self._table = Table(
+            self.table_name,
+            self._metadata,
+            Column("item_id", String, primary_key=True, nullable=False),
+            Column("embedding", Vector(dim), nullable=False),
+            Column("created_at", DateTime(timezone=True), nullable=False),
+            Index(
+                f"{self.table_name}_embedding_hnsw_idx",
+                "embedding",
+                postgresql_using="hnsw",
+                postgresql_with={
+                    "m": hnsw_m,
+                    "ef_construction": hnsw_ef_construction,
+                },
+                postgresql_ops={"embedding": "vector_cosine_ops"},
+            ),
+        )
+
+        self._init_done = False
+        self._init_lock = asyncio.Lock()
+        self._write_lock = asyncio.Lock()
+
+    @property
+    def _engine(self) -> AsyncEngine:
+        bind = self.sessionmaker.kw.get("bind")
+
+        if not isinstance(bind, AsyncEngine):
+            raise RuntimeError(
+                "PgVectorEmbeddingStore requires an async_sessionmaker "
+                "bound to an AsyncEngine"
+            )
+
+        return bind
+
+    async def _init(self) -> None:
         if self._init_done:
             return
 
-        conn = await asyncpg.connect(**(self._conn_params or {"dsn": self.dsn}))
+        async with self._init_lock:
+            if self._init_done:
+                return
 
-        try:
-            await conn.execute("CREATE EXTENSION IF NOT EXISTS vector")
+            async with self._engine.begin() as conn:
+                await conn.run_sync(self._metadata.create_all)
 
-            await conn.execute(f"""
-                CREATE TABLE IF NOT EXISTS {self.table_name} (
-                    item_id TEXT PRIMARY KEY,
-                    embedding VECTOR({self.dim}) NOT NULL,
-                    created_at TIMESTAMPTZ NOT NULL
-                )
-            """)
-
-            await conn.execute(f"""
-                CREATE INDEX IF NOT EXISTS {self.table_name}_embedding_hnsw_idx
-                ON {self.table_name}
-                USING hnsw (embedding vector_cosine_ops)
-                WITH (
-                    m = {self.hnsw_m},
-                    ef_construction = {self.hnsw_ef_construction}
-                )
-            """)
-
-        finally:
-            await conn.close()
-
-        if self._pool is None:
-            if self.dsn:
-                self._pool = await asyncpg.create_pool(
-                    dsn=self.dsn,
-                    min_size=self.min_pool_size,
-                    max_size=self.max_pool_size,
-                    init=self._init_conn,
-                )
-            else:
-                self._pool = await asyncpg.create_pool(
-                    min_size=self.min_pool_size,
-                    max_size=self.max_pool_size,
-                    init=self._init_conn,
-                    **self._conn_params,
-                )
-
-        self._init_done = True
-
-    async def _init_conn(self, conn):
-        await register_vector(conn)
-        await conn.execute(f"SET hnsw.ef_search = {self.hnsw_ef_search}")
+            self._init_done = True
 
     def _to_list(self, emb: NDArray) -> List[float]:
         return emb.tolist() if hasattr(emb, "tolist") else list(emb)
 
     async def add(self, items: List[StoredEmbedding]) -> None:
         await self._init()
+
         if not items:
             return
 
-        async with self._lock:
-            async with self._pool.acquire() as conn:
-                await conn.executemany(
-                    f"""
-                    INSERT INTO {self.table_name} (item_id, embedding, created_at)
-                    VALUES ($1, $2, $3)
-                    ON CONFLICT (item_id) DO NOTHING
-                    """,
+        async with self._write_lock:
+            async with self.sessionmaker() as session:
+                stmt = insert(self._table).values(
                     [
-                        (i.item_id, self._to_list(i.embedding), i.created_at)
-                        for i in items
-                    ],
+                        {
+                            "item_id": item.item_id,
+                            "embedding": self._to_list(item.embedding),
+                            "created_at": item.created_at,
+                        }
+                        for item in items
+                    ]
+                ).on_conflict_do_nothing(
+                    index_elements=[self._table.c.item_id]
                 )
 
-    async def get(self, ids: Optional[List[str]] = None) -> List[StoredEmbedding]:
+                await session.execute(stmt)
+                await session.commit()
+
+    async def get(
+        self,
+        ids: Optional[List[str]] = None,
+    ) -> List[StoredEmbedding]:
         await self._init()
 
-        async with self._pool.acquire() as conn:
+        async with self.sessionmaker() as session:
+            stmt = select(
+                self._table.c.item_id,
+                self._table.c.embedding,
+                self._table.c.created_at,
+            )
+
             if ids:
-                rows = await conn.fetch(
-                    f"""
-                    SELECT item_id, embedding, created_at
-                    FROM {self.table_name}
-                    WHERE item_id = ANY($1)
-                    """,
-                    ids,
-                )
-            else:
-                rows = await conn.fetch(
-                    f"""
-                    SELECT item_id, embedding, created_at
-                    FROM {self.table_name}
-                    """
-                )
+                stmt = stmt.where(self._table.c.item_id.in_(ids))
+
+            result = await session.execute(stmt)
+            rows = result.mappings().all()
 
         return [
             StoredEmbedding(
-                item_id=r["item_id"],
-                embedding=r["embedding"],
-                created_at=r["created_at"],
+                item_id=row["item_id"],
+                embedding=row["embedding"],
+                created_at=row["created_at"],
             )
-            for r in rows
+            for row in rows
         ]
 
     async def query(
@@ -165,96 +139,101 @@ class PgVectorEmbeddingStore(EmbeddingStore):
     ) -> QueryResult:
         await self._init()
 
-        where_sql = []
-        params = [self._to_list(query_embed), topK]
+        distance = self._table.c.embedding.cosine_distance(
+            self._to_list(query_embed)
+        ).label("sim")
+
+        stmt = select(
+            self._table.c.item_id,
+            distance,
+        )
 
         if ids is not None:
-            params.append(ids)
-            where_sql.append(f"item_id = ANY(${len(params)})")
+            stmt = stmt.where(self._table.c.item_id.in_(ids))
 
         if threshold is not None:
-            params.append(threshold)
-            where_sql.append(f"sim <= ${len(params)}")
+            stmt = stmt.where(distance <= threshold)
 
-        where_clause = f"WHERE {' AND '.join(where_sql)}" if where_sql else ""
+        stmt = stmt.order_by(distance).limit(topK)
 
-        async with self._pool.acquire() as conn:
-            rows = await conn.fetch(
-                f"""
-                SELECT item_id, sim
-                FROM (
-                    SELECT item_id,
-                        embedding <=> $1 AS sim
-                    FROM {self.table_name}
-                ) t
-                {where_clause}
-                ORDER BY sim
-                LIMIT $2
-                """,
-                *params,
-            )
+        async with self.sessionmaker() as session:
+            result = await session.execute(stmt)
+            rows = result.mappings().all()
 
         return QueryResult(
-            ids=[r["item_id"] for r in rows],
-            sims=[r["sim"] for r in rows] if include_sims else None,
+            ids=[row["item_id"] for row in rows],
+            sims=[row["sim"] for row in rows] if include_sims else None,
         )
 
     async def update(self, items: List[StoredEmbedding]) -> None:
         await self._init()
+
         if not items:
             return
 
-        async with self._lock:
-            async with self._pool.acquire() as conn:
-                for i in items:
-                    await conn.execute(
-                        f"""
-                        UPDATE {self.table_name}
-                        SET embedding = $2,
-                            created_at = $3
-                        WHERE item_id = $1
-                        """,
-                        i.item_id,
-                        self._to_list(i.embedding),
-                        i.created_at,
+        async with self._write_lock:
+            async with self.sessionmaker() as session:
+                for item in items:
+                    stmt = (
+                        update(self._table)
+                        .where(self._table.c.item_id == item.item_id)
+                        .values(
+                            embedding=self._to_list(item.embedding),
+                            created_at=item.created_at,
+                        )
                     )
+                    await session.execute(stmt)
+
+                await session.commit()
 
     async def upsert(self, items: List[StoredEmbedding]) -> None:
         await self._init()
+
         if not items:
             return
 
-        async with self._lock:
-            async with self._pool.acquire() as conn:
-                await conn.executemany(
-                    f"""
-                    INSERT INTO {self.table_name} (item_id, embedding, created_at)
-                    VALUES ($1, $2, $3)
-                    ON CONFLICT (item_id)
-                    DO UPDATE SET
-                        embedding = EXCLUDED.embedding,
-                        created_at = EXCLUDED.created_at
-                    """,
+        async with self._write_lock:
+            async with self.sessionmaker() as session:
+                stmt = insert(self._table).values(
                     [
-                        (i.item_id, self._to_list(i.embedding), i.created_at)
-                        for i in items
-                    ],
+                        {
+                            "item_id": item.item_id,
+                            "embedding": self._to_list(item.embedding),
+                            "created_at": item.created_at,
+                        }
+                        for item in items
+                    ]
                 )
+
+                stmt = stmt.on_conflict_do_update(
+                    index_elements=[self._table.c.item_id],
+                    set_={
+                        "embedding": stmt.excluded.embedding,
+                        "created_at": stmt.excluded.created_at,
+                    },
+                )
+
+                await session.execute(stmt)
+                await session.commit()
 
     async def delete(self, ids: List[str]) -> None:
         await self._init()
+
         if not ids:
             return
 
-        async with self._pool.acquire() as conn:
-            await conn.execute(
-                f"DELETE FROM {self.table_name} WHERE item_id = ANY($1)",
-                ids,
+        async with self.sessionmaker() as session:
+            stmt = delete(self._table).where(
+                self._table.c.item_id.in_(ids)
             )
+
+            await session.execute(stmt)
+            await session.commit()
 
     async def count(self) -> int:
         await self._init()
 
-        async with self._pool.acquire() as conn:
-            row = await conn.fetchrow(f"SELECT COUNT(*) AS c FROM {self.table_name}")
-            return row["c"]
+        async with self.sessionmaker() as session:
+            stmt = select(func.count()).select_from(self._table)
+            result = await session.execute(stmt)
+            return result.scalar_one()

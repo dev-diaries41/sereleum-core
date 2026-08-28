@@ -9,10 +9,12 @@ load_dotenv('.env.dev')
 
 from dataclasses import asdict
 from typing import get_args
-from benchmarks.constants import BENCHMARK_DIR
 
 from smartscan.models.model_manager import ModelManager
 from smartscan.index.listener import ProgressBarIndexerListener
+
+from benchmarks.constants import BENCHMARK_DIR
+from sereleum.constants.db import POSTGRES_DSN
 
 from sereleum.data.prompts.prompt_store import PromptStore
 from sereleum.schemas.items.prompt import Prompt
@@ -20,9 +22,8 @@ from sereleum.index.prompts.indexer import PromptIndexer
 from sereleum.providers.types import TextEmbeddingModel
 from sereleum.utils.data import get_dummy_data
 from sereleum.logs import getLogger
-from sereleum.data.db_config import get_config
 from benchmarks.utils import get_test_prompt_embed_store
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sereleum.data.helpers import create_sessionmaker
 
 BENCHMARK_NAME = "indexing_benchmarks"
 LOG_FILE_PATH = f"logs/{BENCHMARK_NAME}.log"
@@ -37,15 +38,9 @@ logger = getLogger(BENCHMARK_NAME, LOG_FILE_PATH)
 async def main(labelled_prompts: list[Prompt], model: TextEmbeddingModel):
     text_embedder = ModelManager().get_text_embedder(model)
     text_embedder.init()
-    db_config = get_config()
-    config_dict = asdict(db_config)
-    engine = create_async_engine(db_config.dsn, echo=False)
-    sessionmaker = async_sessionmaker(
-        engine,
-        expire_on_commit=False,
-    )
+    sessionmaker = create_sessionmaker(POSTGRES_DSN)
     prompt_store = PromptStore(sessionmaker)
-    prompt_embed_store = get_test_prompt_embed_store(model, config_dict, text_embedder.embedding_dim)
+    prompt_embed_store = get_test_prompt_embed_store(model, sessionmaker, text_embedder.embedding_dim)
     indexer =  PromptIndexer(text_embedder, listener=ProgressBarIndexerListener(), embeddings_store=prompt_embed_store, prompt_store=prompt_store, batch_size=100, max_concurrency=4)
     result =  await indexer.run(labelled_prompts)
     logger.info(f"time_elpased: {result.time_elapsed} | processed: {result.total_processed}")

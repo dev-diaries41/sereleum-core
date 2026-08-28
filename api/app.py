@@ -19,6 +19,7 @@ from smartscan.models.model_manager import ModelManager
 from llm_connect.schemas.llm import LLMProviderConfig
 from llm_connect.providers.openai import OpenAIProvider
 
+from sereleum.constants.db import POSTGRES_DSN
 from sereleum.constants.models import OPENAI_API_KEY, DEFAULT_SYSTEM_PROMPT, DEFAULT_OPENAI_MODEL
 from sereleum.constants import  UPLOAD_DIR
 from sereleum.constants.api import Routes
@@ -40,11 +41,10 @@ from sereleum.schemas.api import (
     )
 from sereleum.schemas.cluster import ClusterCrossRefFilter
 from sereleum.schemas.items.prompt import PromptFilter
-from sereleum.data.db_config import get_config
 from sereleum.clusters.plot import  get_cluster_plot
 from sereleum.clusters.helpers import get_prompt_cluster_manager
 from sereleum.data.converters.prompt import prompt_from_orm
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sereleum.data.helpers import create_sessionmaker
 from sereleum.helpers import get_index_progres_key, get_index_status_key, get_cluster_status_key, get_cluster_status_channel, get_index_progress_channel
 
 MAX_UPLOAD_SIZE = 50 * 1024 * 1024  # 50MB
@@ -54,14 +54,9 @@ text_embedder = model_manager.get_text_embedder("all-distilroberta-v1")
 text_embedder.init()
 llm = OpenAIProvider(OPENAI_API_KEY, LLMProviderConfig(model=DEFAULT_OPENAI_MODEL, system_prompt=DEFAULT_SYSTEM_PROMPT))
 
-db_config = get_config()
-engine = create_async_engine(db_config.dsn, echo=False)
-sessionmaker = async_sessionmaker(
-    engine,
-    expire_on_commit=False,
-)
+sessionmaker = create_sessionmaker(POSTGRES_DSN)
 
-cluster_manager = get_prompt_cluster_manager(db_config, sessionmaker, embed_dim=text_embedder.embedding_dim, llm=llm)
+cluster_manager = get_prompt_cluster_manager(sessionmaker, embed_dim=text_embedder.embedding_dim, llm=llm)
 
 app = FastAPI()
 app.add_middleware(
