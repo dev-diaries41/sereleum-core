@@ -1,6 +1,6 @@
 import random
 import string
-from placeholder_data import quantum_mechanics_sentences, nextjs_prompts, ai_prompts, robot_prompts, android_prompts, long_physics_sentences, long_btc_analysis, long_forex_analysis
+from sereleum.constants.test_data import quantum_mechanics_sentences, nextjs_prompts, ai_prompts, robot_prompts, android_prompts, long_physics_sentences, long_btc_analysis, long_forex_analysis
 from sereleum.schemas.items.prompt import Prompt
 from llm_connect.providers.llm_provider import LLMProvider
 
@@ -18,7 +18,7 @@ def generate_synthetic_prompt_data(llm: LLMProvider, label: str, topic: str, n:i
 
 ## DEV ONLY placeholders for getting data to cluster
 def strings_to_prompts(arr: list[str], label_prefix: str, offset: int = 0) -> list[Prompt]:
-    return [Prompt(id=f"{label_prefix}_{idx + offset}", data=prompt_content) for idx, prompt_content in enumerate(arr)]
+    return [Prompt(id=f"{label_prefix}_{idx + offset}", content=prompt_content) for idx, prompt_content in enumerate(arr)]
 
 def get_placeholder_prompts(offset=0) -> list[Prompt]:
     all_data: list[Prompt] = []
@@ -37,7 +37,7 @@ def get_test_prompts(offset=0) -> list[Prompt]:
     return all_data
 
 def get_dummy_data(n: int = 100, offset = 0) -> list[Prompt]:
-    return [ Prompt(id = f"prompt_{i + offset}", data=random_string(550)) for i in range(n)]
+    return [ Prompt(id = f"prompt_{i + offset}", content=random_string(550)) for i in range(n)]
 
 def random_string(n):
     return ''.join(random.choices(string.ascii_letters + string.digits, k=n))

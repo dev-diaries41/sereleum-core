@@ -1,6 +1,14 @@
 import tracemalloc
 import time
 
+from sereleum.data.embeds.pgvector_embed_store import PgVectorEmbeddingStore
+from sereleum.providers.types import TextEmbeddingModel
+from sereleum.data.prompts import PromptStore, PromptClusterCrossRefStore, PromptClusterStore
+from sereleum.clusters.prompt_cluster_manager import PromptClusterManager
+
+from llm_connect.providers.llm_provider import LLMProvider
+
+from sqlalchemy.ext.asyncio import async_sessionmaker
 
 def with_mem_profile(func):
     def wrapper(*args, **kwargs):
@@ -32,3 +40,32 @@ def get_true_labels(item_ids: list[str]):
                 continue
             true_labels[id] = label
         return true_labels
+
+
+
+def get_test_prompt_embed_store(model: TextEmbeddingModel, sessionmaker: async_sessionmaker, embed_dim: int):
+    safe_model = model.replace("-", "_")
+    class TestPromptEmbedStore(PgVectorEmbeddingStore):
+        table_name = f"prompt_embeds_{safe_model}"
+    return TestPromptEmbedStore(sessionmaker=sessionmaker, dim=embed_dim)
+    
+def get_test_prompt_cluster_manager(sessionmaker: async_sessionmaker, embed_dim:int, model: TextEmbeddingModel, llm: LLMProvider):
+    prompt_store = PromptStore(sessionmaker)
+    prompt_cluster_store = PromptClusterStore(sessionmaker)
+    prompt_crossref_store = PromptClusterCrossRefStore(sessionmaker)
+
+    safe_model = model.replace("-", "_")
+
+    class TestPromptClusterEmbedStore(PgVectorEmbeddingStore):
+        table_name = f"prompt_cluster_embeds_{safe_model}"
+
+    prompt_embed_store = get_test_prompt_embed_store(safe_model, sessionmaker, embed_dim=embed_dim)
+    prompt_cluster_embed_store = TestPromptClusterEmbedStore(sessionmaker=sessionmaker, dim=embed_dim)
+    return PromptClusterManager(
+        cluster_embedding_store=prompt_cluster_embed_store,
+        cluster_store=prompt_cluster_store,
+        crossrefs_store=prompt_crossref_store,
+        item_embedding_store=prompt_embed_store, 
+        item_store=prompt_store,
+        llm=llm,
+    )

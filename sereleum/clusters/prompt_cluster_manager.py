@@ -3,39 +3,68 @@ from smartscan.embeds import EmbeddingStore
 from llm_connect.providers.llm_provider import LLMProvider
 
 from sereleum.clusters.cluster_manager import ClusterManager
-from sereleum.items.prompt_manager import PromptManager
-from sereleum.schemas.items.prompt import Prompt, PromptMetadata
 from sereleum.schemas.llm import LLMClassificationResult
+from sereleum.data.prompts import PromptStore, PromptClusterStore, PromptClusterCrossRefStore
+from sereleum.data.models import PromptClusterModel, PromptClusterCrossRefModel
+from sereleum.schemas.cluster import ClusterCrossRefFilter
+from sereleum.data.converters.prompt import cluster_to_orm, cluster_from_orm,  crossref_from_prompt_orm, crossref_to_prompt_orm
 
 
-class PromptClusterManager(ClusterManager[Prompt, str, PromptMetadata]):
+class PromptClusterManager(ClusterManager[PromptStore, PromptClusterModel, PromptClusterCrossRefModel]):
     def __init__(
         self,
-        embedding_store: EmbeddingStore,
-        items_manager: PromptManager,
-        llm: LLMProvider,
+        cluster_embedding_store: EmbeddingStore,
+        cluster_store: PromptClusterStore,
+        crossrefs_store: PromptClusterCrossRefStore,
+        item_embedding_store: EmbeddingStore,
+        item_store: PromptStore,
+        llm: LLMProvider, 
         label_confidence_threshold: float = 0.8,
         label_concurrency: int = 8,
     ):
         super().__init__(
-            embedding_store=embedding_store,
-            items_manager=items_manager,
+            
+            cluster_embedding_store=cluster_embedding_store,
+            cluster_store=cluster_store,
+            crossrefs_store=crossrefs_store,
+            item_embedding_store=item_embedding_store,
+            item_store=item_store,
             llm=llm,
             label_confidence_threshold=label_confidence_threshold,
             label_concurrency=label_concurrency,
         )
    
     
-    def label(self, cluster_id, sample_size, existing_labels) -> LLMClassificationResult:
-        clusters = self.get_clusters(cluster_ids=[cluster_id], include=['embeddings'])
-        if not clusters:
+    async def label(self, cluster_id, sample_size) -> LLMClassificationResult:
+        result = await self.cluster_embedding_store.get([cluster_id])
+        if len(result) == 0:
             raise ValueError("Cluster not found")
-        prompts = self.items_manager.embedding_store.query(query_embeds=[clusters[cluster_id].embedding], filter={"cluster_id": cluster_id},  limit=sample_size, include=['documents'])
-        sample_prompts = [content for content in prompts.datas]
-        input_prompt = self._get_labelling_prompt(cluster_id, existing_labels, sample_prompts)
+        cluster_embed = result[0]
+        
+        ## Note: consider skipping this step and directly querying embed store without using the filter ids since items in the same cluster are most likely to be in topK
+        crossrefs = await self.crossrefs_store.get(filter=ClusterCrossRefFilter(include_cluster_ids=[cluster_id]))
+        ids = [c.item_id for c in crossrefs]
+        query_result = await self.item_embedding_store.query(query_embed=cluster_embed.embedding, ids=ids, topK=sample_size)
+        sample_prompts = [prompt.content for prompt in await self.item_store.get_by_ids(query_result.ids)]
+        input_prompt = self._get_labelling_prompt(cluster_id, sample_prompts)
         return self.llm.generate_json(input_prompt, LLMClassificationResult)
     
+    async def get_unclustered_item_ids(self):
+        return await self.item_store.get_unclustered_item_ids()
+    
+    def to_cluster_orm(self, metadata):
+        return cluster_to_orm(metadata)
+    
+    def to_crossref_orm(self, crossref):
+        return crossref_to_prompt_orm(crossref)
+    
+    def from_cluster_orm(self, cluster_orm):
+        return cluster_from_orm(cluster_orm)
+    
+    def from_crossref_orm(self, crossref_orm):
+        return crossref_from_prompt_orm(crossref_orm)
+    
     @staticmethod
-    def _get_labelling_prompt(cluster_id: str, existing_labels: list[str], sample_prompts: list[str]) -> str:
-        return f"""## ClusterId: {cluster_id}\n\n##Existing labels {existing_labels} Cluster sample_prompts \n\n {sample_prompts}"""
+    def _get_labelling_prompt(cluster_id: str, sample_prompts: list[str]) -> str:
+        return f"""## ClusterId: {cluster_id}\n\n Cluster sample_prompts \n\n {sample_prompts}"""
     

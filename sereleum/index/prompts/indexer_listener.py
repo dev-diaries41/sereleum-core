@@ -1,39 +1,42 @@
-from redis import Redis
+from redis.asyncio import Redis
 
-from smartscan import ItemEmbedding
+from smartscan import StoredEmbedding
 from smartscan.processor import ProcessorListener
 
 from sereleum.types import Status
 from sereleum.schemas.items.prompt import Prompt
+from sereleum.helpers import get_index_progres_key, get_index_status_key, get_index_progress_channel
+from sereleum.schemas.api import ProgressMessage, FailMessage, CompleteMessage, ErrorMessage
 
 
-class PromptIndexListener(ProcessorListener[Prompt, ItemEmbedding]):
+class PromptIndexListener(ProcessorListener[Prompt, tuple[StoredEmbedding, Prompt]]):
     def __init__(self, job_id: str, redis_client: Redis):
         self.job_id = job_id
         self.redis = redis_client
 
     async def on_active(self):
-        self._update_status('active')
+        await self._update_status('active')
 
     async def on_complete(self, result):
-        self._update_status('complete')
-        # print(f"Job complete - status: {self.redis.get(self._get_status_key())} | progress: {self.redis.get(self._get_progres_key())}")
+        await self._update_status('complete')
+        await self.redis.publish(
+            get_index_progress_channel(self.job_id), 
+            CompleteMessage(total_processed=result.total_processed, time_elapsed=result.time_elapsed).model_dump_json()
+            )
+
 
     async def on_progress(self, progress):
-        self.redis.set(self._get_progres_key(), progress, ex=86400)
+        await self.redis.set(get_index_progres_key(self.job_id), progress, ex=86400)
+        await self.redis.publish(get_index_progress_channel(self.job_id), ProgressMessage(progress=progress).model_dump_json())
 
     async def on_fail(self, result):
         print(f"Indexing failed: {result.error}")
-        self._update_status('failed')
+        await self._update_status('failed')
+        await self.redis.publish(get_index_progress_channel(self.job_id), FailMessage(error=str(result.error)).model_dump_json())
 
     async def on_error(self, e, item):
         print(f"Error processing prompt: {item.id}. Details: {e}")
+        await self.redis.publish(get_index_progress_channel(self.job_id), ErrorMessage(error=str(e), item=item.id).model_dump_json())
 
-    def _get_progres_key(self):
-        return f"progress_{self.job_id}"
-    
-    def _get_status_key(self):
-        return f"status_{self.job_id}"
-    
-    def _update_status(self, status: Status ):
-        self.redis.set(self._get_status_key(), status, ex=86400)
+    async def _update_status(self, status: Status ):
+        await self.redis.set(get_index_status_key(self.job_id), status, ex=86400)

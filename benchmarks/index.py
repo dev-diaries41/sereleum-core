@@ -1,26 +1,29 @@
-from dotenv import load_dotenv
-load_dotenv()
-
 import json
 import asyncio
 import os
 import argparse
 import random
-import chromadb
 
+from dotenv import load_dotenv
+load_dotenv('.env.dev')
+
+from dataclasses import asdict
 from typing import get_args
-from benchmarks.constants import BENCHMARK_CHROMADB_PATH, BENCHMARK_DIR
 
 from smartscan.models.model_manager import ModelManager
 from smartscan.index.listener import ProgressBarIndexerListener
 
-from sereleum.types import Prompt
+from benchmarks.constants import BENCHMARK_DIR
+from sereleum.constants.db import POSTGRES_DSN
+
+from sereleum.data.prompts.prompt_store import PromptStore
+from sereleum.schemas.items.prompt import Prompt
 from sereleum.index.prompts.indexer import PromptIndexer
-from sereleum.store.chroma_store import ChromaDBEmbeddingStore
 from sereleum.providers.types import TextEmbeddingModel
-from sereleum.data import get_dummy_data
+from sereleum.utils.data import get_dummy_data
 from sereleum.logs import getLogger
-from sereleum.helpers import get_embedding_collection_name
+from benchmarks.utils import get_test_prompt_embed_store
+from sereleum.data.helpers import create_sessionmaker
 
 BENCHMARK_NAME = "indexing_benchmarks"
 LOG_FILE_PATH = f"logs/{BENCHMARK_NAME}.log"
@@ -29,22 +32,22 @@ os.makedirs("logs", exist_ok=True)
 os.makedirs(BENCHMARK_DIR, exist_ok=True)
 
 logger = getLogger(BENCHMARK_NAME, LOG_FILE_PATH)
-client = chromadb.PersistentClient(path=BENCHMARK_CHROMADB_PATH, settings=chromadb.Settings(anonymized_telemetry=False))
 
 # `prompt_id` must be prefixed with label e.g promptlabel_123
 # this is only for benchmarking
 async def main(labelled_prompts: list[Prompt], model: TextEmbeddingModel):
     text_embedder = ModelManager().get_text_embedder(model)
     text_embedder.init()
-    collection_name = get_embedding_collection_name("prompt", model, text_embedder.embedding_dim)
-    embedding_store = ChromaDBEmbeddingStore(client.get_or_create_collection(collection_name))
-    indexer =  PromptIndexer(text_embedder, listener=ProgressBarIndexerListener(), embeddings_store=embedding_store, batch_size=100, max_concurrency=4)
+    sessionmaker = create_sessionmaker(POSTGRES_DSN)
+    prompt_store = PromptStore(sessionmaker)
+    prompt_embed_store = get_test_prompt_embed_store(model, sessionmaker, text_embedder.embedding_dim)
+    indexer =  PromptIndexer(text_embedder, listener=ProgressBarIndexerListener(), embeddings_store=prompt_embed_store, prompt_store=prompt_store, batch_size=100, max_concurrency=4)
     result =  await indexer.run(labelled_prompts)
     logger.info(f"time_elpased: {result.time_elapsed} | processed: {result.total_processed}")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model","-m", help="Embedding model to use for indexing", default='all-minilm-l6-v2', choices=get_args(TextEmbeddingModel))
+    parser.add_argument("--model","-m", help="Embedding model to use for indexing", default='all-distilroberta-v1', choices=get_args(TextEmbeddingModel))
     parser.add_argument("-n", type=int, help="number of items to generate", default=100)
     parser.add_argument("-o", type=int, help="dummy data offset", default=0)
     parser.add_argument("--stress", action="store_true", help="stress test")

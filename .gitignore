@@ -12,7 +12,7 @@ dev/
 logs/
 
 # Files
-.env
+.env*
 *.onnx
 TODO.md
 .env

@@ -1,14 +1,14 @@
 
-from typing import Dict, TypeVar, Any, Generic
 from pydantic import BaseModel
+from typing import Optional,List 
+from datetime import date
 
-TItem = TypeVar("TItem", bound=Any)
-TData = TypeVar("TData", bound=Any)
-TMetadata = TypeVar("TMetadata", bound=Dict)
-
-class Item(BaseModel, Generic[TData, TMetadata]):
+class Item(BaseModel):
     id: str
-    data: TData
-    metadata: TMetadata
 
-
+class BaseItemFilter(BaseModel):
+    cluster_ids: Optional[List[str]] = None
+    created_after: Optional[date] = None
+    created_before: Optional[date] = None
+    updated_after: Optional[date] = None
+    updated_before: Optional[date] = None
