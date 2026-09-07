@@ -11,7 +11,7 @@ requires-python = ">=3.10"
 dependencies = [
     "asyncpg==0.31.0",
     "pgvector==0.4.2",
-    "smartscan @ git+https://github.com/smartscanapp/smartscan-lib.git@dev",
+    "smartscan @ git+https://github.com/smartscanapp/smartscan-lib.git@1.1.1",
     "llm_connect @ git+https://github.com/dev-diaries41/llm-connect.git",
     "aiosqlite==0.22.1",
     "matplotlib==3.10.8",
