@@ -3,11 +3,13 @@ from sqlalchemy import exists, select
 from sereleum.data.base_store import BaseStore
 from sereleum.data.models.prompt import PromptModel
 from sereleum.data.models.prompt_cluster_crossref import PromptClusterCrossRefModel
-from sereleum.schemas.items.prompt import PromptFilter
+from sereleum.schemas.items.prompt import PromptFilter, Prompt
+from sereleum.data.mappers.prompt import PromptMapper
 
 
-class PromptStore(BaseStore[PromptModel]):
+class PromptStore(BaseStore[PromptModel, Prompt]):
     model = PromptModel
+    mapper = PromptMapper()
 
     def apply_filters(self, stmt, f: PromptFilter | None):
         if not f:

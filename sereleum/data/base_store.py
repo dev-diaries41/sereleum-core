@@ -1,18 +1,25 @@
 from abc import ABC, abstractmethod
-from typing import Generic, List, Optional
+from typing import Generic, List, Optional, TypeVar
 
+from pydantic import BaseModel
 from sqlalchemy import Select, func, inspect, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from sereleum.data.mappers.mapper import Mapper
 from sereleum.data.types import TItemModel
-from pydantic import BaseModel
+
+TDomain = TypeVar("TDomain")
 
 
-class BaseStore(Generic[TItemModel], ABC):
+class BaseStore(Generic[TItemModel, TDomain], ABC):
     model: type[TItemModel]
+    mapper: Mapper[TItemModel, TDomain]
 
-    def __init__(self, sessionmaker: async_sessionmaker):
+    def __init__(
+        self,
+        sessionmaker: async_sessionmaker,
+    ):
         self.sessionmaker = sessionmaker
 
     @property
@@ -20,16 +27,17 @@ class BaseStore(Generic[TItemModel], ABC):
         return inspect(self.model).primary_key
 
     @abstractmethod
-    def apply_filters(self, stmt: Select, filter: Optional[BaseModel]):
+    def apply_filters(self, stmt: Select, filter: Optional[BaseModel]) -> Select:
         ...
 
-    async def add(self, items: List[TItemModel]):
+    async def add(self, items: List[TDomain]) -> None:
         if not items:
             return
 
+        entities = [self.mapper.to_entity(item) for item in items]
         values = [
             {column.name: getattr(item, column.name) for column in self.model.__table__.columns}
-            for item in items
+            for item in entities
         ]
 
         async with self.sessionmaker() as session:
@@ -40,13 +48,14 @@ class BaseStore(Generic[TItemModel], ABC):
             await session.execute(stmt)
             await session.commit()
 
-    async def update(self, items: List[TItemModel]):
+    async def update(self, items: List[TDomain]) -> None:
         if not items:
             return
 
+        entities = [self.mapper.to_entity(item) for item in items]
         mappings = [
             {column.name: getattr(item, column.name) for column in self.model.__table__.columns}
-            for item in items
+            for item in entities
         ]
 
         async with self.sessionmaker() as session:
@@ -62,7 +71,7 @@ class BaseStore(Generic[TItemModel], ABC):
         offset: int = 0,
         order_by: Optional[str] = None,
         ascending: bool = True,
-    ) -> List[TItemModel]:
+    ) -> List[TDomain]:
         async with self.sessionmaker() as session:
             stmt = self.apply_filters(select(self.model), filter)
             column = getattr(self.model, order_by) if order_by else self.primary_keys[0]
@@ -72,15 +81,20 @@ class BaseStore(Generic[TItemModel], ABC):
                 stmt = stmt.limit(limit)
 
             result = await session.execute(stmt)
-            return list(result.scalars().all())
+            return [self.mapper.to_domain(entity) for entity in result.scalars().all()]
 
-    async def delete(self, item: TItemModel):
+    async def delete(self, item: TDomain) -> None:
+        entity = self.mapper.to_entity(item)
+
         async with self.sessionmaker() as session:
-            await session.delete(item)
+            entity = await session.merge(self.mapper.to_entity(item))
+            await session.delete(entity)
             await session.commit()
 
     async def count(self, filter: Optional[BaseModel] = None) -> int:
         async with self.sessionmaker() as session:
-            stmt = self.apply_filters(select(func.count()).select_from(self.model), filter)
+            stmt = self.apply_filters(
+                select(func.count()).select_from(self.model), filter
+            )
             result = await session.execute(stmt)
             return result.scalar_one()

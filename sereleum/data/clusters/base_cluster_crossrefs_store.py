@@ -1,14 +1,16 @@
 from abc import ABC
+from typing import Generic
 
 from sqlalchemy import Select
 
 from sereleum.data.base_store import BaseStore
-from sereleum.schemas.cluster import ClusterCrossRefFilter
+from sereleum.schemas.cluster import ClusterCrossRefFilter, ClusterCrossRef
 from sereleum.data.types import TCrossRefModel
 
 
 class BaseClusterCrossRefStore(
-    BaseStore[TCrossRefModel],
+    Generic[TCrossRefModel],
+    BaseStore[TCrossRefModel, ClusterCrossRef],
     ABC,
 ):
 

@@ -1,13 +1,15 @@
 from abc import ABC
+from typing import Generic
 
 from sqlalchemy import Select
 
 from sereleum.data.base_store import BaseStore
-from sereleum.schemas.cluster import ClusterFilter
+from sereleum.schemas.cluster import ClusterFilter, StoredClusterMetadata
 from sereleum.data.types import TClusterModel
 
 class BaseClusterStore(
-    BaseStore[TClusterModel],
+    Generic[TClusterModel],
+    BaseStore[TClusterModel, StoredClusterMetadata],
     ABC,
 ):
     def apply_filters(
