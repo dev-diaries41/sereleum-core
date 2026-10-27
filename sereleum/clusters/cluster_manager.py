@@ -130,7 +130,7 @@ class ClusterManager(Generic[TItemStore, TClusterModel, TCrossRefModel]):
         await self._assign_from_merges(merges)
         merged_clustered_ids = {cid for targets in merges.values() for cid in targets}
         await self.cluster_embedding_store.delete(list(merged_clustered_ids)) 
-        await self.crossrefs_store.delete(list(merged_clustered_ids)) 
+        await self.cluster_store.delete(list(merged_clustered_ids)) 
 
         cluster_metadata_updates: list[StoredClusterMetadata] = []
         cluster_embed_updates: list[StoredEmbedding] = []
