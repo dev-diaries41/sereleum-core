@@ -4,7 +4,7 @@ from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 
 from alembic import context
-from sereleum.data.base import Base
+from sereleum.data.models.base import Base
 import sereleum.data.models # required
 import os
 

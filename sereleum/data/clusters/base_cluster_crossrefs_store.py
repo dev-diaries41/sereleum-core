@@ -11,7 +11,6 @@ class BaseClusterCrossRefStore(
     BaseStore[TCrossRefModel, ClusterCrossRefFilter],
     ABC,
 ):
-    primary_key = "item_id"
 
     def apply_filters(
         self,

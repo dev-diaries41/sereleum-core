@@ -18,7 +18,7 @@ from sereleum.schemas.llm import LLMClassificationResult
 from sereleum.data.clusters.base_cluster_crossrefs_store import BaseClusterCrossRefStore
 from sereleum.data.base_store import BaseStore
 from sereleum.data.clusters.base_cluster_store import BaseClusterStore
-from sereleum.schemas.cluster import ClusterCrossRef, StoredClusterMetadata, ClusterCrossRefFilter
+from sereleum.schemas.cluster import ClusterCrossRef, StoredClusterMetadata, ClusterCrossRefFilter, ClusterFilter
 from sereleum.errors import SereleumError, ErrorCode
 from sereleum.data.types import  TCrossRefModel, TClusterModel
 
@@ -118,7 +118,7 @@ class ClusterManager(Generic[TItemStore, TClusterModel, TCrossRefModel]):
     
 
     async def update_label(self, cluster_id: str, label: str) -> bool:
-        result = await self.cluster_store.get_by_ids([cluster_id])
+        result = await self.cluster_store.get(filter=ClusterFilter(ids=[cluster_id]))
         if(len(result)) == 0: return False
         cluster_orm=result[0]
         metadata = self.from_cluster_orm(cluster_orm)
@@ -204,7 +204,7 @@ class ClusterManager(Generic[TItemStore, TClusterModel, TCrossRefModel]):
         return unlabelled_clusters
 
     async def _sync(self, cluster_id: ClusterId) -> tuple[StoredEmbedding, StoredClusterMetadata] | None:
-        result = await self.cluster_store.get_by_ids([cluster_id])
+        result = await self.cluster_store.get(filter=ClusterFilter(ids=[cluster_id]))
         if len(result) == 0:
             return None
         crossrefs_orm = await self.crossrefs_store.get(filter=ClusterCrossRefFilter(include_cluster_ids=[cluster_id]))

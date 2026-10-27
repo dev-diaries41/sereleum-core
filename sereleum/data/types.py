@@ -1,8 +1,10 @@
 from pydantic import BaseModel
 from typing import TypeVar
-from sereleum.data.base import Base
+from sereleum.data.models.base import Base
+from sereleum.data.models.cluster_base import ClusterBase
+from sereleum.data.models.cluster_crossref_base import ClusterCrossRefBase
 
 TItemModel = TypeVar("TItemModel", bound=Base)
-TCrossRefModel = TypeVar("TCrossRefModel", bound=Base)
-TClusterModel = TypeVar("TClusterModel", bound=Base)
+TCrossRefModel = TypeVar("TCrossRefModel", bound=ClusterCrossRefBase)
+TClusterModel = TypeVar("TClusterModel", bound=ClusterBase)
 TQueryFilter = TypeVar("TQueryFilter", bound=BaseModel)

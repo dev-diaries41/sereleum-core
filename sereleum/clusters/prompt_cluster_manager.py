@@ -7,6 +7,7 @@ from sereleum.schemas.llm import LLMClassificationResult
 from sereleum.data.prompts import PromptStore, PromptClusterStore, PromptClusterCrossRefStore
 from sereleum.data.models import PromptClusterModel, PromptClusterCrossRefModel
 from sereleum.schemas.cluster import ClusterCrossRefFilter
+from sereleum.schemas.items.prompt import PromptFilter
 from sereleum.data.converters.prompt import cluster_to_orm, cluster_from_orm,  crossref_from_prompt_orm, crossref_to_prompt_orm
 
 
@@ -45,7 +46,7 @@ class PromptClusterManager(ClusterManager[PromptStore, PromptClusterModel, Promp
         crossrefs = await self.crossrefs_store.get(filter=ClusterCrossRefFilter(include_cluster_ids=[cluster_id]))
         ids = [c.item_id for c in crossrefs]
         query_result = await self.item_embedding_store.query(query_embed=cluster_embed.embedding, ids=ids, topK=sample_size)
-        sample_prompts = [prompt.content for prompt in await self.item_store.get_by_ids(query_result.ids)]
+        sample_prompts = [prompt.content for prompt in await self.item_store.get(filter=PromptFilter(ids=query_result.ids))]
         input_prompt = self._get_labelling_prompt(cluster_id, sample_prompts)
         return self.llm.generate_json(input_prompt, LLMClassificationResult)
     

@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Text, Integer
 from sqlalchemy.dialects.postgresql import TIMESTAMP
 from sqlalchemy.sql import func
-from sereleum.data.base import Base
+from sereleum.data.models.base import Base
 
 class PromptModel(Base):
     __tablename__ = "prompts"

@@ -11,6 +11,7 @@ class StoredClusterMetadata(BaseModel):
 class ClusterFilter(BaseModel):
     label: Optional[str] = None
     size: Optional[int] = None
+    ids: Optional[list[str]] = None
 
 
 class ClusterCrossRef(BaseModel):

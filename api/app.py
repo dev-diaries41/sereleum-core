@@ -39,7 +39,7 @@ from sereleum.schemas.api import (
     MergeClustersRequest,
     MergeResponse
     )
-from sereleum.schemas.cluster import ClusterCrossRefFilter
+from sereleum.schemas.cluster import ClusterCrossRefFilter, ClusterFilter
 from sereleum.schemas.items.prompt import PromptFilter
 from sereleum.clusters.plot import  get_cluster_plot
 from sereleum.clusters.helpers import get_prompt_cluster_manager
@@ -195,7 +195,7 @@ async def get_prompts(req: GetPromptsRequest):
 
 @app.post(Routes.GET_PROMPTS_BY_IDS_ENDPOINT)
 async def get_prompts_by_ids(req: GetPromptsByIdsRequest):
-    prompts_orm = await cluster_manager.item_store.get_by_ids(req.prompt_ids)
+    prompts_orm = await cluster_manager.item_store.get(filter=PromptFilter(ids=req.prompt_ids))
     prompts = [prompt_from_orm(p) for p in prompts_orm]
     return JSONResponse(GetPromptsResponse(prompts=prompts).model_dump(mode="json"))
 
@@ -207,7 +207,7 @@ async def query_prompts(req: QueryPromptsRequest):
         crossrefs_orm = await cluster_manager.crossrefs_store.get(filter=ClusterCrossRefFilter(include_cluster_ids=req.cluster_ids))
         ids = [c.item_id for c in cluster_manager.from_crossref_orm_list(crossrefs_orm)]
     query_result = await cluster_manager.item_embedding_store.query(embedding, topK=req.limit, ids=ids)
-    prompts_orm = await cluster_manager.item_store.get_by_ids(query_result.ids)
+    prompts_orm = await cluster_manager.item_store.get(filter=PromptFilter(ids=query_result.ids))
     prompts = [prompt_from_orm(p) for p in prompts_orm]
     return JSONResponse(GetPromptsResponse(prompts=prompts).model_dump(mode="json"))
 
@@ -245,7 +245,7 @@ async def get_clusters(cluster_id: Optional[str] = None, limit: Optional[str] = 
     if not cluster_id :
         clusters_orm = await cluster_manager.cluster_store.get(limit=limit_int, offset=offset_int)
     else:
-        clusters_orm = await cluster_manager.cluster_store.get_by_ids([cluster_id])
+        clusters_orm = await cluster_manager.cluster_store.get(filter=ClusterFilter(ids=[cluster_id]))
     clusters = cluster_manager.from_cluster_orm_list(clusters_orm)
     return JSONResponse(GetClustersResponse(clusters=clusters).model_dump())
 

@@ -17,6 +17,10 @@ class BaseClusterStore(
     ) -> Select:
         if not f:
             return stmt
+        
+        if f.ids:
+            stmt = stmt.where(self.model.id.in_(f.ids))
+
 
         if f.label is not None:
             stmt = stmt.where(self.model.label == f.label)
