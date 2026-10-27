@@ -6,7 +6,7 @@ from sereleum.data.models.prompt_cluster_crossref import PromptClusterCrossRefMo
 from sereleum.schemas.items.prompt import PromptFilter
 
 
-class PromptStore(BaseStore[PromptModel, PromptFilter]):
+class PromptStore(BaseStore[PromptModel]):
     model = PromptModel
 
     def apply_filters(self, stmt, f: PromptFilter | None):

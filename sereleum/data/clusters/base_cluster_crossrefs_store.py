@@ -8,7 +8,7 @@ from sereleum.data.types import TCrossRefModel
 
 
 class BaseClusterCrossRefStore(
-    BaseStore[TCrossRefModel, ClusterCrossRefFilter],
+    BaseStore[TCrossRefModel],
     ABC,
 ):
 

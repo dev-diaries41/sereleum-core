@@ -7,7 +7,7 @@ from sereleum.schemas.cluster import ClusterFilter
 from sereleum.data.types import TClusterModel
 
 class BaseClusterStore(
-    BaseStore[TClusterModel, ClusterFilter],
+    BaseStore[TClusterModel],
     ABC,
 ):
     def apply_filters(

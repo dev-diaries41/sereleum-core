@@ -5,10 +5,11 @@ from sqlalchemy import Select, func, inspect, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
-from sereleum.data.types import TItemModel, TQueryFilter
+from sereleum.data.types import TItemModel
+from pydantic import BaseModel
 
 
-class BaseStore(Generic[TItemModel, TQueryFilter], ABC):
+class BaseStore(Generic[TItemModel], ABC):
     model: type[TItemModel]
 
     def __init__(self, sessionmaker: async_sessionmaker):
@@ -19,7 +20,7 @@ class BaseStore(Generic[TItemModel, TQueryFilter], ABC):
         return inspect(self.model).primary_key
 
     @abstractmethod
-    def apply_filters(self, stmt: Select, filter: Optional[TQueryFilter]):
+    def apply_filters(self, stmt: Select, filter: Optional[BaseModel]):
         ...
 
     async def add(self, items: List[TItemModel]):
@@ -56,7 +57,7 @@ class BaseStore(Generic[TItemModel, TQueryFilter], ABC):
 
     async def get(
         self,
-        filter: Optional[TQueryFilter] = None,
+        filter: Optional[BaseModel] = None,
         limit: Optional[int] = None,
         offset: int = 0,
         order_by: Optional[str] = None,
@@ -78,7 +79,7 @@ class BaseStore(Generic[TItemModel, TQueryFilter], ABC):
             await session.delete(item)
             await session.commit()
 
-    async def count(self, filter: Optional[TQueryFilter] = None) -> int:
+    async def count(self, filter: Optional[BaseModel] = None) -> int:
         async with self.sessionmaker() as session:
             stmt = self.apply_filters(select(func.count()).select_from(self.model), filter)
             result = await session.execute(stmt)

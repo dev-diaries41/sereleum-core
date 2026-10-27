@@ -7,4 +7,3 @@ from sereleum.data.models.cluster_crossref_base import ClusterCrossRefBase
 TItemModel = TypeVar("TItemModel", bound=Base)
 TCrossRefModel = TypeVar("TCrossRefModel", bound=ClusterCrossRefBase)
 TClusterModel = TypeVar("TClusterModel", bound=ClusterBase)
-TQueryFilter = TypeVar("TQueryFilter", bound=BaseModel)
