@@ -8,10 +8,9 @@ from sereleum.data.prompts import PromptStore, PromptClusterStore, PromptCluster
 from sereleum.data.models import PromptClusterModel, PromptClusterCrossRefModel
 from sereleum.schemas.cluster import ClusterCrossRefFilter
 from sereleum.schemas.items.prompt import PromptFilter
-from sereleum.data.converters.prompt import cluster_to_orm, cluster_from_orm,  crossref_from_prompt_orm, crossref_to_prompt_orm
 
 
-class PromptClusterManager(ClusterManager[PromptStore, PromptClusterModel, PromptClusterCrossRefModel]):
+class PromptClusterManager(ClusterManager[PromptStore]):
     def __init__(
         self,
         cluster_embedding_store: EmbeddingStore,
@@ -52,18 +51,7 @@ class PromptClusterManager(ClusterManager[PromptStore, PromptClusterModel, Promp
     
     async def get_unclustered_item_ids(self):
         return await self.item_store.get_unclustered_item_ids()
-    
-    def to_cluster_orm(self, metadata):
-        return cluster_to_orm(metadata)
-    
-    def to_crossref_orm(self, crossref):
-        return crossref_to_prompt_orm(crossref)
-    
-    def from_cluster_orm(self, cluster_orm):
-        return cluster_from_orm(cluster_orm)
-    
-    def from_crossref_orm(self, crossref_orm):
-        return crossref_from_prompt_orm(crossref_orm)
+ 
     
     @staticmethod
     def _get_labelling_prompt(cluster_id: str, sample_prompts: list[str]) -> str:
