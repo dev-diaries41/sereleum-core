@@ -4,7 +4,6 @@ from sereleum.data.models.base import Base
 from sereleum.data.models.cluster_base import ClusterBase
 from sereleum.data.models.cluster_crossref_base import ClusterCrossRefBase
 
-TItemModel = TypeVar("TItemModel", bound=Base)
 TCrossRefModel = TypeVar("TCrossRefModel", bound=ClusterCrossRefBase)
 TClusterModel = TypeVar("TClusterModel", bound=ClusterBase)
 TEntity = TypeVar("TEntity", bound=Base)

@@ -7,14 +7,13 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from sereleum.data.mappers.mapper import Mapper
-from sereleum.data.types import TItemModel
-
-TDomain = TypeVar("TDomain")
+from sereleum.data.types import TEntity, TDomain
 
 
-class BaseStore(Generic[TItemModel, TDomain], ABC):
-    model: type[TItemModel]
-    mapper: Mapper[TItemModel, TDomain]
+
+class BaseStore(Generic[TEntity, TDomain], ABC):
+    model: type[TEntity]
+    mapper: Mapper[TEntity, TDomain]
 
     def __init__(
         self,
