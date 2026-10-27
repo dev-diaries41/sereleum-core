@@ -1,7 +1,7 @@
 from abc import ABC
 from typing import Generic
 
-from sqlalchemy import Select
+from sqlalchemy import Select, delete
 
 from sereleum.data.base_store import BaseStore
 from sereleum.schemas.cluster import ClusterFilter, StoredClusterMetadata
@@ -33,3 +33,13 @@ class BaseClusterStore(
             )
 
         return stmt
+
+
+    async def delete_by_ids(self, ids: list[str]) -> None:
+        if not ids:
+            return
+
+        async with self.sessionmaker() as session:
+            stmt = delete(self.model).where(self.model.id.in_(ids))
+            await session.execute(stmt)
+            await session.commit()

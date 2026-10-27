@@ -126,7 +126,7 @@ class ClusterManager:
         await self._assign_from_merges(merges)
         merged_clustered_ids = {cid for targets in merges.values() for cid in targets}
         await self.cluster_embedding_store.delete(list(merged_clustered_ids)) 
-        await self.cluster_store.delete(list(merged_clustered_ids)) 
+        await self.cluster_store.delete_by_ids(list(merged_clustered_ids)) 
 
         cluster_metadata_updates: list[StoredClusterMetadata] = []
         cluster_embed_updates: list[StoredEmbedding] = []
@@ -203,7 +203,7 @@ class ClusterManager:
         crossrefs = await self.crossrefs_store.get(filter=ClusterCrossRefFilter(include_cluster_ids=[cluster_id]))
         
         if len(crossrefs) == 0:
-            await self.cluster_store.delete([cluster_id])
+            await self.cluster_store.delete_by_ids([cluster_id])
             return None
         item_ids = [c.item_id for c in crossrefs]
         embeds = await self.item_embedding_store.get(ids=item_ids)
