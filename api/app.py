@@ -43,7 +43,6 @@ from sereleum.schemas.cluster import ClusterCrossRefFilter, ClusterFilter
 from sereleum.schemas.items.prompt import PromptFilter
 from sereleum.clusters.plot import  get_cluster_plot
 from sereleum.clusters.helpers import get_prompt_cluster_manager
-from sereleum.data.converters.prompt import prompt_from_orm
 from sereleum.data.helpers import create_sessionmaker
 from sereleum.helpers import get_index_progres_key, get_index_status_key, get_cluster_status_key, get_cluster_status_channel, get_index_progress_channel
 
@@ -188,15 +187,13 @@ async def add_prompts_file(file: UploadFile = File(...), auto_label: bool = Form
 @app.post(Routes.BASE_PROMPTS_ENDPOINT)
 async def get_prompts(req: GetPromptsRequest):
     query_filter = PromptFilter(cluster_ids=req.cluster_ids) if req.cluster_ids else None
-    prompts_orm = await cluster_manager.item_store.get(filter=query_filter, limit=req.limit, offset=req.offset)
-    prompts = [prompt_from_orm(p) for p in prompts_orm]
+    prompts = await cluster_manager.item_store.get(filter=query_filter, limit=req.limit, offset=req.offset)
     return JSONResponse(GetPromptsResponse(prompts=prompts).model_dump(mode="json"))
 
 
 @app.post(Routes.GET_PROMPTS_BY_IDS_ENDPOINT)
 async def get_prompts_by_ids(req: GetPromptsByIdsRequest):
-    prompts_orm = await cluster_manager.item_store.get(filter=PromptFilter(ids=req.prompt_ids))
-    prompts = [prompt_from_orm(p) for p in prompts_orm]
+    prompts = await cluster_manager.item_store.get(filter=PromptFilter(ids=req.prompt_ids))
     return JSONResponse(GetPromptsResponse(prompts=prompts).model_dump(mode="json"))
 
 @app.post(Routes.QUERY_PROMPTS_ENDPOINT)
@@ -207,8 +204,7 @@ async def query_prompts(req: QueryPromptsRequest):
         crossrefs_orm = await cluster_manager.crossrefs_store.get(filter=ClusterCrossRefFilter(include_cluster_ids=req.cluster_ids))
         ids = [c.item_id for c in cluster_manager.from_crossref_orm_list(crossrefs_orm)]
     query_result = await cluster_manager.item_embedding_store.query(embedding, topK=req.limit, ids=ids)
-    prompts_orm = await cluster_manager.item_store.get(filter=PromptFilter(ids=query_result.ids))
-    prompts = [prompt_from_orm(p) for p in prompts_orm]
+    prompts = await cluster_manager.item_store.get(filter=PromptFilter(ids=query_result.ids))
     return JSONResponse(GetPromptsResponse(prompts=prompts).model_dump(mode="json"))
 
 
