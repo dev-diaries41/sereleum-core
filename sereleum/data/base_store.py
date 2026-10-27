@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Generic, List, Optional, TypeVar
 
 from pydantic import BaseModel
-from sqlalchemy import Select, func, inspect, select
+from sqlalchemy import Select, func, inspect, select, delete, tuple_
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
@@ -83,12 +83,20 @@ class BaseStore(Generic[TItemModel, TDomain], ABC):
             result = await session.execute(stmt)
             return [self.mapper.to_domain(entity) for entity in result.scalars().all()]
 
-    async def delete(self, item: TDomain) -> None:
-        entity = self.mapper.to_entity(item)
+    
+    async def delete(self, items: List[TDomain]) -> None:
+        if not items:
+            return
+
+        entities = [self.mapper.to_entity(item) for item in items]
+        pk_columns = list(self.primary_keys)
+        keys = [tuple(getattr(entity, col.name) for col in pk_columns) for entity in entities]
 
         async with self.sessionmaker() as session:
-            entity = await session.merge(self.mapper.to_entity(item))
-            await session.delete(entity)
+            stmt = delete(self.model).where(
+                tuple_(*pk_columns).in_(keys)
+            )
+            await session.execute(stmt)
             await session.commit()
 
     async def count(self, filter: Optional[BaseModel] = None) -> int:
