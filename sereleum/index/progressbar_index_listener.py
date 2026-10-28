@@ -2,7 +2,7 @@ from tqdm import tqdm
 from smartscan.processor import ProcessorListener
 from smartscan.processor.types import Input
 
-class BaseIndexerListener(ProcessorListener[Input]):
+class ProgressBarIndexerListener(ProcessorListener[Input]):
     def __init__(self):
         self.progress_bar = tqdm(total=100, desc="Indexing")
 

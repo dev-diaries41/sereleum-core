@@ -1,6 +1,5 @@
 from redis.asyncio import Redis
 
-from smartscan import StoredEmbedding
 from smartscan.processor import ProcessorListener
 
 from sereleum.types import Status

@@ -11,7 +11,7 @@ from dataclasses import asdict
 from typing import get_args
 
 from smartscan.models.model_manager import ModelManager
-from sereleum.index.base_index_listener import BaseIndexerListener
+from sereleum.index.progressbar_index_listener import ProgressBarIndexerListener
 
 from benchmarks.constants import BENCHMARK_DIR
 from sereleum.constants.db import POSTGRES_DSN
@@ -41,7 +41,7 @@ async def main(labelled_prompts: list[Prompt], model: TextEmbeddingModel):
     sessionmaker = create_sessionmaker(POSTGRES_DSN)
     prompt_store = PromptStore(sessionmaker)
     prompt_embed_store = get_test_prompt_embed_store(model, sessionmaker, text_embedder.embedding_dim)
-    indexer =  PromptIndexer(text_embedder, listener=BaseIndexerListener(), embeddings_store=prompt_embed_store, prompt_store=prompt_store, batch_size=100, max_concurrency=4)
+    indexer =  PromptIndexer(text_embedder, listener=ProgressBarIndexerListener(), embeddings_store=prompt_embed_store, prompt_store=prompt_store, batch_size=100, max_concurrency=4)
     result =  await indexer.run(labelled_prompts)
     logger.info(f"time_elpased: {result.time_elapsed} | processed: {result.total_processed}")
 
