@@ -6,14 +6,16 @@ from sereleum.data.models.item_base import ItemBase
 from sereleum.data.stores.item_store import ItemStore
 from sereleum.data.stores.cluster_store import ClusterStore
 from sereleum.data.stores.cluster_crossref_store import ClusterCrossRefStore
+from sereleum.schemas.item import Item
 
 TEntity = TypeVar("TEntity")
 TDomain = TypeVar("TDomain", bound=BaseModel)
 
-TCrossRefModel = TypeVar("TCrossRefModel", bound=ClusterCrossRefBase)
-TClusterModel = TypeVar("TClusterModel", bound=ClusterBase)
-TItemModel = TypeVar("TClusterModel", bound=ItemBase)
+TPostgresClusterModel = TypeVar("TPostgresClusterModel", bound=ClusterBase)
+TPostgresCrossRefModel = TypeVar("TPostgresCrossRefModel", bound=ClusterCrossRefBase)
+TPostgresItemModel = TypeVar("TPostgresItemModel", bound=ItemBase)
 
+TItem = TypeVar("TItem", bound=Item)
 TClusterStore = TypeVar("TClusterStore", bound=ClusterStore)
 TClusterCrossRefStore = TypeVar("TClusterCrossRefStore", bound=ClusterCrossRefStore)
 TItemStore = TypeVar("TItemStore", bound=ItemStore)

@@ -1,9 +1,7 @@
 from typing import Protocol, TypeVar
 
 from sereleum.data.stores.store import Store
-from sereleum.schemas.cluster import StoredClusterMetadata
+from sereleum.data.types import TItem, TEntity
 
-TItem = TypeVar("TItem")
-
-class ItemStore(Store[TItem, StoredClusterMetadata], Protocol):
+class ItemStore(Store[TEntity, TItem], Protocol):
     pass
