@@ -1,7 +1,3 @@
-from smartscan.embeds import EmbeddingStore
-
-from llm_connect.providers.llm_provider import LLMProvider
-
 from sereleum.clusters.cluster_manager import ClusterManager
 from sereleum.schemas.llm import LLMClassificationResult
 from domains.prompts.stores import PromptStore, PromptClusterStore, PromptClusterCrossRefStore
@@ -9,31 +5,7 @@ from sereleum.schemas.cluster import ClusterCrossRefFilter
 from domains.prompts.prompt import PromptFilter
 
 
-class PromptClusterManager(ClusterManager[PromptClusterStore, PromptClusterCrossRefStore, PromptStore]):
-    def __init__(
-        self,
-        cluster_embedding_store: EmbeddingStore,
-        cluster_store: PromptClusterStore,
-        crossrefs_store: PromptClusterCrossRefStore,
-        item_embedding_store: EmbeddingStore,
-        item_store: PromptStore,
-        llm: LLMProvider, 
-        label_confidence_threshold: float = 0.8,
-        label_concurrency: int = 8,
-    ):
-        super().__init__(
-            
-            cluster_embedding_store=cluster_embedding_store,
-            cluster_store=cluster_store,
-            crossrefs_store=crossrefs_store,
-            item_embedding_store=item_embedding_store,
-            item_store=item_store,
-            llm=llm,
-            label_confidence_threshold=label_confidence_threshold,
-            label_concurrency=label_concurrency,
-        )
-   
-    
+class PromptClusterManager(ClusterManager[PromptClusterStore, PromptClusterCrossRefStore, PromptStore]):    
     async def label(self, cluster_id, sample_size) -> LLMClassificationResult:
         result = await self.cluster_embedding_store.get([cluster_id])
         if len(result) == 0:
