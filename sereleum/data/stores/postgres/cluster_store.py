@@ -5,15 +5,15 @@ from sqlalchemy import Select, delete, select, exists
 
 from sereleum.data.stores.postgres.base_postgres_store import BasePostgresStore
 from sereleum.schemas.cluster import ClusterFilter, StoredClusterMetadata
-from sereleum.data.types import TClusterModel, TItemModel, TCrossRefModel
+from sereleum.data.types import TPostgresClusterModel, TPostgresItemModel, TPostgresCrossRefModel
 
 class PostgresClusterStore(
-    Generic[TClusterModel, TCrossRefModel, TItemModel],
-    BasePostgresStore[TClusterModel, StoredClusterMetadata],
+    Generic[TPostgresClusterModel, TPostgresCrossRefModel, TPostgresItemModel],
+    BasePostgresStore[TPostgresClusterModel, StoredClusterMetadata],
     ABC,
 ):
-    item_model: type[TItemModel]
-    crossref_model: type[TCrossRefModel]
+    item_model: type[TPostgresItemModel]
+    crossref_model: type[TPostgresCrossRefModel]
 
 
     def apply_filters(
