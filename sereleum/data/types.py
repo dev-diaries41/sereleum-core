@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import TypeVar
+from typing_extensions import TypeVar
 from sereleum.data.models.cluster_base import ClusterBase
 from sereleum.data.models.cluster_crossref_base import ClusterCrossRefBase
 from sereleum.data.models.item_base import ItemBase
@@ -16,6 +16,7 @@ TPostgresCrossRefModel = TypeVar("TPostgresCrossRefModel", bound=ClusterCrossRef
 TPostgresItemModel = TypeVar("TPostgresItemModel", bound=ItemBase)
 
 TItem = TypeVar("TItem", bound=Item)
-TClusterStore = TypeVar("TClusterStore", bound=ClusterStore)
-TClusterCrossRefStore = TypeVar("TClusterCrossRefStore", bound=ClusterCrossRefStore)
-TItemStore = TypeVar("TItemStore", bound=ItemStore)
+
+TClusterStore = TypeVar("TClusterStore", bound=ClusterStore, default=ClusterStore)
+TClusterCrossRefStore = TypeVar("TClusterCrossRefStore", bound=ClusterCrossRefStore, default=ClusterCrossRefStore)
+TItemStore = TypeVar("TItemStore", bound=ItemStore, default=ItemStore)
