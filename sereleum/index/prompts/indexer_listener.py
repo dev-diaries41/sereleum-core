@@ -9,7 +9,7 @@ from sereleum.helpers import get_index_progres_key, get_index_status_key, get_in
 from sereleum.schemas.api import ProgressMessage, FailMessage, CompleteMessage, ErrorMessage
 
 
-class PromptIndexListener(ProcessorListener[Prompt, tuple[StoredEmbedding, Prompt]]):
+class PromptIndexListener(ProcessorListener[Prompt]):
     def __init__(self, job_id: str, redis_client: Redis):
         self.job_id = job_id
         self.redis = redis_client
