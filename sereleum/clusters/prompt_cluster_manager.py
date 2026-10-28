@@ -48,9 +48,6 @@ class PromptClusterManager(ClusterManager[PromptClusterStore, PromptClusterCross
         input_prompt = self._get_labelling_prompt(cluster_id, sample_prompts)
         return self.llm.generate_json(input_prompt, LLMClassificationResult)
     
-    async def get_unclustered_item_ids(self):
-        return await self.item_store.get_unclustered_item_ids()
- 
     
     @staticmethod
     def _get_labelling_prompt(cluster_id: str, sample_prompts: list[str]) -> str:

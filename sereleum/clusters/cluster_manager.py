@@ -218,7 +218,7 @@ class ClusterManager(Generic[TClusterStore, TClusterCrossRefStore, TItemStore]):
         return stored_embed, new_meta
     
     async def _get_unclustered_items(self) -> Dict[str, NDArray]:
-        unclustered_items_ids = await self.get_unclustered_item_ids()
+        unclustered_items_ids = await self.cluster_store.get_unclustered_item_ids()
         print(f"Unclustered items: {len(unclustered_items_ids)}")
         if len(unclustered_items_ids) == 0:
             return {}
@@ -239,8 +239,3 @@ class ClusterManager(Generic[TClusterStore, TClusterCrossRefStore, TItemStore]):
         async with semaphore:
             return await self.label(cluster_id, sample_size)
         
-
-    # Used so to avoid having to load all stored embeds and then crossrefs
-    @abstractmethod
-    async def get_unclustered_item_ids(self) -> List[str]:
-        ...
