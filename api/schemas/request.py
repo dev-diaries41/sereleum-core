@@ -1,31 +1,30 @@
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Generic
 
 from smartscan import  ClusterMerges
 
-from domains.prompts.prompt import Prompt
-from sereleum.schemas.cluster import StoredClusterMetadata
+from sereleum.data.types import TItem
 
-class AddPromptsRequest(BaseModel):
-    prompts: List[Prompt]
+class AddItemsRequest(BaseModel,  Generic[TItem]):
+    items: List[TItem]
 
 
-class AddPromptsRequestOptions(BaseModel):
+class AddItemsRequestOptions(BaseModel):
     auto_label: bool 
     default_threshold: float
 
  
-class GetPromptsRequest(BaseModel):
+class GetItemsRequest(BaseModel):
     cluster_ids: Optional[List[str]] = None
     limit: Optional[int] = None
     offset: Optional[int] = None
 
 
-class GetPromptsByIdsRequest(BaseModel):
-    prompt_ids: Optional[List[str]] = None
+class GetItemsByIdRequest(BaseModel):
+    item_ids: Optional[List[str]] = None
 
 
-class QueryPromptsRequest(BaseModel):
+class QueryItemsRequest(BaseModel):
     query:str
     cluster_ids: Optional[List[str]] = None
     limit: Optional[int] = None
@@ -42,7 +41,7 @@ class RenameClusterRequest(BaseModel):
 
 
 class MoveItemRequest(BaseModel):
-    prompt_id: str
+    item_id: str
     cluster_id: str
 
 class MergeClustersRequest(BaseModel):

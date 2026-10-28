@@ -1,9 +1,10 @@
 from pydantic import BaseModel
-from typing import List, Optional, Literal
+from typing import List, Optional, Literal, Generic
 
-from domains.prompts.prompt import Prompt, PromptsOverviewInfo
+from domains.prompts.prompt import PromptsOverviewInfo
 from sereleum.schemas.cluster import StoredClusterMetadata
 from sereleum.types import Status
+from sereleum.data.types import TItem
 
 # Websocksets / SSE
 class ProgressMessage(BaseModel):
@@ -30,13 +31,13 @@ class ActiveMessage(BaseModel):
 
 # HTTP Response
 
-class AddPromptsResponse(BaseModel):
+class AddItemsResponse(BaseModel):
     status: Status
     job_id: str
 
 
-class GetPromptsResponse(BaseModel):
-    prompts: List[Prompt]
+class GetItemsResponse(BaseModel, Generic[TItem]):
+    items: List[TItem]
 
 class GetPromptsOverviewResponse(PromptsOverviewInfo):
     pass
@@ -54,7 +55,6 @@ class RenameClusterResponse(BaseModel):
 
 class MoveItemResponse(BaseModel):
     updated_cluster_id: str
-
     
 class MergeResponse(BaseModel):
     updated_clusters: List[StoredClusterMetadata]
