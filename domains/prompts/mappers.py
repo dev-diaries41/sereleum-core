@@ -1,6 +1,6 @@
 
 from sereleum.data.models import PromptModel, PromptClusterCrossRefModel, PromptClusterModel
-from sereleum.schemas.items.prompt import Prompt
+from domains.prompts.prompt import Prompt
 from sereleum.schemas.cluster import ClusterCrossRef, StoredClusterMetadata
 from sereleum.data.mappers.mapper import Mapper
 

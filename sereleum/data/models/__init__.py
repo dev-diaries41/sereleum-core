@@ -1,3 +1,4 @@
-from sereleum.data.models.prompt import PromptModel
-from sereleum.data.models.prompt_cluster import PromptClusterModel
-from sereleum.data.models.prompt_cluster_crossref import PromptClusterCrossRefModel
+from sereleum.data.models.base import Base
+from sereleum.data.models.cluster_base import ClusterBase
+from sereleum.data.models.cluster_crossref_base import ClusterCrossRefBase
+from sereleum.data.models.item_base import ItemBase

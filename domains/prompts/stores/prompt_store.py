@@ -1,10 +1,10 @@
 from sqlalchemy import exists, select
 
 from sereleum.data.base_store import BaseStore
-from sereleum.data.models.prompt import PromptModel
-from sereleum.data.models.prompt_cluster_crossref import PromptClusterCrossRefModel
-from sereleum.schemas.items.prompt import PromptFilter, Prompt
-from sereleum.data.mappers.prompt import PromptMapper
+from domains.prompts.models.prompt import PromptModel
+from domains.prompts.models.prompt_cluster_crossref import PromptClusterCrossRefModel
+from domains.prompts.prompt import PromptFilter, Prompt
+from domains.prompts.mappers import PromptMapper
 
 
 class PromptStore(BaseStore[PromptModel, Prompt]):

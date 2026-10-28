@@ -5,7 +5,7 @@ import json
 from smartscan import ClusterMerges
 
 from sereleum.schemas.cluster import StoredClusterMetadata
-from sereleum.schemas.items.prompt import Prompt, PromptsOverviewInfo
+from domains.prompts.prompt import Prompt, PromptsOverviewInfo
 from sereleum.constants.api import Routes
 from sereleum.schemas.api import  GetPromptsRequest, GetPromptsByIdsRequest, GetClusterRequestParams, UpdateLabelParams, QueryPromptsRequest, UpdatePromptClusterIdParams, AddPromptsResponse, MergeClustersRequest, ClusterOptionsForm
 

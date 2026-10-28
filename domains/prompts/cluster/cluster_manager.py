@@ -4,9 +4,9 @@ from llm_connect.providers.llm_provider import LLMProvider
 
 from sereleum.clusters.cluster_manager import ClusterManager
 from sereleum.schemas.llm import LLMClassificationResult
-from sereleum.data.prompts import PromptStore, PromptClusterStore, PromptClusterCrossRefStore
+from domains.prompts.stores import PromptStore, PromptClusterStore, PromptClusterCrossRefStore
 from sereleum.schemas.cluster import ClusterCrossRefFilter
-from sereleum.schemas.items.prompt import PromptFilter
+from domains.prompts.prompt import PromptFilter
 
 
 class PromptClusterManager(ClusterManager[PromptClusterStore, PromptClusterCrossRefStore, PromptStore]):

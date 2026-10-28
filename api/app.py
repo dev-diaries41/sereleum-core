@@ -40,7 +40,7 @@ from sereleum.schemas.api import (
     MergeResponse
     )
 from sereleum.schemas.cluster import ClusterCrossRefFilter, ClusterFilter
-from sereleum.schemas.items.prompt import PromptFilter
+from domains.prompts.prompt import PromptFilter
 from sereleum.clusters.plot import  get_cluster_plot
 from sereleum.clusters.helpers import get_prompt_cluster_manager
 from sereleum.data.helpers import create_sessionmaker

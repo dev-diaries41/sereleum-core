@@ -3,8 +3,8 @@ import time
 
 from sereleum.data.embeds.pgvector_embed_store import PgVectorEmbeddingStore
 from sereleum.providers.types import TextEmbeddingModel
-from sereleum.data.prompts import PromptStore, PromptClusterCrossRefStore, PromptClusterStore
-from sereleum.clusters.prompt_cluster_manager import PromptClusterManager
+from domains.prompts.stores import PromptStore, PromptClusterCrossRefStore, PromptClusterStore
+from domains.prompts.cluster.cluster_manager import PromptClusterManager
 
 from llm_connect.providers.llm_provider import LLMProvider
 

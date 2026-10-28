@@ -11,9 +11,9 @@ from smartscan.models.model_manager import ModelManager
 from llm_connect.providers.openai import OpenAIProvider
 from llm_connect.schemas.llm import LLMProviderConfig
 
-from sereleum.schemas.items.prompt import Prompt
-from sereleum.index.prompts.indexer import PromptIndexer
-from sereleum.index.prompts.indexer_listener import PromptIndexListener
+from domains.prompts.prompt import Prompt
+from domains.prompts.index.indexer import PromptIndexer
+from domains.prompts.index.indexer_listener import PromptIndexerListener
 from sereleum.constants.db import POSTGRES_DSN
 from sereleum.constants.models import OPENAI_API_KEY, DEFAULT_SYSTEM_PROMPT, DEFAULT_OPENAI_MODEL
 from sereleum.clusters.helpers import get_prompt_cluster_manager
@@ -50,7 +50,7 @@ async def index_prompts_task(file_path: str, auto_label: bool = True, default_th
         
         with open(file_path) as f:
             prompts = [Prompt(**p) for p in json.load(f)]
-        indexer = PromptIndexer(text_embedder, embeddings_store=cluster_manager.item_embedding_store, prompt_store=cluster_manager.item_store, listener=PromptIndexListener(msg.message_id, redis_client))
+        indexer = PromptIndexer(text_embedder, embeddings_store=cluster_manager.item_embedding_store, prompt_store=cluster_manager.item_store, listener=PromptIndexerListener(msg.message_id, redis_client))
         await indexer.run(prompts)
         
         cluster_prompts_task.send(

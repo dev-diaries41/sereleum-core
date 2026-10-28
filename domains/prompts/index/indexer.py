@@ -4,9 +4,9 @@ from smartscan.media import chunk_text
 from smartscan.embeds import generate_prototype_embedding, EmbeddingStore
 from smartscan.processor import BatchProcessor
 from smartscan.providers import TextEmbeddingProvider
-from sereleum.schemas.items.prompt import Prompt
+from domains.prompts.prompt import Prompt
 from sereleum.utils.tokens import count_tokens_embedding
-from sereleum.data.prompts.prompt_store import PromptStore
+from domains.prompts.stores.prompt_store import PromptStore
 
 class PromptIndexer(BatchProcessor[Prompt, tuple[StoredEmbedding, Prompt]]):
     def __init__(self, 

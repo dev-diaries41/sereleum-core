@@ -1,8 +1,8 @@
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import mapped_column
-from sereleum.data.models.cluster_crossref_base import CrossRefBase
+from sereleum.data.models.cluster_crossref_base import ClusterCrossRefBase
 
-class PromptClusterCrossRefModel(CrossRefBase):
+class PromptClusterCrossRefModel(ClusterCrossRefBase):
     __tablename__ = "prompts_cluster_crossref"
 
     item_id = mapped_column(ForeignKey("prompts.id", ondelete="CASCADE"), primary_key=True)

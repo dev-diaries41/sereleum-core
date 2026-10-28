@@ -3,7 +3,7 @@ from typing import List, Optional, Literal
 
 from smartscan import  ClusterMerges
 
-from sereleum.schemas.items.prompt import Prompt, PromptsOverviewInfo
+from domains.prompts.prompt import Prompt, PromptsOverviewInfo
 from sereleum.schemas.cluster import StoredClusterMetadata
 from sereleum.types import Status
 

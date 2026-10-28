@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from pydantic import BaseModel, Field
 from typing import Optional, Dict, List
 
-from sereleum.schemas.items.item import Item, BaseItemFilter
+from sereleum.schemas.item import Item, BaseItemFilter
 from sereleum.schemas.cluster import StoredClusterMetadata
 
 class Prompt(Item):
