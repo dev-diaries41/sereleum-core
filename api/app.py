@@ -204,8 +204,8 @@ async def query_prompts(req: QueryPromptsRequest):
     embedding = text_embedder.embed(req.query)[0]
     ids = None
     if req.cluster_ids:
-        crossrefs_orm = await cluster_manager.crossrefs_store.get(filter=ClusterCrossRefFilter(include_cluster_ids=req.cluster_ids))
-        ids = [c.item_id for c in cluster_manager.from_crossref_orm_list(crossrefs_orm)]
+        crossrefs = await cluster_manager.crossrefs_store.get(filter=ClusterCrossRefFilter(include_cluster_ids=req.cluster_ids))
+        ids = [c.item_id for c in crossrefs]
     query_result = await cluster_manager.item_embedding_store.query(embedding, topK=req.limit, ids=ids)
     prompts = await cluster_manager.item_store.get(filter=PromptFilter(ids=query_result.ids))
     return JSONResponse(GetPromptsResponse(prompts=prompts).model_dump(mode="json"))
@@ -242,10 +242,9 @@ async def get_clusters(cluster_id: Optional[str] = None, limit: Optional[str] = 
     limit_int = int(limit) if limit not in (None, "") else None
     offset_int = int(offset) if offset not in (None, "") else None
     if not cluster_id :
-        clusters_orm = await cluster_manager.cluster_store.get(limit=limit_int, offset=offset_int)
+        clusters = await cluster_manager.cluster_store.get(limit=limit_int, offset=offset_int)
     else:
-        clusters_orm = await cluster_manager.cluster_store.get(filter=ClusterFilter(ids=[cluster_id]))
-    clusters = cluster_manager.from_cluster_orm_list(clusters_orm)
+        clusters = await cluster_manager.cluster_store.get(filter=ClusterFilter(ids=[cluster_id]))
     return JSONResponse(GetClustersResponse(clusters=clusters).model_dump())
 
 
