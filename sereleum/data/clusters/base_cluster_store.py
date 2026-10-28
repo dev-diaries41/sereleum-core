@@ -5,14 +5,14 @@ from sqlalchemy import Select, delete, select, exists
 
 from sereleum.data.base_store import BaseStore
 from sereleum.schemas.cluster import ClusterFilter, StoredClusterMetadata
-from sereleum.data.types import TClusterModel, TEntity, TCrossRefModel
+from sereleum.data.types import TClusterModel, TItemModel, TCrossRefModel
 
 class BaseClusterStore(
-    Generic[TClusterModel, TCrossRefModel, TEntity],
+    Generic[TClusterModel, TCrossRefModel, TItemModel],
     BaseStore[TClusterModel, StoredClusterMetadata],
     ABC,
 ):
-    item_model: type[TEntity]
+    item_model: type[TItemModel]
     crossref_model: type[TCrossRefModel]
 
 
