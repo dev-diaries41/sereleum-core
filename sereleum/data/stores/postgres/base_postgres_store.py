@@ -11,7 +11,7 @@ from sereleum.data.types import TEntity, TDomain
 
 
 
-class BaseStore(Generic[TEntity, TDomain], ABC):
+class BasePostgresStore(Generic[TEntity, TDomain], ABC):
     model: type[TEntity]
     mapper: Mapper[TEntity, TDomain]
 

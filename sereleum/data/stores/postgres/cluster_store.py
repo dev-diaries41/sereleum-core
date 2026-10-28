@@ -3,13 +3,13 @@ from typing import Generic
 
 from sqlalchemy import Select, delete, select, exists
 
-from sereleum.data.base_store import BaseStore
+from sereleum.data.stores.postgres.base_postgres_store import BasePostgresStore
 from sereleum.schemas.cluster import ClusterFilter, StoredClusterMetadata
 from sereleum.data.types import TClusterModel, TItemModel, TCrossRefModel
 
-class BaseClusterStore(
+class PostgresClusterStore(
     Generic[TClusterModel, TCrossRefModel, TItemModel],
-    BaseStore[TClusterModel, StoredClusterMetadata],
+    BasePostgresStore[TClusterModel, StoredClusterMetadata],
     ABC,
 ):
     item_model: type[TItemModel]
