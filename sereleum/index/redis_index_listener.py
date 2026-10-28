@@ -4,7 +4,6 @@ from smartscan.processor import ProcessorListener
 from smartscan.processor.types import Input
 
 from sereleum.types import Status
-from sereleum.schemas.items.prompt import Prompt
 from sereleum.helpers import get_index_progres_key, get_index_status_key, get_index_progress_channel
 from sereleum.schemas.api import ProgressMessage, FailMessage, CompleteMessage, ErrorMessage
 
