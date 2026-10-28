@@ -26,24 +26,26 @@ from sereleum.constants.api import Routes
 
 from api.schemas.response import FailMessage, CompleteMessage, ProgressMessage, ActiveMessage
 from api.schemas.request import (
-    GetPromptsRequest, 
-    GetPromptsByIdsRequest,
-    QueryPromptsRequest, 
+    GetItemsRequest, 
+    GetItemsByIdRequest,
+    QueryItemsRequest, 
     MergeClustersRequest,
     )
 from api.schemas.response import (
-    GetPromptsResponse, 
+    GetItemsResponse, 
     GetCountResponse, 
     GetClustersResponse, 
     GetPromptsOverviewResponse, 
     RenameClusterResponse, 
     MoveItemResponse, 
-    AddPromptsResponse,
+    AddItemsResponse,
     MergeResponse
     )
 from sereleum.errors import SereleumError, ErrorCode
 from sereleum.schemas.cluster import ClusterCrossRefFilter, ClusterFilter
-from domains.prompts.prompt import PromptFilter
+from sereleum.schemas.item import BaseItemFilter
+
+from domains.prompts.prompt import Prompt
 from sereleum.clusters.plot import  get_cluster_plot
 from sereleum.clusters.helpers import get_prompt_cluster_manager
 from sereleum.data.helpers import create_sessionmaker
@@ -71,9 +73,8 @@ app.add_middleware(
 
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-@app.get(Routes.SSE_PROMPTS_INDEX_PROGRESS)
-async def track_prompts_index_progress(request: Request, job_id: str):
-
+@app.get(Routes.SSE_INDEX_PROGRESS)
+async def track_index_progress_route(request: Request, job_id: str):
     async def event_generator():
         pubsub = redis_client.pubsub()
         channel = get_index_progress_channel(job_id)
@@ -125,7 +126,7 @@ async def track_prompts_index_progress(request: Request, job_id: str):
 
     return EventSourceResponse(event_generator())
 
-@app.get(Routes.SSE_PROMPTS_CLUSTER_STATUS)
+@app.get(Routes.SSE_CLUSTER_STATUS)
 async def track_prompts_cluster_status(request: Request, job_id: str):
 
     async def event_generator():
@@ -179,54 +180,48 @@ async def track_prompts_cluster_status(request: Request, job_id: str):
 
     return EventSourceResponse(event_generator())
 
-@app.post(Routes.ADD_PROMPTS_FILE_ENDPOINT) 
-async def add_prompts_file(file: UploadFile = File(...), auto_label: bool = Form(False), default_threshold: float = Form(0.3)):
+
+@app.post(Routes.INDEX_FILE_ENDPOINT) 
+async def index_items(file: UploadFile = File(...), auto_label: bool = Form(False), default_threshold: float = Form(0.3)):
     with NamedTemporaryFile(dir=UPLOAD_DIR, delete=False, suffix=".json") as tmp:
         tmp.write(await file.read())
         tmp.flush()
     job = index_prompts_task.send(tmp.name, auto_label, default_threshold)
-    return AddPromptsResponse(status='queued', job_id=job.message_id )
+    return AddItemsResponse(status='queued', job_id=job.message_id )
 
-@app.post(Routes.BASE_PROMPTS_ENDPOINT)
-async def get_prompts(req: GetPromptsRequest):
-    query_filter = PromptFilter(cluster_ids=req.cluster_ids) if req.cluster_ids else None
-    prompts = await cluster_manager.item_store.get(filter=query_filter, limit=req.limit, offset=req.offset)
-    return JSONResponse(GetPromptsResponse(prompts=prompts).model_dump(mode="json"))
+@app.post(Routes.BASE_ITEMS_ENDPOINT)
+async def get_items(req: GetItemsRequest):
+    query_filter = BaseItemFilter(cluster_ids=req.cluster_ids) if req.cluster_ids else None
+    items = await cluster_manager.item_store.get(filter=query_filter, limit=req.limit, offset=req.offset)
+    return JSONResponse(GetItemsResponse[Prompt](items=items).model_dump(mode="json"))
 
+@app.post(Routes.GET_ITEMS_BY_IDS_ENDPOINT)
+async def get_items_by_id(req: GetItemsByIdRequest):
+    items = await cluster_manager.item_store.get(filter=BaseItemFilter(ids=req.item_ids))
+    return JSONResponse(GetItemsResponse[Prompt](items=items).model_dump(mode="json"))
 
-@app.post(Routes.GET_PROMPTS_BY_IDS_ENDPOINT)
-async def get_prompts_by_ids(req: GetPromptsByIdsRequest):
-    prompts = await cluster_manager.item_store.get(filter=PromptFilter(ids=req.prompt_ids))
-    return JSONResponse(GetPromptsResponse(prompts=prompts).model_dump(mode="json"))
-
-@app.post(Routes.QUERY_PROMPTS_ENDPOINT)
-async def query_prompts(req: QueryPromptsRequest):
+@app.post(Routes.QUERY_ITEMS_ENDPOINT)
+async def query_items(req: QueryItemsRequest):
     embedding = text_embedder.embed(req.query)[0]
     ids = None
     if req.cluster_ids:
         crossrefs = await cluster_manager.crossrefs_store.get(filter=ClusterCrossRefFilter(include_cluster_ids=req.cluster_ids))
         ids = [c.item_id for c in crossrefs]
     query_result = await cluster_manager.item_embedding_store.query(embedding, topK=req.limit, ids=ids)
-    prompts = await cluster_manager.item_store.get(filter=PromptFilter(ids=query_result.ids))
-    return JSONResponse(GetPromptsResponse(prompts=prompts).model_dump(mode="json"))
+    items = await cluster_manager.item_store.get(filter=BaseItemFilter(ids=query_result.ids))
+    return JSONResponse(GetItemsResponse[Prompt](items=items).model_dump(mode="json"))
 
 
-@app.get(Routes.COUNT_PROMPTS_ENDPOINT)
-async def count_prompts():
+@app.get(Routes.COUNT_ITEMS_ENDPOINT)
+async def count_items():
     count = await cluster_manager.item_store.count()
     return JSONResponse(GetCountResponse(count=count).model_dump())
 
 
-@app.get(Routes.GET_PROMPTS_OVERVIEW_ENDPOINT)
-async def get_overview():
-    overview = await get_prompts_overview(cluster_manager)
-    return JSONResponse(GetPromptsOverviewResponse(**overview.model_dump()).model_dump())
-
-
-@app.patch(Routes.BASE_PROMPTS_ENDPOINT)
-async def update_prompt_cluster(prompt_id: str, cluster_id: str):
+@app.patch(Routes.BASE_ITEMS_ENDPOINT)
+async def move_item_route(item_id: str, cluster_id: str):
     try:
-        await  cluster_manager.assign({prompt_id : cluster_id})
+        await  cluster_manager.assign({item_id : cluster_id})
     except SereleumError as e:
         if e.code == ErrorCode.INVALID_ARGUMENT:
             raise HTTPException(status_code=400, detail="Prompt or cluster id doesnt exist")
@@ -235,21 +230,20 @@ async def update_prompt_cluster(prompt_id: str, cluster_id: str):
     return JSONResponse(MoveItemResponse(updated_cluster_id=cluster_id).model_dump())
 
 
-
-
 @app.get(Routes.BASE_CLUSTER_ENDPOINT)
-async def get_clusters(cluster_id: Optional[str] = None, limit: Optional[str] = None, offset: Optional[str] = None):
+async def get_cluster(cluster_id: Optional[str] = None, limit: Optional[str] = None, offset: Optional[str] = None):
     limit_int = int(limit) if limit not in (None, "") else None
     offset_int = int(offset) if offset not in (None, "") else None
     if not cluster_id :
-        clusters = await cluster_manager.cluster_store.get(limit=limit_int, offset=offset_int)
+        clusters_orm = await cluster_manager.cluster_store.get(limit=limit_int, offset=offset_int)
     else:
-        clusters = await cluster_manager.cluster_store.get(filter=ClusterFilter(ids=[cluster_id]))
+        clusters_orm = await cluster_manager.cluster_store.get(filter=ClusterFilter(ids=[cluster_id]))
+    clusters = cluster_manager.from_cluster_orm_list(clusters_orm)
     return JSONResponse(GetClustersResponse(clusters=clusters).model_dump())
 
 
 @app.patch(Routes.BASE_CLUSTER_ENDPOINT)
-async def update_cluster_label(cluster_id: str, label: str):
+async def rename_cluster(cluster_id: str, label: str):
     updated = await cluster_manager.update_label(cluster_id, label)
     if not updated:
         raise HTTPException(status_code=404, detail="Label doesn't exist")
@@ -263,14 +257,20 @@ async def count_clusters():
     return JSONResponse(GetCountResponse(count=count).model_dump())
 
 @app.get(Routes.GET_CLUSTER_PLOT_ENDPOINT)
-async def get_clusters_plot():
+async def get_clusters_plot_route():
     img_bytes = await get_cluster_plot(cluster_manager)
     return Response(status_code=200 if img_bytes else 204, content=img_bytes, media_type="image/png")
 
 
 @app.post(Routes.MERGE_CLUSTERS_ENDPOINT)
-async def merge_clusters(req: MergeClustersRequest):
+async def merge_clusters_route(req: MergeClustersRequest):
     if not req.merges:
         raise HTTPException(status_code=400, detail="Merges cannot be empty")
     updated_clusters = await cluster_manager.merge(req.merges)
     return JSONResponse(MergeResponse(updated_clusters=updated_clusters).model_dump())
+
+
+@app.get(Routes.GET_PROMPTS_OVERVIEW_ENDPOINT)
+async def get_overview():
+    overview = await get_prompts_overview(cluster_manager)
+    return JSONResponse(GetPromptsOverviewResponse(**overview.model_dump()).model_dump())

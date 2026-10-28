@@ -5,7 +5,7 @@ from client.sereleum_client import SereleumClient
 from httpx import HTTPStatusError
 
 from domains.prompts.prompt import Prompt, PromptsOverviewInfo
-from sereleum.schemas.api import  AddPromptsResponse
+from sereleum.schemas.api import  AddItemsResponse
 
 TEST_PROMPTS_FILE = "output/prompts/test_prompts.json"
 
@@ -21,7 +21,7 @@ class TestReveliumClient:
     async def test_add_prompts_file(self, setup_client: tuple[SereleumClient, list[Prompt]]):
             client, _ = setup_client
             add_file_result = await client.add_prompts_file(TEST_PROMPTS_FILE, False)
-            assert isinstance(add_file_result, AddPromptsResponse)
+            assert isinstance(add_file_result, AddItemsResponse)
             async for event in  client.track_prompts_index_progress( add_file_result.job_id):
                 print(f"INDEX EVENT: {event}")
             async for event in  client.track_prompts_cluster_status(add_file_result.job_id):
