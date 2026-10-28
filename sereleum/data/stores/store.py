@@ -1,15 +1,11 @@
-from typing import Generic, List, Optional, Protocol, TypeVar
+from typing import List, Optional, Protocol
 
 from pydantic import BaseModel
 
-from sereleum.data.mappers.mapper import Mapper
-from sereleum.data.types import TEntity, TDomain
-
-TFilter = TypeVar("TFilter", bound=BaseModel)
+from sereleum.data.types import TDomain
 
 
-class Store(Protocol[TEntity, TDomain]):
-    mapper: Mapper[TEntity, TDomain]
+class Store(Protocol[TDomain]):
 
     async def add(self, items: List[TDomain]) -> None: ...
     async def update(self, items: List[TDomain]) -> None: ...

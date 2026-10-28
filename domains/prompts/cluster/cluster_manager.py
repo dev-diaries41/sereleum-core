@@ -1,11 +1,10 @@
 from sereleum.clusters.cluster_manager import ClusterManager
 from sereleum.schemas.llm import LLMClassificationResult
-from domains.prompts.stores import PromptStore, PromptClusterStore, PromptClusterCrossRefStore
 from sereleum.schemas.cluster import ClusterCrossRefFilter
-from domains.prompts.prompt import PromptFilter
+from domains.prompts.prompt import PromptFilter, Prompt
 
 
-class PromptClusterManager(ClusterManager[PromptClusterStore, PromptClusterCrossRefStore, PromptStore]):    
+class PromptClusterManager(ClusterManager[Prompt]):    
     async def label(self, cluster_id, sample_size) -> LLMClassificationResult:
         result = await self.cluster_embedding_store.get([cluster_id])
         if len(result) == 0:

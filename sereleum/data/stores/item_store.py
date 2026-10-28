@@ -1,7 +1,7 @@
-from typing import Protocol, TypeVar
+from typing import Protocol
 
 from sereleum.data.stores.store import Store
-from sereleum.data.types import TItem, TEntity
+from sereleum.data.types import TItem
 
-class ItemStore(Store[TEntity, TItem], Protocol):
+class ItemStore(Store[TItem], Protocol):
     pass

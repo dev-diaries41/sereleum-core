@@ -17,15 +17,18 @@ from llm_connect.providers.llm_provider import LLMProvider
 from sereleum.schemas.llm import LLMClassificationResult
 from sereleum.schemas.cluster import ClusterCrossRef, StoredClusterMetadata, ClusterCrossRefFilter, ClusterFilter
 from sereleum.errors import SereleumError, ErrorCode
-from sereleum.data.types import TItemStore, TClusterStore, TClusterCrossRefStore
+from sereleum.data.stores.item_store import ItemStore
+from sereleum.data.stores.cluster_store import ClusterStore
+from sereleum.data.stores.cluster_crossref_store import ClusterCrossRefStore
+from sereleum.data.types import TItem
 
-class ClusterManager(Generic[TClusterStore, TClusterCrossRefStore, TItemStore]):
+class ClusterManager(Generic[TItem]):
     def __init__(
         self, 
-        cluster_store: TClusterStore,
-        crossrefs_store: TClusterCrossRefStore,
+        cluster_store: ClusterStore,
+        crossrefs_store: ClusterCrossRefStore,
         cluster_embedding_store: EmbeddingStore,
-        item_store: TItemStore,
+        item_store: ItemStore[TItem],
         item_embedding_store: EmbeddingStore,
         llm: LLMProvider, 
         label_confidence_threshold: float = 0.8,
