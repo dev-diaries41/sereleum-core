@@ -7,7 +7,7 @@ from smartscan import ClusterMerges
 from sereleum.schemas.cluster import StoredClusterMetadata
 from domains.prompts.prompt import Prompt, PromptsOverviewInfo
 from sereleum.constants.api import Routes
-from sereleum.schemas.api import  GetPromptsRequest, GetPromptsByIdsRequest, GetClusterRequestParams, UpdateLabelParams, QueryPromptsRequest, UpdatePromptClusterIdParams, AddPromptsResponse, MergeClustersRequest, ClusterOptionsForm
+from sereleum.schemas.api import  GetPromptsRequest, GetPromptsByIdsRequest, GetClusterRequestParams, RenameClusterRequest, QueryPromptsRequest, MoveItemRequest, AddPromptsResponse, MergeClustersRequest, AddPromptsRequestOptions
 
 class SereleumClient:
     def __init__(self, base_url: str):
@@ -21,7 +21,7 @@ class SereleumClient:
         async with httpx.AsyncClient() as client:
             with open(file_path, "rb") as f:
                 files = {"file": (file_path, f, "application/json")}
-                res = await client.post(url, files=files, data=ClusterOptionsForm(auto_label=auto_label, default_threshold=default_threshold).model_dump())
+                res = await client.post(url, files=files, data=AddPromptsRequestOptions(auto_label=auto_label, default_threshold=default_threshold).model_dump())
             res.raise_for_status() 
             return AddPromptsResponse(**res.json())
         
@@ -63,7 +63,7 @@ class SereleumClient:
 
     async def update_prompt_cluster_id(self, prompt_id: str, cluster_id: str) -> str:
         url = f"{self.base_url}{Routes.BASE_PROMPTS_ENDPOINT}"
-        payload = UpdatePromptClusterIdParams(prompt_id=prompt_id, cluster_id=cluster_id)
+        payload = MoveItemRequest(prompt_id=prompt_id, cluster_id=cluster_id)
         async with httpx.AsyncClient() as client:
             res = await client.patch(url, params=payload.model_dump())
             res.raise_for_status() 
@@ -82,7 +82,7 @@ class SereleumClient:
 
     async def update_cluster_label(self, cluster_id: str, label: str) -> str:
         url = f"{self.base_url}{Routes.BASE_CLUSTER_ENDPOINT}"
-        params = UpdateLabelParams(cluster_id=cluster_id, label=label)
+        params = RenameClusterRequest(cluster_id=cluster_id, label=label)
 
         async with httpx.AsyncClient() as client:
             res = await client.patch(url, params=params.model_dump())

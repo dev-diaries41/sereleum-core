@@ -20,7 +20,7 @@ from sereleum.clusters.helpers import get_prompt_cluster_manager
 from api.redis import redis_client, get_broker
 from sereleum.logs import getLogger
 from sereleum.helpers import get_cluster_status_key, get_cluster_status_channel
-from sereleum.schemas.api import FailMessage, CompleteMessage, ActiveMessage
+from api.schemas.response import FailMessage, CompleteMessage, ActiveMessage
 from sereleum.data.helpers import create_sessionmaker
 
 redis_broker = get_broker()

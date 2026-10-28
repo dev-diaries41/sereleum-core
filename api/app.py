@@ -23,22 +23,25 @@ from sereleum.constants.db import POSTGRES_DSN
 from sereleum.constants.models import OPENAI_API_KEY, DEFAULT_SYSTEM_PROMPT, DEFAULT_OPENAI_MODEL
 from sereleum.constants import  UPLOAD_DIR
 from sereleum.constants.api import Routes
-from sereleum.schemas.api import FailMessage, CompleteMessage, ProgressMessage, ActiveMessage
-from sereleum.errors import SereleumError, ErrorCode
-from sereleum.schemas.api import (
+
+from api.schemas.response import FailMessage, CompleteMessage, ProgressMessage, ActiveMessage
+from api.schemas.request import (
     GetPromptsRequest, 
     GetPromptsByIdsRequest,
+    QueryPromptsRequest, 
+    MergeClustersRequest,
+    )
+from api.schemas.response import (
     GetPromptsResponse, 
     GetCountResponse, 
     GetClustersResponse, 
     GetPromptsOverviewResponse, 
-    UpdateLabelResponse, 
-    QueryPromptsRequest, 
-    UpdatePromptClusterIdResponse, 
+    RenameClusterResponse, 
+    MoveItemResponse, 
     AddPromptsResponse,
-    MergeClustersRequest,
     MergeResponse
     )
+from sereleum.errors import SereleumError, ErrorCode
 from sereleum.schemas.cluster import ClusterCrossRefFilter, ClusterFilter
 from domains.prompts.prompt import PromptFilter
 from sereleum.clusters.plot import  get_cluster_plot
@@ -229,7 +232,7 @@ async def update_prompt_cluster(prompt_id: str, cluster_id: str):
             raise HTTPException(status_code=400, detail="Prompt or cluster id doesnt exist")
         else:
             raise e
-    return JSONResponse(UpdatePromptClusterIdResponse(updated_cluster_id=cluster_id).model_dump())
+    return JSONResponse(MoveItemResponse(updated_cluster_id=cluster_id).model_dump())
 
 
 
@@ -252,7 +255,7 @@ async def update_cluster_label(cluster_id: str, label: str):
     if not updated:
         raise HTTPException(status_code=404, detail="Label doesn't exist")
 
-    return JSONResponse(UpdateLabelResponse(updated_label=label).model_dump())
+    return JSONResponse(RenameClusterResponse(updated_label=label).model_dump())
 
 
 @app.get(Routes.COUNT_CLUSTERS_ENDPOINT)
