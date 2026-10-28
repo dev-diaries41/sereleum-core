@@ -14,7 +14,6 @@ class Prompt(Item):
 class PromptFilter(BaseItemFilter):
     min_tokens: Optional[int] = None
     max_tokens: Optional[int] = None
-    ids: Optional[List[str]] = None
  
 class PromptsOverviewInfo(BaseModel):
     total_prompts: int
