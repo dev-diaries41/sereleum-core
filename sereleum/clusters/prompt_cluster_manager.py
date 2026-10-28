@@ -5,12 +5,11 @@ from llm_connect.providers.llm_provider import LLMProvider
 from sereleum.clusters.cluster_manager import ClusterManager
 from sereleum.schemas.llm import LLMClassificationResult
 from sereleum.data.prompts import PromptStore, PromptClusterStore, PromptClusterCrossRefStore
-from sereleum.data.models import PromptClusterModel, PromptClusterCrossRefModel
 from sereleum.schemas.cluster import ClusterCrossRefFilter
 from sereleum.schemas.items.prompt import PromptFilter
 
 
-class PromptClusterManager(ClusterManager[PromptStore]):
+class PromptClusterManager(ClusterManager[PromptClusterStore, PromptClusterCrossRefStore, PromptStore]):
     def __init__(
         self,
         cluster_embedding_store: EmbeddingStore,

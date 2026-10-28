@@ -6,7 +6,7 @@ from sqlalchemy.exc import IntegrityError
 
 from numpy.typing import NDArray
 from abc import abstractmethod
-from typing import List, Dict
+from typing import List, Dict, Generic
 
 from smartscan import Cluster, ClusterMetadata, ClusterMerges, ClusterId, StoredEmbedding, ClusterResult, Assignments
 from smartscan.embeds import EmbeddingStore, generate_prototype_embedding
@@ -15,21 +15,18 @@ from smartscan.cluster import IncrementalClusterer
 from llm_connect.providers.llm_provider import LLMProvider
 
 from sereleum.schemas.llm import LLMClassificationResult
-from sereleum.data.clusters.base_cluster_crossrefs_store import BaseClusterCrossRefStore
-from sereleum.data.base_store import BaseStore
-from sereleum.data.clusters.base_cluster_store import BaseClusterStore
 from sereleum.schemas.cluster import ClusterCrossRef, StoredClusterMetadata, ClusterCrossRefFilter, ClusterFilter
 from sereleum.errors import SereleumError, ErrorCode
+from sereleum.data.types import TItemStore, TClusterStore, TClusterCrossRefStore
 
-
-class ClusterManager:
+class ClusterManager(Generic[TClusterStore, TClusterCrossRefStore, TItemStore]):
     def __init__(
         self, 
+        cluster_store: TClusterStore,
+        crossrefs_store: TClusterCrossRefStore,
         cluster_embedding_store: EmbeddingStore,
-        cluster_store: BaseClusterStore,
-        crossrefs_store: BaseClusterCrossRefStore,
+        item_store: TItemStore,
         item_embedding_store: EmbeddingStore,
-        item_store: BaseStore,
         llm: LLMProvider, 
         label_confidence_threshold: float = 0.8,
         label_concurrency: int = 8
