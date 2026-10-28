@@ -1,8 +1,8 @@
 from datetime import datetime, timezone
-from pydantic import BaseModel, Field
+from pydantic import Field
 from typing import Optional, Dict, List
 
-from sereleum.schemas.item import Item, BaseItemFilter
+from sereleum.schemas.item import Item, BaseItemFilter, ItemsOverviewInfo
 from sereleum.schemas.cluster import StoredClusterMetadata
 
 class Prompt(Item):
@@ -15,8 +15,5 @@ class PromptFilter(BaseItemFilter):
     min_tokens: Optional[int] = None
     max_tokens: Optional[int] = None
  
-class PromptsOverviewInfo(BaseModel):
-    total_prompts: int
-    total_clusters: int
-    top_clusters: List[StoredClusterMetadata]
+class PromptsOverviewInfo(ItemsOverviewInfo):
     top_cluster_token_counts: Dict[str, int]
