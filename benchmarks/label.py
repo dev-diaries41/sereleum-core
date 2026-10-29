@@ -16,7 +16,7 @@ from sereleum.constants.models import DEFAULT_SYSTEM_PROMPT, OPENAI_API_KEY, DEF
 from sereleum.providers.types import TextEmbeddingModel
 from sereleum.data.helpers import create_sessionmaker
 
-from domains.prompts.cluster.cluster_manager import get_cluster_manager
+from domains.prompts.cluster_manager import get_cluster_manager
 
 BENCHMARK_OUTPUT_PATH = os.path.join(BENCHMARK_DIR, "labelling_benchmarks.jsonl")
 

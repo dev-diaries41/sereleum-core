@@ -27,7 +27,7 @@ from sereleum.clusters.plot import plot_clusters, plot_clusters_with_prototypes
 from sereleum.utils.file import get_new_filename
 from sereleum.logs import getLogger
 from sereleum.data.helpers import create_sessionmaker
-from domains.prompts.cluster.cluster_manager import get_cluster_manager
+from domains.prompts.cluster_manager import get_cluster_manager
 
 BENCHMARK_NAME = "clustering_benchmarks"
 LOG_FILE_PATH = f"logs/{BENCHMARK_NAME}.log"

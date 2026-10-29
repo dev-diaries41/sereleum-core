@@ -12,16 +12,16 @@ from llm_connect.providers.openai import OpenAIProvider
 from llm_connect.schemas.llm import LLMProviderConfig
 
 from domains.prompts.prompt import Prompt
-from domains.prompts.index.indexer import PromptIndexer
-from domains.prompts.index.indexer_listener import PromptIndexerListener
+from domains.prompts.indexer import PromptIndexer
+from domains.prompts.cluster_manager import get_cluster_manager
 from sereleum.constants.db import POSTGRES_DSN
 from sereleum.constants.models import OPENAI_API_KEY, DEFAULT_SYSTEM_PROMPT, DEFAULT_OPENAI_MODEL
-from sereleum.clusters.helpers import get_prompt_cluster_manager
 from api.redis import redis_client, get_broker
 from sereleum.logs import getLogger
 from sereleum.helpers import get_cluster_status_key, get_cluster_status_channel
 from api.schemas.response import FailMessage, CompleteMessage, ActiveMessage
 from sereleum.data.helpers import create_sessionmaker
+from sereleum.index.redis_index_listener import RedisIndexListener
 
 redis_broker = get_broker()
 redis_broker.add_middleware(AsyncIO())
@@ -33,8 +33,7 @@ text_embedder = model_manager.get_text_embedder("all-distilroberta-v1")
 text_embedder.init()
 llm = OpenAIProvider(OPENAI_API_KEY, LLMProviderConfig(model=DEFAULT_OPENAI_MODEL, system_prompt=DEFAULT_SYSTEM_PROMPT))
 sessionmaker = create_sessionmaker(POSTGRES_DSN)
-
-cluster_manager = get_prompt_cluster_manager(sessionmaker, embed_dim=text_embedder.embedding_dim, llm=llm)
+cluster_manager = get_cluster_manager(sessionmaker, text_embedder.embedding_dim, llm)
 logger = getLogger("tasks", "logs/tasks.log")
 
 @dramatiq.actor(max_retries = 2)
@@ -50,7 +49,7 @@ async def index_prompts_task(file_path: str, auto_label: bool = True, default_th
         
         with open(file_path) as f:
             prompts = [Prompt(**p) for p in json.load(f)]
-        indexer = PromptIndexer(text_embedder, embeddings_store=cluster_manager.item_embedding_store, prompt_store=cluster_manager.item_store, listener=PromptIndexerListener(msg.message_id, redis_client))
+        indexer = PromptIndexer(text_embedder, embeddings_store=cluster_manager.item_embedding_store, prompt_store=cluster_manager.item_store, listener=RedisIndexListener[Prompt](msg.message_id, redis_client))
         await indexer.run(prompts)
         
         cluster_prompts_task.send(

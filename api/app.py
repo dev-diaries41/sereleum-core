@@ -23,7 +23,7 @@ from api.schemas.response import FailMessage, CompleteMessage, ProgressMessage, 
 from api.schemas.response import GetPromptsOverviewResponse
 
 from domains.prompts.prompt import Prompt
-from domains.prompts.cluster.cluster_manager import get_cluster_manager
+from domains.prompts.cluster_manager import get_cluster_manager
 from sereleum.data.helpers import create_sessionmaker
 from sereleum.helpers import get_index_progres_key, get_index_status_key, get_cluster_status_key, get_cluster_status_channel, get_index_progress_channel
 from api.routers.item import create_items_router
