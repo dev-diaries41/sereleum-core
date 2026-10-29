@@ -68,9 +68,6 @@ case "$ACTION" in
   create)
     create_db
     ;;
-  clear)
-    clear_db
-    ;;
   drop)
     drop_db
     ;;
@@ -83,7 +80,7 @@ case "$ACTION" in
     start_worker
     ;;
   *)
-    echo "Usage: $0 [create|clear|drop|api|worker]"
+    echo "Usage: $0 [create|drop|api|worker]"
     exit 1
     ;;
 esac
