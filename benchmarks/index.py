@@ -22,8 +22,10 @@ from domains.prompts.index.indexer import PromptIndexer
 from sereleum.providers.types import TextEmbeddingModel
 from sereleum.utils.data import get_dummy_data
 from sereleum.logs import getLogger
-from benchmarks.utils import get_test_prompt_embed_store
 from sereleum.data.helpers import create_sessionmaker
+from sereleum.data.embeds.pgvector_embed_store import PgVectorEmbeddingStore
+
+from sereleum.data.embeds.helpers import get_embed_store_name
 
 BENCHMARK_NAME = "indexing_benchmarks"
 LOG_FILE_PATH = f"logs/{BENCHMARK_NAME}.log"
@@ -40,7 +42,7 @@ async def main(labelled_prompts: list[Prompt], model: TextEmbeddingModel):
     text_embedder.init()
     sessionmaker = create_sessionmaker(POSTGRES_DSN)
     prompt_store = PromptStore(sessionmaker)
-    prompt_embed_store = get_test_prompt_embed_store(model, sessionmaker, text_embedder.embedding_dim)
+    prompt_embed_store = PgVectorEmbeddingStore(get_embed_store_name(model, 'item_test'), sessionmaker, text_embedder.embedding_dim)
     indexer =  PromptIndexer(text_embedder, listener=ProgressBarIndexerListener(), embeddings_store=prompt_embed_store, prompt_store=prompt_store, batch_size=100, max_concurrency=4)
     result =  await indexer.run(labelled_prompts)
     logger.info(f"time_elpased: {result.time_elapsed} | processed: {result.total_processed}")

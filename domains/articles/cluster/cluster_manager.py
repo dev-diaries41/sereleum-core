@@ -1,7 +1,13 @@
 from sereleum.clusters.cluster_manager import ClusterManager
 from sereleum.schemas.llm import LLMClassificationResult
 from sereleum.schemas.cluster import ClusterCrossRefFilter
+from sereleum.data.embeds.pgvector_embed_store import PgVectorEmbeddingStore
+
 from domains.articles.item import ArticleFilter, Article
+from domains.articles.stores import ArticleStore, ArticleClusterStore, ArticleClusterCrossRefStore
+
+from sqlalchemy.ext.asyncio import async_sessionmaker
+from llm_connect.providers.llm_provider import LLMProvider
 
 
 class ArticleClusterManager(ClusterManager[Article]):    
@@ -23,4 +29,19 @@ class ArticleClusterManager(ClusterManager[Article]):
     @staticmethod
     def _get_labelling_prompt(cluster_id: str, sample_contents: list[str]) -> str:
         return f"""## ClusterId: {cluster_id}\n\n Cluster sample items \n\n {sample_contents}"""
-    
+
+
+def get_cluster_manager(sessionmaker: async_sessionmaker, embed_dim:int, llm: LLMProvider):
+    item_store = ArticleStore(sessionmaker)
+    cluster_store = ArticleClusterStore(sessionmaker)
+    cluster_crossref_store = ArticleClusterCrossRefStore(sessionmaker)
+    item_embed_store = PgVectorEmbeddingStore(name='article_embeds', sessionmaker=sessionmaker, dim=embed_dim)
+    cluster_embed_store = PgVectorEmbeddingStore(name='article_cluster_embeds', sessionmaker=sessionmaker, dim=embed_dim)
+    return ArticleClusterManager(
+        cluster_embedding_store=cluster_embed_store,
+        cluster_store=cluster_store,
+        crossrefs_store=cluster_crossref_store,
+        item_embedding_store=item_embed_store, 
+        item_store=item_store,
+        llm=llm,
+    )
