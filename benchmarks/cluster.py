@@ -47,6 +47,7 @@ async def run(cluster_manager: ClusterManager, model:TextEmbeddingModel, plot_ou
     results = {}    
     start = time.perf_counter()
     cluster_result = await cluster_manager.cluster(auto_label=False, default_threshold=default_threshold)
+    
     time_elapsed = time.perf_counter() - start
     logger.debug(f"Assignments: {len(cluster_result.assignments)} | Clusters: {len(cluster_result.clusters)} | Merges: {len(cluster_result.merges)}")
     ids = list(cluster_result.assignments.keys())
@@ -56,6 +57,9 @@ async def run(cluster_manager: ClusterManager, model:TextEmbeddingModel, plot_ou
     results[model] = bench
     logger.info(results)
 
+    if not cluster_result.assignments:
+        return 
+    
     with open(BENCHMARK_ASSIGNMENTS_PATH, "w") as f:
         json.dump(cluster_result.assignments, f, indent=1, sort_keys=True)
 
