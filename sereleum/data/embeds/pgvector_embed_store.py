@@ -12,15 +12,15 @@ from smartscan.embeds.types import QueryResult, StoredEmbedding
 
 
 class PgVectorEmbeddingStore(EmbeddingStore):
-    table_name: str
-
     def __init__(
         self,
+        name: str,
         dim: int,
         sessionmaker: async_sessionmaker[AsyncSession],
         hnsw_m: int = 16,
         hnsw_ef_construction: int = 64,
     ):
+        self.table_name = name
         self.dim = dim
         self.sessionmaker = sessionmaker
         self.hnsw_m = hnsw_m
