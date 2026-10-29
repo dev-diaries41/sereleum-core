@@ -8,6 +8,8 @@ from sereleum.data.mappers.mapper import Mapper
 class ArticleMapper(Mapper[ArticleModel, Article]):
     def to_domain(self, entity: ArticleModel) -> Article:
         return Article(
+            title=entity.title,
+            url=entity.url,
             id=entity.id,
             content=entity.content,
             published=entity.published,
@@ -16,6 +18,8 @@ class ArticleMapper(Mapper[ArticleModel, Article]):
     def to_entity(self, domain: Article) -> ArticleModel:
         return ArticleModel(
             id=domain.id,
+            url=domain.url,
+            title=domain.title,
             content=domain.content,
             published=domain.published,
         )
