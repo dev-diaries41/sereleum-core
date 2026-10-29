@@ -6,7 +6,7 @@ from api.schemas.response import GetItemsResponse, GetCountResponse
 from sereleum.schemas.cluster import ClusterCrossRefFilter
 from sereleum.schemas.item import BaseItemFilter
 from smartscan.types import TextEmbeddingProvider
-from sereleum.constants.api import Routes
+from api.routers.routes import Routes
 from sereleum.data.types import TItem
 from sereleum.clusters.cluster_manager import ClusterManager
 

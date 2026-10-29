@@ -20,7 +20,7 @@ from llm_connect.providers.openai import OpenAIProvider
 from sereleum.constants.db import POSTGRES_DSN
 from sereleum.constants.models import OPENAI_API_KEY, DEFAULT_SYSTEM_PROMPT, DEFAULT_OPENAI_MODEL
 from sereleum.constants import  UPLOAD_DIR
-from sereleum.constants.api import Routes
+from api.routers.routes import Routes
 from sereleum.data.helpers import create_sessionmaker
 from sereleum.helpers import get_index_progres_key, get_index_status_key, get_cluster_status_key, get_cluster_status_channel, get_index_progress_channel
 

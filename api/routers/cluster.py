@@ -15,7 +15,7 @@ from sereleum.schemas.cluster import ClusterFilter
 from sereleum.clusters.plot import get_cluster_plot
 from sereleum.clusters.cluster_manager import ClusterManager
 from sereleum.data.types import TItem
-from sereleum.constants.api import Routes
+from api.routers.routes import Routes
 
 
 def create_clusters_router(cluster_manager: ClusterManager[TItem],) -> APIRouter:

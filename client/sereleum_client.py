@@ -6,7 +6,7 @@ from smartscan import ClusterMerges
 
 from sereleum.schemas.cluster import StoredClusterMetadata
 from domains.prompts.item import Prompt, PromptsOverviewInfo
-from sereleum.constants.api import Routes
+from api.routers.routes import Routes
 from api.schemas.request import  GetItemsRequest, GetItemsByIdRequest, GetClusterRequestParams, RenameClusterRequest, QueryItemsRequest, MoveItemRequest, MergeClustersRequest, AddItemsRequestOptions
 from api.schemas.response import AddItemsResponse
 
