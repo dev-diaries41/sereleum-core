@@ -6,8 +6,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi import Request
 from sse_starlette import EventSourceResponse
 
-from api.redis import redis_client
+from api.schemas.response import FailMessage, CompleteMessage, ProgressMessage, ActiveMessage, GetPromptsOverviewResponse
 from api.prompts.helpers import get_prompts_overview
+from api.routers.item import create_items_router
+from api.routers.cluster import create_clusters_router
+from api.redis import redis_client
 
 from smartscan.models.model_manager import ModelManager
 
@@ -18,16 +21,12 @@ from sereleum.constants.db import POSTGRES_DSN
 from sereleum.constants.models import OPENAI_API_KEY, DEFAULT_SYSTEM_PROMPT, DEFAULT_OPENAI_MODEL
 from sereleum.constants import  UPLOAD_DIR
 from sereleum.constants.api import Routes
-
-from api.schemas.response import FailMessage, CompleteMessage, ProgressMessage, ActiveMessage
-from api.schemas.response import GetPromptsOverviewResponse
+from sereleum.data.helpers import create_sessionmaker
+from sereleum.helpers import get_index_progres_key, get_index_status_key, get_cluster_status_key, get_cluster_status_channel, get_index_progress_channel
 
 from domains.prompts.item import Prompt
 from domains.prompts.cluster_manager import get_cluster_manager
-from sereleum.data.helpers import create_sessionmaker
-from sereleum.helpers import get_index_progres_key, get_index_status_key, get_cluster_status_key, get_cluster_status_channel, get_index_progress_channel
-from api.routers.item import create_items_router
-from api.routers.cluster import create_clusters_router
+
 
 MAX_UPLOAD_SIZE = 50 * 1024 * 1024  # 50MB
 
@@ -51,16 +50,8 @@ app.add_middleware(
 
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-
-app.include_router(
-    create_items_router(
-        item_type=Prompt,
-        cluster_manager=cluster_manager,
-        text_embedder=text_embedder,
-    )
-)
+app.include_router(create_items_router(Prompt, cluster_manager,text_embedder))
 app.include_router(create_clusters_router(cluster_manager))
-
 
 @app.get(Routes.SSE_INDEX_PROGRESS)
 async def track_index_progress_route(request: Request, job_id: str):
@@ -78,7 +69,7 @@ async def track_index_progress_route(request: Request, job_id: str):
             yield {"event": "active", "data": ActiveMessage().model_dump_json()}
 
         elif status == "failed":
-            yield {"event": "failed", "data": FailMessage(error="error indexing prompts").model_dump_json()}
+            yield {"event": "failed", "data": FailMessage(error="error indexing items").model_dump_json()}
             return
 
         elif status == "complete":
@@ -131,7 +122,7 @@ async def track_prompts_cluster_status(request: Request, job_id: str):
         elif status == "failed":
             yield {
                 "event": "failed",
-                "data": FailMessage(error="error clustering prompts").model_dump_json()
+                "data": FailMessage(error="error clustering items").model_dump_json()
             }
             return
 
