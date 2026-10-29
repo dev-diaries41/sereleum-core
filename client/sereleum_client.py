@@ -7,7 +7,8 @@ from smartscan import ClusterMerges
 from sereleum.schemas.cluster import StoredClusterMetadata
 from domains.prompts.item import Prompt, PromptsOverviewInfo
 from sereleum.constants.api import Routes
-from sereleum.schemas.api import  GetItemsRequest, GetItemsByIdRequest, GetClusterRequestParams, RenameClusterRequest, QueryItemsRequest, MoveItemRequest, AddItemsResponse, MergeClustersRequest, AddItemsRequestOptions
+from api.schemas.request import  GetItemsRequest, GetItemsByIdRequest, GetClusterRequestParams, RenameClusterRequest, QueryItemsRequest, MoveItemRequest, MergeClustersRequest, AddItemsRequestOptions
+from api.schemas.response import AddItemsResponse
 
 class SereleumClient:
     def __init__(self, base_url: str):

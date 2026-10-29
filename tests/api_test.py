@@ -5,7 +5,7 @@ from client.sereleum_client import SereleumClient
 from httpx import HTTPStatusError
 
 from domains.prompts.item import Prompt, PromptsOverviewInfo
-from sereleum.schemas.api import  AddItemsResponse
+from api.schemas.response import  AddItemsResponse
 
 TEST_PROMPTS_FILE = "output/prompts/test_prompts.json"
 
