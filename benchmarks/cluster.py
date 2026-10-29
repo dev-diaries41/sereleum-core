@@ -27,7 +27,8 @@ from sereleum.clusters.plot import plot_clusters, plot_clusters_with_prototypes
 from sereleum.utils.file import get_new_filename
 from sereleum.logs import getLogger
 from sereleum.data.helpers import create_sessionmaker
-from domains.prompts.cluster_manager import get_cluster_manager
+# from domains.prompts.cluster_manager import get_cluster_manager
+from domains.articles.cluster_manager import get_cluster_manager
 
 BENCHMARK_NAME = "clustering_benchmarks"
 LOG_FILE_PATH = f"logs/{BENCHMARK_NAME}.log"
@@ -73,7 +74,7 @@ async def run(cluster_manager: ClusterManager, model:TextEmbeddingModel, plot_ou
 async def run_real_benchmark(model: TextEmbeddingModel, embed_dim: int, default_threshold: float, top_k: int):
     llm = OpenAIProvider(OPENAI_API_KEY, LLMProviderConfig(model=DEFAULT_OPENAI_MODEL, system_prompt=DEFAULT_SYSTEM_PROMPT))
     sessionmaker =create_sessionmaker(POSTGRES_DSN)
-    cluster_manager = get_cluster_manager(sessionmaker, embed_dim, model, llm)
+    cluster_manager = get_cluster_manager(sessionmaker, embed_dim, llm)
     plot_output = get_new_filename(BENCHMARK_PLOTS_DIR, f"real_{BENCHMARK_CLUSTERS_PLOT}", ".png")
     await run(cluster_manager, model, plot_output, default_threshold=default_threshold, top_k=top_k)
 
