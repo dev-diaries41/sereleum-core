@@ -43,7 +43,7 @@ async def main(labelled_prompts: list[Prompt], model: TextEmbeddingModel):
     sessionmaker = create_sessionmaker(POSTGRES_DSN)
     prompt_store = PromptStore(sessionmaker)
     print(await prompt_store.count())
-    prompt_embed_store = PgVectorEmbeddingStore(get_embed_store_name(model, 'item_test'), sessionmaker, text_embedder.embedding_dim)
+    prompt_embed_store = PgVectorEmbeddingStore(name =get_embed_store_name(model, 'item_test'), sessionmaker=sessionmaker,dim= text_embedder.embedding_dim)
     indexer =  PromptIndexer(text_embedder, listener=ProgressBarIndexerListener(), embeddings_store=prompt_embed_store, prompt_store=prompt_store, batch_size=100, max_concurrency=4)
     result =  await indexer.run(labelled_prompts)
     logger.info(f"time_elpased: {result.time_elapsed} | processed: {result.total_processed}")
