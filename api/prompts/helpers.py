@@ -1,24 +1,21 @@
-from domains.prompts.cluster.cluster_manager import PromptClusterManager
-from domains.prompts.prompt import PromptsOverviewInfo, PromptFilter
+from sereleum.clusters.cluster_manager import ClusterManager
+from domains.prompts.prompt import PromptsOverviewInfo, PromptFilter, Prompt
 from smartscan import ClusterId
 
-async def get_prompts_overview(cluster_manager: PromptClusterManager, top_n: int = 6) -> PromptsOverviewInfo:
-        prompt_count = await cluster_manager.item_store.count()
+async def get_prompts_overview(cluster_manager: ClusterManager[Prompt], top_n: int = 6) -> PromptsOverviewInfo:
+        item_count = await cluster_manager.item_store.count()
         cluster_count = await cluster_manager.cluster_store.count()
         top_clusters = await cluster_manager.get_top_clusters(top_n)
-        prompt_embed_count = await cluster_manager.item_embedding_store.count()
-        if (prompt_count != prompt_embed_count):
-            raise ValueError(f"Prompt count does not match prompt embed count: Prompts {prompt_count} | Prompt embeds: {prompt_embed_count}")
-
+       
         token_counts: dict[ClusterId, int] = {}
         for metadata in top_clusters:
             avg_tokens = await calculate_avg_tokens_for_cluster(cluster_manager, metadata.id, 1000)
             token_counts[metadata.id] = avg_tokens
-        return PromptsOverviewInfo(total_prompts=prompt_count, total_clusters=cluster_count, top_cluster_token_counts=token_counts, top_clusters=top_clusters)
+        return PromptsOverviewInfo(total_prompts=item_count, total_clusters=cluster_count, top_cluster_token_counts=token_counts, top_clusters=top_clusters)
 
 
 ## TODO: do at db level
-async def calculate_avg_tokens_for_cluster(cluster_manager: PromptClusterManager, cluster_id: str, sample_size: int) -> int:
+async def calculate_avg_tokens_for_cluster(cluster_manager:  ClusterManager[Prompt], cluster_id: str, sample_size: int) -> int:
     total_tokens = 0
     prompts_count = 0
 
