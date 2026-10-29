@@ -11,7 +11,7 @@ from smartscan.models.model_manager import ModelManager
 from llm_connect.providers.openai import OpenAIProvider
 from llm_connect.schemas.llm import LLMProviderConfig
 
-from domains.prompts.prompt import Prompt
+from domains.prompts.item import Prompt
 from domains.prompts.indexer import PromptIndexer
 from domains.prompts.cluster_manager import get_cluster_manager
 from sereleum.constants.db import POSTGRES_DSN

@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from typing import List, Optional, Literal, Generic
 
-from domains.prompts.prompt import PromptsOverviewInfo
+from domains.prompts.item import PromptsOverviewInfo
 from sereleum.schemas.cluster import StoredClusterMetadata
 from sereleum.types import Status
 from sereleum.data.types import TItem

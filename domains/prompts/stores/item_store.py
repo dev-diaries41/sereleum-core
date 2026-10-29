@@ -1,9 +1,9 @@
 from sqlalchemy import exists, select
 
 from sereleum.data.stores.postgres.base_postgres_store import BasePostgresStore
-from domains.prompts.models.prompt import PromptModel
-from domains.prompts.models.prompt_cluster_crossref import PromptClusterCrossRefModel
-from domains.prompts.prompt import PromptFilter, Prompt
+from domains.prompts.models.item import PromptModel
+from domains.prompts.models.cluster_crossref import PromptClusterCrossRefModel
+from domains.prompts.item import PromptFilter, Prompt
 from domains.prompts.mappers import PromptMapper
 
 

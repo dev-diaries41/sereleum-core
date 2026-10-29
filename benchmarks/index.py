@@ -16,8 +16,8 @@ from sereleum.index.progressbar_index_listener import ProgressBarIndexerListener
 from benchmarks.constants import BENCHMARK_DIR
 from sereleum.constants.db import POSTGRES_DSN
 
-from domains.prompts.stores.prompt_store import PromptStore
-from domains.prompts.prompt import Prompt
+from domains.prompts.stores.item_store import PromptStore
+from domains.prompts.item import Prompt
 from domains.prompts.indexer import PromptIndexer
 from sereleum.providers.types import TextEmbeddingModel
 from sereleum.utils.data import get_dummy_data

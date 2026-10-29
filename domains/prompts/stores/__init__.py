@@ -1,3 +1,3 @@
-from domains.prompts.stores.prompt_store import PromptStore
-from domains.prompts.stores.prompt_cluster_store import PromptClusterStore
-from domains.prompts.stores.prompt_cluster_crossrefs_store import PromptClusterCrossRefStore
+from domains.prompts.stores.item_store import PromptStore
+from domains.prompts.stores.cluster_store import PromptClusterStore
+from domains.prompts.stores.cluster_crossrefs_store import PromptClusterCrossRefStore

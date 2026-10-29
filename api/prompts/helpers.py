@@ -1,5 +1,5 @@
 from sereleum.clusters.cluster_manager import ClusterManager
-from domains.prompts.prompt import PromptsOverviewInfo, PromptFilter, Prompt
+from domains.prompts.item import PromptsOverviewInfo, PromptFilter, Prompt
 from smartscan import ClusterId
 
 async def get_prompts_overview(cluster_manager: ClusterManager[Prompt], top_n: int = 6) -> PromptsOverviewInfo:

@@ -1,3 +1,3 @@
-from domains.prompts.models.prompt import PromptModel
-from domains.prompts.models.prompt_cluster import PromptClusterModel
-from domains.prompts.models.prompt_cluster_crossref import PromptClusterCrossRefModel
+from domains.prompts.models.item import PromptModel
+from domains.prompts.models.cluster import PromptClusterModel
+from domains.prompts.models.cluster_crossref import PromptClusterCrossRefModel

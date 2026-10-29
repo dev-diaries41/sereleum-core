@@ -1,7 +1,7 @@
 from sereleum.clusters.cluster_manager import ClusterManager
 from sereleum.data.embeds.pgvector_embed_store import PgVectorEmbeddingStore
 
-from domains.prompts.prompt import Prompt
+from domains.prompts.item import Prompt
 from domains.prompts.stores import PromptStore, PromptClusterCrossRefStore, PromptClusterStore
 
 from sqlalchemy.ext.asyncio import async_sessionmaker
