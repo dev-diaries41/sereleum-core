@@ -3,7 +3,7 @@ import os
 import argparse
 
 from dotenv import load_dotenv
-load_dotenv('.env.dev')
+load_dotenv('.env.local')
 
 from typing import get_args
 
