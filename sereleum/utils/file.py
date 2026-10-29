@@ -1,4 +1,7 @@
 import os 
+import json
+
+from sereleum.data.types import TItem
 
 def get_new_dirname(dir_path: str, prefix: str):
     os.makedirs(dir_path, exist_ok=True)
@@ -37,3 +40,13 @@ def get_new_filename(dir_path: str, prefix: str, ext):
             highest = n
 
     return os.path.join(dir_path, f"{prefix}{highest + 1}{ext}")
+
+
+def save_items(output: str, items: list[TItem]) -> None:
+    with open(output, "w", encoding="utf-8") as f:
+        json.dump([item.model_dump(mode="json") for item in items], f, ensure_ascii=False, indent=2)
+
+def load_items(path: str, item_cls: type[TItem]):
+    with open(path) as f:
+        return [item_cls(**item) for item in json.load(f)]
+    
