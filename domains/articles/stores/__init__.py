@@ -1,5 +1,3 @@
 from domains.articles.stores.item_store import ArticleStore
 from domains.articles.stores.cluster_store import ArticleClusterStore
 from domains.articles.stores.cluster_crossrefs_store import ArticleClusterCrossRefStore
-from domains.articles.stores.item_embed_store import ArticleEmbedStore
-from domains.articles.stores.cluster_embed_store import ArticleClusterEmbedStore
