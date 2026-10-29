@@ -5,7 +5,9 @@ from sqlalchemy import pool
 
 from alembic import context
 from sereleum.data.models.base import Base
-import sereleum.data.models # required
+import domains.prompts.models # required
+import domains.articles.models # required
+
 import os
 
 # this is the Alembic Config object, which provides
