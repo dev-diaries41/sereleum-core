@@ -24,9 +24,7 @@ from api.routers.routes import Routes
 from sereleum.data.helpers import create_sessionmaker
 from sereleum.helpers import get_index_progres_key, get_index_status_key, get_cluster_status_key, get_cluster_status_channel, get_index_progress_channel
 
-from domains.prompts.item import Prompt
-from domains.prompts.cluster_manager import get_cluster_manager
-
+from domains.prompts import create_cluster_manager, Prompt
 
 MAX_UPLOAD_SIZE = 50 * 1024 * 1024  # 50MB
 
@@ -36,8 +34,7 @@ text_embedder.init()
 llm = OpenAIProvider(OPENAI_API_KEY, LLMProviderConfig(model=DEFAULT_OPENAI_MODEL, system_prompt=DEFAULT_SYSTEM_PROMPT))
 
 sessionmaker = create_sessionmaker(POSTGRES_DSN)
-
-cluster_manager = get_cluster_manager(sessionmaker, llm)
+cluster_manager = create_cluster_manager(sessionmaker, llm)
 
 app = FastAPI()
 app.add_middleware(

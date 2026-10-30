@@ -22,12 +22,9 @@ from sereleum.data.embeds.pgvector_embed_store import PgVectorEmbeddingStore
 from sereleum.index.progressbar_index_listener import ProgressBarIndexerListener
 from sereleum.data.types import TItem
 
-from domains.prompts.stores.item_store import PromptStore
-from domains.prompts.item import Prompt
-from domains.prompts.indexer import PromptIndexer
-from domains.articles.stores.item_store import ArticleStore
-from domains.articles.item import Article
-from domains.articles.indexer import ArticleIndexer
+from domains.prompts import Prompt, create_indexer as create_prompts_indexer
+from domains.articles import Article, create_indexer as create_articles_indexer
+
 
 
 BENCHMARK_NAME = "indexing_benchmarks"
@@ -42,9 +39,8 @@ async def index_prompts(items: list[Prompt], model: TextEmbeddingModel):
     text_embedder = ModelManager().get_text_embedder(model)
     text_embedder.init()
     sessionmaker = create_sessionmaker(POSTGRES_DSN)
-    item_store = PromptStore(sessionmaker)
-    prompt_embed_store = PgVectorEmbeddingStore(name =get_embed_store_name(model, 'item_test'), sessionmaker=sessionmaker)
-    indexer =  PromptIndexer(text_embedder, listener=ProgressBarIndexerListener(), embeddings_store=prompt_embed_store, prompt_store=item_store, batch_size=100, max_concurrency=4)
+    indexer = create_prompts_indexer(text_embedder, sessionmaker, batch_size=100, max_concurrency=4)
+    indexer.register_listener(ProgressBarIndexerListener())
     result =  await indexer.run(items)
     logger.info(f"time_elpased: {result.time_elapsed} | processed: {result.total_processed}")
 
@@ -52,9 +48,8 @@ async def index_articles(items: list[Article], model: TextEmbeddingModel):
     text_embedder = ModelManager().get_text_embedder(model)
     text_embedder.init()
     sessionmaker = create_sessionmaker(POSTGRES_DSN)
-    item_store = ArticleStore(sessionmaker)
-    item_embed_store = PgVectorEmbeddingStore(name = get_embed_store_name(model, 'article_test'), sessionmaker=sessionmaker)
-    indexer =  ArticleIndexer(text_embedder, listener=ProgressBarIndexerListener(), embed_store=item_embed_store, item_store=item_store, batch_size=100, max_concurrency=4)
+    indexer = create_prompts_indexer(text_embedder, sessionmaker, batch_size=100, max_concurrency=4)
+    indexer.register_listener(ProgressBarIndexerListener())
     result =  await indexer.run(items)
     logger.info(f"time_elpased: {result.time_elapsed} | processed: {result.total_processed}")
 

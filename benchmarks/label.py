@@ -16,7 +16,7 @@ from sereleum.constants.models import DEFAULT_SYSTEM_PROMPT, OPENAI_API_KEY, DEF
 from sereleum.providers.types import TextEmbeddingModel
 from sereleum.data.helpers import create_sessionmaker
 
-from domains.prompts.cluster_manager import get_cluster_manager
+from domains.prompts import create_cluster_manager
 
 BENCHMARK_OUTPUT_PATH = os.path.join(BENCHMARK_DIR, "labelling_benchmarks.jsonl")
 
@@ -26,7 +26,7 @@ os.makedirs(BENCHMARK_DIR, exist_ok=True)
 async def run(model: TextEmbeddingModel, embed_dim: int):
     llm = OpenAIProvider(OPENAI_API_KEY, LLMProviderConfig(model=DEFAULT_OPENAI_MODEL, system_prompt=DEFAULT_SYSTEM_PROMPT))
     sessionmaker = create_sessionmaker(POSTGRES_DSN)
-    cluster_manager = get_cluster_manager(sessionmaker, embed_dim, llm)
+    cluster_manager = create_cluster_manager(sessionmaker, embed_dim, llm)
     clusters = await cluster_manager.cluster_store.get(limit=1)
     if len(clusters) == 0:
         raise ValueError("No existing clusters")

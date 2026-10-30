@@ -11,9 +11,7 @@ from smartscan.models.model_manager import ModelManager
 from llm_connect.providers.openai import OpenAIProvider
 from llm_connect.schemas.llm import LLMProviderConfig
 
-from domains.prompts.item import Prompt
-from domains.prompts.indexer import PromptIndexer
-from domains.prompts.cluster_manager import get_cluster_manager
+from domains.prompts import create_cluster_manager, create_indexer, Prompt
 from sereleum.constants.db import POSTGRES_DSN
 from sereleum.constants.models import OPENAI_API_KEY, DEFAULT_SYSTEM_PROMPT, DEFAULT_OPENAI_MODEL
 from api.redis import redis_client, get_broker
@@ -33,7 +31,7 @@ text_embedder = model_manager.get_text_embedder("all-distilroberta-v1")
 text_embedder.init()
 llm = OpenAIProvider(OPENAI_API_KEY, LLMProviderConfig(model=DEFAULT_OPENAI_MODEL, system_prompt=DEFAULT_SYSTEM_PROMPT))
 sessionmaker = create_sessionmaker(POSTGRES_DSN)
-cluster_manager = get_cluster_manager(sessionmaker, llm)
+cluster_manager = create_cluster_manager(sessionmaker, llm)
 logger = getLogger("tasks", "logs/tasks.log")
 
 @dramatiq.actor(max_retries = 2)
@@ -49,7 +47,9 @@ async def index_prompts_task(file_path: str, auto_label: bool = True, default_th
         
         with open(file_path) as f:
             prompts = [Prompt(**p) for p in json.load(f)]
-        indexer = PromptIndexer(text_embedder, embeddings_store=cluster_manager.item_embedding_store, prompt_store=cluster_manager.item_store, listener=RedisIndexListener[Prompt](msg.message_id, redis_client))
+
+        indexer = create_indexer(text_embedder, sessionmaker, batch_size=100, max_concurrency=4)
+        indexer.register_listener(RedisIndexListener[Prompt](msg.message_id, redis_client))
         await indexer.run(prompts)
         
         cluster_prompts_task.send(
