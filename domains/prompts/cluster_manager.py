@@ -8,12 +8,12 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from llm_connect.providers.llm_provider import LLMProvider
 
-def get_cluster_manager(sessionmaker: async_sessionmaker, embed_dim:int, llm: LLMProvider):
+def get_cluster_manager(sessionmaker: async_sessionmaker,llm: LLMProvider):
     item_store = PromptStore(sessionmaker)
     cluster_store = PromptClusterStore(sessionmaker)
     cluster_crossref_store = PromptClusterCrossRefStore(sessionmaker)
-    item_embed_store = PgVectorEmbeddingStore(name='prompt_embeds', sessionmaker=sessionmaker, dim=embed_dim)
-    cluster_embed_store = PgVectorEmbeddingStore(name='prompt_cluster_embeds', sessionmaker=sessionmaker, dim=embed_dim)
+    item_embed_store = PgVectorEmbeddingStore(name='prompt_embeds', sessionmaker=sessionmaker)
+    cluster_embed_store = PgVectorEmbeddingStore(name='prompt_cluster_embeds', sessionmaker=sessionmaker)
     return ClusterManager[Prompt](
         cluster_embedding_store=cluster_embed_store,
         cluster_store=cluster_store,
