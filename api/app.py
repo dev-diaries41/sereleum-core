@@ -7,7 +7,7 @@ from fastapi import Request
 from sse_starlette import EventSourceResponse
 
 from api.schemas.response import FailMessage, CompleteMessage, ProgressMessage, ActiveMessage, GetPromptsOverviewResponse
-from api.prompts.helpers import get_prompts_overview
+from domains.prompts.helpers import get_prompts_overview
 from api.routers.item import create_items_router
 from api.routers.cluster import create_clusters_router
 from api.redis import redis_client
