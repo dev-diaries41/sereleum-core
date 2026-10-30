@@ -33,7 +33,7 @@ text_embedder = model_manager.get_text_embedder("all-distilroberta-v1")
 text_embedder.init()
 llm = OpenAIProvider(OPENAI_API_KEY, LLMProviderConfig(model=DEFAULT_OPENAI_MODEL, system_prompt=DEFAULT_SYSTEM_PROMPT))
 sessionmaker = create_sessionmaker(POSTGRES_DSN)
-cluster_manager = get_cluster_manager(sessionmaker, text_embedder.embedding_dim, llm)
+cluster_manager = get_cluster_manager(sessionmaker, llm)
 logger = getLogger("tasks", "logs/tasks.log")
 
 @dramatiq.actor(max_retries = 2)

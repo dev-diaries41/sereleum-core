@@ -12,7 +12,6 @@ from dataclasses import asdict
 from typing import get_args
 
 from smartscan.cluster import calculate_cluster_accuracy, IncrementalClusterer
-from smartscan.providers.embeddings.distill_roberta.text import DistillRobertATextEmbedder
 from benchmarks.constants import  BENCHMARK_DIR
 from benchmarks.utils import get_true_labels
 
@@ -43,7 +42,7 @@ logger = getLogger(BENCHMARK_NAME, LOG_FILE_PATH)
 
 
 # ids must be prefixed with label e.g promptlabel_123 for testing accuracy
-async def run(cluster_manager: ClusterManager, model:TextEmbeddingModel, plot_output: str, default_threshold: float = 0.3, top_k: int = 5):
+async def run(cluster_manager: ClusterManager, model:TextEmbeddingModel, plot_output: str, default_threshold: float = 0.3):
     results = {}    
     start = time.perf_counter()
     cluster_result = await cluster_manager.cluster(auto_label=False, default_threshold=default_threshold)
@@ -75,12 +74,12 @@ async def run(cluster_manager: ClusterManager, model:TextEmbeddingModel, plot_ou
 
 
 
-async def run_real_benchmark(model: TextEmbeddingModel, embed_dim: int, default_threshold: float, top_k: int):
+async def run_real_benchmark(model: TextEmbeddingModel, default_threshold: float):
     llm = OpenAIProvider(OPENAI_API_KEY, LLMProviderConfig(model=DEFAULT_OPENAI_MODEL, system_prompt=DEFAULT_SYSTEM_PROMPT))
     sessionmaker =create_sessionmaker(POSTGRES_DSN)
-    cluster_manager = get_cluster_manager(sessionmaker, embed_dim, llm)
+    cluster_manager = get_cluster_manager(sessionmaker, llm)
     plot_output = get_new_filename(BENCHMARK_PLOTS_DIR, f"real_{BENCHMARK_CLUSTERS_PLOT}", ".png")
-    await run(cluster_manager, model, plot_output, default_threshold=default_threshold, top_k=top_k)
+    await run(cluster_manager, model, plot_output, default_threshold=default_threshold)
 
 def run_simulated_benchmark(n_items=10000, dim=384):
     """Benchmark the standard IncrementalClusterer."""
@@ -100,16 +99,14 @@ def main():
 
     parser.add_argument("--model","-m", help="Embedding model to use for indexing", default='all-distilroberta-v1', choices=get_args(TextEmbeddingModel))
     parser.add_argument("--items", "-i", type=int, default=10000, help="Number of items for benchmark")
-    parser.add_argument("--dim", "-d", type=int, default=DistillRobertATextEmbedder.embedding_dim, help="Embedding dimension")
-    parser.add_argument("--top-k", "-k", type=int, default=5, help="Top k nearest neighbours")
     parser.add_argument("--threshold", "-t", type=float, default=0.3, help="Default similarity threshold")
 
     args = parser.parse_args()
 
     if args.sim:
-        run_simulated_benchmark(n_items=args.items, dim=args.dim)
+        run_simulated_benchmark(n_items=args.items)
     if args.real:
-        asyncio.run(run_real_benchmark(args.model, args.dim, args.threshold, args.top_k))
+        asyncio.run(run_real_benchmark(args.model, args.threshold))
 
 if __name__ == "__main__":
     main()

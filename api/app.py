@@ -37,7 +37,7 @@ llm = OpenAIProvider(OPENAI_API_KEY, LLMProviderConfig(model=DEFAULT_OPENAI_MODE
 
 sessionmaker = create_sessionmaker(POSTGRES_DSN)
 
-cluster_manager = get_cluster_manager(sessionmaker, text_embedder.embedding_dim, llm)
+cluster_manager = get_cluster_manager(sessionmaker, llm)
 
 app = FastAPI()
 app.add_middleware(
