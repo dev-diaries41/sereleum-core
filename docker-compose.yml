@@ -33,7 +33,7 @@ services:
 
   dramatiq_worker:
     build: .
-    command: dramatiq api.prompts.tasks --processes 1 --threads 1
+    command: dramatiq api.workers.main --processes 1 --threads 1
     volumes:
       - .:/app
       - shared_data:/data
