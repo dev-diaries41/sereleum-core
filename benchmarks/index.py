@@ -16,9 +16,7 @@ from sereleum.utils.data import get_dummy_data
 from sereleum.logs import getLogger
 from sereleum.data.helpers import create_sessionmaker
 from sereleum.utils.file import load_items
-from sereleum.data.embeds.helpers import get_embed_store_name
 from sereleum.providers.types import TextEmbeddingModel
-from sereleum.data.embeds.pgvector_embed_store import PgVectorEmbeddingStore
 from sereleum.index.progressbar_index_listener import ProgressBarIndexerListener
 from sereleum.data.types import TItem
 
@@ -34,21 +32,16 @@ os.makedirs("logs", exist_ok=True)
 os.makedirs(BENCHMARK_DIR, exist_ok=True)
 
 logger = getLogger(BENCHMARK_NAME, LOG_FILE_PATH)
+sessionmaker = create_sessionmaker(POSTGRES_DSN)
 
-async def index_prompts(items: list[Prompt], model: TextEmbeddingModel):
-    text_embedder = ModelManager().get_text_embedder(model)
-    text_embedder.init()
-    sessionmaker = create_sessionmaker(POSTGRES_DSN)
+async def index_prompts(items: list[Prompt], text_embedder):
     indexer = create_prompts_indexer(text_embedder, sessionmaker, batch_size=100, max_concurrency=4)
     indexer.register_listener(ProgressBarIndexerListener())
     result =  await indexer.run(items)
     logger.info(f"time_elpased: {result.time_elapsed} | processed: {result.total_processed}")
 
-async def index_articles(items: list[Article], model: TextEmbeddingModel):
-    text_embedder = ModelManager().get_text_embedder(model)
-    text_embedder.init()
-    sessionmaker = create_sessionmaker(POSTGRES_DSN)
-    indexer = create_prompts_indexer(text_embedder, sessionmaker, batch_size=100, max_concurrency=4)
+async def index_articles(items: list[Article], text_embedder):
+    indexer = create_articles_indexer(text_embedder, sessionmaker, batch_size=100, max_concurrency=4)
     indexer.register_listener(ProgressBarIndexerListener())
     result =  await indexer.run(items)
     logger.info(f"time_elpased: {result.time_elapsed} | processed: {result.total_processed}")
@@ -65,14 +58,18 @@ if __name__ == "__main__":
     parser.add_argument("--seed", type=int, default=None)
 
     args = parser.parse_args()
+
+    text_embedder = ModelManager().get_text_embedder(args.model)
+    text_embedder.init()
+
     if args.seed:
         random.seed(args.seed)
 
     if args.n and args.stress:
-        asyncio.run(index_prompts(get_dummy_data(args.n, args.o), args.model))
+        asyncio.run(index_prompts(get_dummy_data(args.n, args.o), text_embedder))
     elif args.file:
         items = load_items(args.file, Article)
-        asyncio.run(index_articles(items, args.model))
+        asyncio.run(index_articles(items,text_embedder))
     elif args.dir:
         all_items = []
         for filename in os.listdir(args.dir):
@@ -80,5 +77,5 @@ if __name__ == "__main__":
             items = load_items(filepath, Article)
             all_items.extend(items)
         if args.seed:
-            random.shuffle(all_items, args.model)
-        asyncio.run(index_articles(all_items, args.model))
+            random.shuffle(all_items)
+        asyncio.run(index_articles(all_items, text_embedder))
