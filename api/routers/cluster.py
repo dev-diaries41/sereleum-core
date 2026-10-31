@@ -38,12 +38,11 @@ def create_clusters_router(cluster_manager: ClusterManager[TItem],) -> APIRouter
         offset: Optional[int] = None,
     ):
         if not cluster_id:
-            clusters_orm = await cluster_manager.cluster_store.get(limit=limit, offset=offset)
+            clusters = await cluster_manager.cluster_store.get(limit=limit, offset=offset)
         else:
-            clusters_orm = await cluster_manager.cluster_store.get(
+            clusters = await cluster_manager.cluster_store.get(
                 filter=ClusterFilter(ids=[cluster_id])
             )
-        clusters = cluster_manager.from_cluster_orm_list(clusters_orm)
         return GetClustersResponse(clusters=clusters)
 
     @router.patch(Routes.BASE_CLUSTER_ENDPOINT, response_model=RenameClusterResponse)
