@@ -19,4 +19,4 @@ RUN mkdir -p /data /data/uploads /data/models && \
 USER sereleum_user
 
 EXPOSE 8000
-CMD ["python", "-m", "api.main"]
+CMD ["python", "-m", "api"]
