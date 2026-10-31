@@ -12,7 +12,7 @@ from sereleum.helpers import get_index_progres_key, get_index_status_key, get_cl
 def create_events_router() -> APIRouter:
     router = APIRouter()
 
-    @router.get(Routes.SSE_INDEX_PROGRESS)
+    @router.get(Routes.INDEX_PROGRESS_EVENT_ENDPOINT)
     async def track_index_progress_route(request: Request, job_id: str):
         async def event_generator():
             pubsub = redis_client.pubsub()
@@ -65,7 +65,7 @@ def create_events_router() -> APIRouter:
 
         return EventSourceResponse(event_generator())
 
-    @router.get(Routes.SSE_CLUSTER_STATUS)
+    @router.get(Routes.CLUSTER_STATUS_EVENT_ENDPOINT)
     async def track_cluster_status(request: Request, job_id: str):
 
         async def event_generator():

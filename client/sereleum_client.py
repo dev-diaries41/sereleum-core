@@ -130,7 +130,7 @@ class SereleumClient:
         
         
     async def track_prompts_index_progress(self, job_id: str):
-        url = f"{self.base_url}{Routes.SSE_INDEX_PROGRESS}?job_id={job_id}"
+        url = f"{self.base_url}{Routes.INDEX_PROGRESS_EVENT_ENDPOINT}?job_id={job_id}"
 
         async with httpx.AsyncClient(timeout=None) as client:
             async with client.stream("GET", url) as response:
@@ -143,7 +143,7 @@ class SereleumClient:
                         yield json.loads(data_str)
 
     async def track_prompts_cluster_status(self, job_id: str):
-        url = f"{self.base_url}{Routes.SSE_CLUSTER_STATUS}?job_id={job_id}"
+        url = f"{self.base_url}{Routes.CLUSTER_STATUS_EVENT_ENDPOINT}?job_id={job_id}"
 
         async with httpx.AsyncClient(timeout=None) as client:
             async with client.stream("GET", url) as response:
