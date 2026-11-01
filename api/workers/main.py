@@ -10,7 +10,7 @@ from sereleum.data.helpers import create_sessionmaker
 from api.workers.register_workers import register_workers
 
 model_manager = ModelManager()
-text_embedder = model_manager.get_text_embedder("all-distilroberta-v1")
+text_embedder = model_manager.get_text_embedder('all_distilroberta_v1')
 text_embedder.init()
 llm = OpenAIProvider(
     OPENAI_API_KEY,

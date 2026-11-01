@@ -19,7 +19,7 @@ from api.app import create_app
 
 def main():
     model_manager = ModelManager()
-    text_embedder = model_manager.get_text_embedder("all-distilroberta-v1")
+    text_embedder = model_manager.get_text_embedder('all_distilroberta_v1')
     text_embedder.init()
 
     llm = OpenAIProvider(
