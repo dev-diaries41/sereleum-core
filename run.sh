@@ -56,12 +56,12 @@ drop_db() {
 
 start_api() {
   export ENV=local
-  exec "$PYTHON" -m api.main
+  exec "$PYTHON" -m main
 }
 
 start_worker() {
   export ENV=local
-  exec "$PYTHON" -m dramatiq api.prompts.tasks --processes 1 --threads 1
+  exec "$PYTHON" -m dramatiq api.workers.main --processes 1 --threads 1
 }
 
 case "$ACTION" in
