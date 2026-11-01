@@ -1,6 +1,9 @@
 import os
 
+from dramatiq import Actor
+
 from typing import Type
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -16,6 +19,7 @@ from sereleum.data.types import TItem
 def create_app(
     item_type: Type[TItem], 
     cluster_manager: ClusterManager[TItem], 
+    index_worker: Actor, 
     text_embedder: TextEmbeddingProvider,
     allow_origins: list[str] | None = None,
     allow_headers: list[str] | None = None,
@@ -34,7 +38,7 @@ def create_app(
         max_age=3600,
     )
 
-    app.include_router(create_items_router(item_type, cluster_manager,text_embedder))
+    app.include_router(create_items_router(item_type, cluster_manager,text_embedder, index_worker))
     app.include_router(create_clusters_router(cluster_manager))
     app.include_router(create_events_router())
     return app

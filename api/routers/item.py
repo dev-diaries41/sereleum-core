@@ -1,3 +1,4 @@
+from dramatiq import Actor
 from typing import Type
 from fastapi import  UploadFile, File, Form, APIRouter
 from tempfile import NamedTemporaryFile
@@ -5,7 +6,6 @@ from tempfile import NamedTemporaryFile
 from api.routers.routes import Routes
 from api.schemas.request import GetItemsRequest, GetItemsByIdRequest, QueryItemsRequest
 from api.schemas.response import GetItemsResponse, GetCountResponse, AddItemsResponse, GetOverviewResponse
-from api.workers.main import index_worker
 from smartscan.types import TextEmbeddingProvider
 
 from sereleum.data.types import TItem
@@ -15,7 +15,12 @@ from sereleum.schemas.item import BaseItemFilter
 from sereleum.constants import  UPLOAD_DIR
 
 
-def create_items_router(item_type: Type[TItem], cluster_manager: ClusterManager[TItem], text_embedder: TextEmbeddingProvider) -> APIRouter:
+def create_items_router(
+        item_type: Type[TItem], 
+        cluster_manager: ClusterManager[TItem], 
+        text_embedder: TextEmbeddingProvider,
+        index_worker: Actor
+        ) -> APIRouter:
     router = APIRouter()
 
     @router.post(Routes.INDEX_FILE_ENDPOINT) 
