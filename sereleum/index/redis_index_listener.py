@@ -5,7 +5,7 @@ from smartscan.processor.types import Input
 
 from sereleum.types import Status
 from sereleum.helpers import get_index_progres_key, get_index_status_key, get_index_progress_channel
-from sereleum.schemas.api import ProgressMessage, FailMessage, CompleteMessage, ErrorMessage
+from api.schemas.response import ProgressMessage, FailMessage, CompleteMessage, ErrorMessage
 
 
 # TODO: Use Item interface inplace of Input
