@@ -46,7 +46,7 @@ def cli():
     args = parser.parse_args()
 
     uvicorn.run(
-        "api:main",
+        "main:main",
         factory=True,
         host="0.0.0.0",
         port=args.port,
