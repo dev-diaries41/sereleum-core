@@ -20,8 +20,8 @@ from sereleum.providers.types import TextEmbeddingModel
 from sereleum.index.progressbar_index_listener import ProgressBarIndexerListener
 from sereleum.data.types import TItem
 
-from domains.prompts import Prompt, create_indexer as create_prompts_indexer
-from domains.articles import Article, create_indexer as create_articles_indexer
+# from domains.prompts import DomainItem, create_indexer as create_prompts_indexer
+from domains.articles import DomainItem, create_indexer as create_articles_indexer
 
 
 
@@ -34,13 +34,13 @@ os.makedirs(BENCHMARK_DIR, exist_ok=True)
 logger = getLogger(BENCHMARK_NAME, LOG_FILE_PATH)
 sessionmaker = create_sessionmaker(POSTGRES_DSN)
 
-async def index_prompts(items: list[Prompt], text_embedder):
-    indexer = create_prompts_indexer(text_embedder, sessionmaker, batch_size=100, max_concurrency=4)
-    indexer.register_listener(ProgressBarIndexerListener())
-    result =  await indexer.run(items)
-    logger.info(f"time_elpased: {result.time_elapsed} | processed: {result.total_processed}")
+# async def index_prompts(items: list[Prompt], text_embedder):
+#     indexer = create_prompts_indexer(text_embedder, sessionmaker, batch_size=100, max_concurrency=4)
+#     indexer.register_listener(ProgressBarIndexerListener())
+#     result =  await indexer.run(items)
+#     logger.info(f"time_elpased: {result.time_elapsed} | processed: {result.total_processed}")
 
-async def index_articles(items: list[Article], text_embedder):
+async def index_articles(items: list[DomainItem], text_embedder):
     indexer = create_articles_indexer(text_embedder, sessionmaker, batch_size=100, max_concurrency=4)
     indexer.register_listener(ProgressBarIndexerListener())
     result =  await indexer.run(items)
@@ -66,15 +66,16 @@ if __name__ == "__main__":
         random.seed(args.seed)
 
     if args.n and args.stress:
-        asyncio.run(index_prompts(get_dummy_data(args.n, args.o), text_embedder))
+        pass
+        # asyncio.run(index_prompts(get_dummy_data(args.n, args.o), text_embedder))
     elif args.file:
-        items = load_items(args.file, Article)
+        items = load_items(args.file, DomainItem)
         asyncio.run(index_articles(items,text_embedder))
     elif args.dir:
         all_items = []
         for filename in os.listdir(args.dir):
             filepath = os.path.join(args.dir, filename)
-            items = load_items(filepath, Article)
+            items = load_items(filepath, DomainItem)
             all_items.extend(items)
         if args.seed:
             random.shuffle(all_items)
