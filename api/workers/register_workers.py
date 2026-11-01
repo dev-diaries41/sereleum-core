@@ -16,7 +16,7 @@ from sereleum.data.types import TItem
 
 from sereleum.index.redis_index_listener import RedisIndexListener
 
-def register_workers(indexer: Indexer[TItem], cluster_manager: ClusterManager[TItem]):
+def register_workers(item_cls: type[TItem], indexer: Indexer[TItem], cluster_manager: ClusterManager[TItem]):
     redis_broker = get_broker()
     redis_broker.add_middleware(AsyncIO())
     redis_broker.add_middleware(CurrentMessage())
@@ -35,7 +35,7 @@ def register_workers(indexer: Indexer[TItem], cluster_manager: ClusterManager[TI
 
         try:
             with open(file_path) as f:
-                items = json.load(f)
+                items = [item_cls(**p) for p in json.load(f)]
             
             indexer.register_listener(RedisIndexListener[TItem](msg.message_id, redis_client))
             await indexer.run(items)

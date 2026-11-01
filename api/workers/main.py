@@ -2,7 +2,7 @@ from smartscan.models.model_manager import ModelManager
 from llm_connect.providers.openai import OpenAIProvider
 from llm_connect.schemas.llm import LLMProviderConfig
 
-from domains.prompts import create_cluster_manager, create_indexer
+from domains.prompts import create_cluster_manager, create_indexer, Prompt
 from sereleum.constants.db import POSTGRES_DSN
 from sereleum.constants.models import OPENAI_API_KEY, DEFAULT_SYSTEM_PROMPT, DEFAULT_OPENAI_MODEL
 from sereleum.data.helpers import create_sessionmaker
@@ -25,4 +25,4 @@ sessionmaker = create_sessionmaker(POSTGRES_DSN)
 cluster_manager = create_cluster_manager(sessionmaker, llm)
 indexer = create_indexer(text_embedder, sessionmaker)
 
-index_worker, cluster_worker = register_workers(indexer, cluster_manager)
+index_worker, cluster_worker = register_workers(Prompt, indexer, cluster_manager)
