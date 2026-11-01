@@ -38,8 +38,3 @@ def create_app(
     app.include_router(create_clusters_router(cluster_manager))
     app.include_router(create_events_router())
     return app
-
-# @app.get(Routes.GET_PROMPTS_OVERVIEW_ENDPOINT, response_model=GetPromptsOverviewResponse)
-# async def get_overview():
-#     overview = await get_prompts_overview(cluster_manager)
-#     return GetPromptsOverviewResponse(**overview.model_dump())

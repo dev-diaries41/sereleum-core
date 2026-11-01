@@ -56,7 +56,7 @@ class SereleumClient:
         
         
     async def get_prompts_overview(self) -> PromptsOverviewInfo:
-        url = f"{self.base_url}{Routes.GET_PROMPTS_OVERVIEW_ENDPOINT}"
+        url = f"{self.base_url}{Routes.GET_OVERVIEW_ENDPOINT}"
         async with httpx.AsyncClient() as client:
             res = await client.get(url)
             res.raise_for_status() 

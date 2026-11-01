@@ -4,7 +4,7 @@ from tempfile import NamedTemporaryFile
 
 from api.routers.routes import Routes
 from api.schemas.request import GetItemsRequest, GetItemsByIdRequest, QueryItemsRequest
-from api.schemas.response import GetItemsResponse, GetCountResponse, AddItemsResponse
+from api.schemas.response import GetItemsResponse, GetCountResponse, AddItemsResponse, GetOverviewResponse
 from api.workers.main import index_worker
 from smartscan.types import TextEmbeddingProvider
 
@@ -55,4 +55,9 @@ def create_items_router(item_type: Type[TItem], cluster_manager: ClusterManager[
         count = await cluster_manager.item_store.count()
         return GetCountResponse(count=count)
 
+    @router.get(Routes.GET_OVERVIEW_ENDPOINT, response_model=GetOverviewResponse)
+    async def get_overview():
+        overview = await cluster_manager.get_overview()
+        return overview
+    
     return router

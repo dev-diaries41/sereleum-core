@@ -18,6 +18,6 @@ class BaseItemFilter(BaseModel):
 
 
 class ItemsOverviewInfo(BaseModel):
-    total_prompts: int
+    total_items: int
     total_clusters: int
     top_clusters: List[StoredClusterMetadata]

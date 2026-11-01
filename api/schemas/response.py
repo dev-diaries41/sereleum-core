@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from typing import List, Optional, Literal, Generic
 
-from domains.prompts.item import PromptsOverviewInfo
+from sereleum.schemas.item import ItemsOverviewInfo
 from sereleum.schemas.cluster import StoredClusterMetadata
 from sereleum.types import Status
 from sereleum.data.types import TItem
@@ -39,7 +39,7 @@ class AddItemsResponse(BaseModel):
 class GetItemsResponse(BaseModel, Generic[TItem]):
     items: List[TItem]
 
-class GetPromptsOverviewResponse(PromptsOverviewInfo):
+class GetOverviewResponse(ItemsOverviewInfo):
     pass
 
 class GetCountResponse(BaseModel):
