@@ -30,7 +30,6 @@ def create_app(
         CORSMiddleware,
         allow_origins=allow_origins or ["*"],
         allow_methods=["POST", "OPTIONS", "GET", "PATCH"],
-        allow_headers=["*"],
         allow_headers=allow_headers if allow_headers is not None else ["*"],
         max_age=3600,
     )
