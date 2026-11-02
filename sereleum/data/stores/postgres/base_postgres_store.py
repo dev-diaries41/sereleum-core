@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Generic, List, Optional, TypeVar
+from typing import Generic, List, Optional
 
 from pydantic import BaseModel
 from sqlalchemy import Select, func, inspect, select, delete, tuple_
@@ -7,7 +7,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from sereleum.data.mappers.mapper import Mapper
-from sereleum.data.types import TEntity, TDomain
+from sereleum.data.types import TEntity, TDomain, Filter
 
 
 
@@ -26,7 +26,7 @@ class BasePostgresStore(Generic[TEntity, TDomain], ABC):
         return inspect(self.model).primary_key
 
     @abstractmethod
-    def apply_filters(self, stmt: Select, filter: Optional[BaseModel]) -> Select:
+    def apply_filters(self, stmt: Select, filter: Optional[Filter]) -> Select:
         ...
 
     async def add(self, items: List[TDomain]) -> None:
@@ -98,10 +98,8 @@ class BasePostgresStore(Generic[TEntity, TDomain], ABC):
             await session.execute(stmt)
             await session.commit()
 
-    async def count(self, filter: Optional[BaseModel] = None) -> int:
+    async def count(self, filter: Optional[Filter] = None) -> int:
         async with self.sessionmaker() as session:
-            stmt = self.apply_filters(
-                select(func.count()).select_from(self.model), filter
-            )
+            stmt = self.apply_filters( select(func.count()).select_from(self.model), filter )
             result = await session.execute(stmt)
             return result.scalar_one()

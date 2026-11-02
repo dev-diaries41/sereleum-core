@@ -1,9 +1,8 @@
 from datetime import datetime, timezone
 from pydantic import Field
-from typing import Optional, Dict, List
+from typing import Optional, Dict
 
-from sereleum.schemas.item import Item, BaseItemFilter, ItemsOverviewInfo
-from sereleum.schemas.cluster import StoredClusterMetadata
+from sereleum.schemas.item import Item, ItemsOverviewInfo
 
 class Prompt(Item):
     content: str
@@ -11,9 +10,5 @@ class Prompt(Item):
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     tokens: Optional[int] = None
 
-class PromptFilter(BaseItemFilter):
-    min_tokens: Optional[int] = None
-    max_tokens: Optional[int] = None
- 
 class PromptsOverviewInfo(ItemsOverviewInfo):
     top_cluster_token_counts: Dict[str, int]

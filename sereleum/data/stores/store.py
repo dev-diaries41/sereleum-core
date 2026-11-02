@@ -1,8 +1,6 @@
 from typing import List, Optional, Protocol
 
-from pydantic import BaseModel
-
-from sereleum.data.types import TDomain
+from sereleum.data.types import TDomain, Filter
 
 
 class Store(Protocol[TDomain]):
@@ -12,7 +10,7 @@ class Store(Protocol[TDomain]):
 
     async def get(
         self,
-        filter: Optional[BaseModel] = None,
+        filter: Optional[Filter] = None,
         limit: Optional[int] = None,
         offset: int = 0,
         order_by: Optional[str] = None,
@@ -20,4 +18,4 @@ class Store(Protocol[TDomain]):
     ) -> List[TDomain]: ...
 
     async def delete(self, items: List[TDomain]) -> None: ...
-    async def count(self, filter: Optional[BaseModel] = None) -> int: ...
+    async def count(self, filter: Optional[Filter] = None) -> int: ...

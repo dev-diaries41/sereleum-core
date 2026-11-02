@@ -4,8 +4,8 @@ from typing import Generic
 from sqlalchemy import Select, delete, select, exists
 
 from sereleum.data.stores.postgres.base_postgres_store import BasePostgresStore
-from sereleum.schemas.cluster import ClusterFilter, StoredClusterMetadata
-from sereleum.data.types import TPostgresClusterModel, TPostgresItemModel, TPostgresCrossRefModel
+from sereleum.schemas.cluster import StoredClusterMetadata
+from sereleum.data.types import TPostgresClusterModel, TPostgresItemModel, TPostgresCrossRefModel, Filter
 
 class PostgresClusterStore(
     Generic[TPostgresClusterModel, TPostgresCrossRefModel, TPostgresItemModel],
@@ -19,22 +19,19 @@ class PostgresClusterStore(
     def apply_filters(
         self,
         stmt: Select,
-        f: ClusterFilter | None,
+        f: Filter | None,
     ) -> Select:
         if not f:
             return stmt
         
-        if f.ids:
-            stmt = stmt.where(self.model.id.in_(f.ids))
+        if (ids := f.get('ids') )is not None:
+            stmt = stmt.where(self.model.id.in_(ids))
 
+        if (label := f.get('label')) is not None:
+            stmt = stmt.where(self.model.label == label)
 
-        if f.label is not None:
-            stmt = stmt.where(self.model.label == f.label)
-
-        if f.size is not None:
-            stmt = stmt.where(
-                self.model.prototype_size == f.size
-            )
+        if (size:= f.get('size')) is not None:
+            stmt = stmt.where( self.model.prototype_size == size )
 
         return stmt
 

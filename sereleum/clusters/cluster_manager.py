@@ -14,8 +14,8 @@ from smartscan.cluster import IncrementalClusterer
 from llm_connect.providers.llm_provider import LLMProvider
 
 from sereleum.schemas.llm import LLMClassificationResult
-from sereleum.schemas.item import BaseItemFilter, ItemsOverviewInfo
-from sereleum.schemas.cluster import ClusterCrossRef, StoredClusterMetadata, ClusterCrossRefFilter, ClusterFilter
+from sereleum.schemas.item import ItemsOverviewInfo
+from sereleum.schemas.cluster import ClusterCrossRef, StoredClusterMetadata
 from sereleum.errors import SereleumError, ErrorCode
 from sereleum.data.stores.item_store import ItemStore
 from sereleum.data.stores.cluster_store import ClusterStore
@@ -90,10 +90,10 @@ class ClusterManager(Generic[TItem]):
             raise ValueError("Cluster not found")
         
         cluster_embed = result[0]
-        crossrefs = await self.crossrefs_store.get(filter=ClusterCrossRefFilter(include_cluster_ids=[cluster_id]))
+        crossrefs = await self.crossrefs_store.get(filter={'include_cluster_ids': [cluster_id]})
         ids = [c.item_id for c in crossrefs]
         query_result = await self.item_embedding_store.query(query_embed=cluster_embed.embedding, ids=ids, topK=sample_size)
-        sample_contents = [item.content for item in await self.item_store.get(filter=BaseItemFilter(ids=query_result.ids))]
+        sample_contents = [item.content for item in await self.item_store.get(filter={'ids': query_result.ids})]
         input_prompt = self._get_labelling_prompt(cluster_id, sample_contents)
         return self.llm.generate_json(input_prompt, LLMClassificationResult)
         
@@ -125,7 +125,7 @@ class ClusterManager(Generic[TItem]):
     
 
     async def update_label(self, cluster_id: str, label: str) -> bool:
-        result = await self.cluster_store.get(filter=ClusterFilter(ids=[cluster_id]))
+        result = await self.cluster_store.get(filter={'ids': [cluster_id]})
         if(len(result)) == 0: return False
         metadata=result[0]
         metadata.label = label
@@ -165,7 +165,7 @@ class ClusterManager(Generic[TItem]):
         all_target_cluster_ids = [cid for targets in merges.values() for cid in targets]
         cross_refs: list[ClusterCrossRef] = []
 
-        for crossref in await self.crossrefs_store.get(filter=ClusterCrossRefFilter(include_cluster_ids=all_target_cluster_ids)):
+        for crossref in await self.crossrefs_store.get(filter={'include_cluster_ids': all_target_cluster_ids}):
             original_cluster = crossref.cluster_id
             new_cluster_id = next(
                 (mid for mid, clusters in merges.items()
@@ -213,10 +213,10 @@ class ClusterManager(Generic[TItem]):
         return unlabelled_clusters
 
     async def _sync(self, cluster_id: ClusterId) -> tuple[StoredEmbedding, StoredClusterMetadata] | None:
-        result = await self.cluster_store.get(filter=ClusterFilter(ids=[cluster_id]))
+        result = await self.cluster_store.get(filter={'ids': [cluster_id]})
         if len(result) == 0:
             return None
-        crossrefs = await self.crossrefs_store.get(filter=ClusterCrossRefFilter(include_cluster_ids=[cluster_id]))
+        crossrefs = await self.crossrefs_store.get(filter={'include_cluster_ids': [cluster_id]})
         
         if len(crossrefs) == 0:
             await self.cluster_store.delete_by_ids([cluster_id])

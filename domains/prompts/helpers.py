@@ -1,5 +1,5 @@
 from sereleum.clusters.cluster_manager import ClusterManager
-from domains.prompts.item import PromptsOverviewInfo, PromptFilter, Prompt
+from domains.prompts.item import PromptsOverviewInfo, Prompt
 from smartscan import ClusterId
 
 async def get_prompts_overview(cluster_manager: ClusterManager[Prompt], top_n: int = 6) -> PromptsOverviewInfo:
@@ -19,7 +19,7 @@ async def calculate_avg_tokens_for_cluster(cluster_manager:  ClusterManager[Prom
     total_tokens = 0
     prompts_count = 0
 
-    for prompts in await cluster_manager.item_store.get(filter=PromptFilter(cluster_ids=[cluster_id])):
+    for prompts in await cluster_manager.item_store.get(filter={'cluster_ids': [cluster_id]}):
         if prompts_count >= sample_size:
             break
         total_tokens += (prompts.tokens or 0)
