@@ -8,6 +8,8 @@ class ErrorCode(Enum):
     MISSING_API_KEY = "MISSING_API_KEY"
     INVALID_ARGUMENT = "INVALID_ARGUMENT"
     MISSING_LLM_CLIENT = "MISSING_LLM_CLIENT"
+    CLUSTER_NOT_FOUND = "CLUSTER_NOT_FOUND"
+
 
 class SereleumError(Exception):
     def __init__(self, message: str, code: Optional[ErrorCode] = None, details: Optional[Union[Dict, str, object]] = None):

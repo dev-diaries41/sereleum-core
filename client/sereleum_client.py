@@ -1,11 +1,12 @@
-from typing import List, Optional
 import httpx
 import json
 
-from smartscan import ClusterMerges
+from typing import List, Optional
 
 from sereleum.schemas.cluster import StoredClusterMetadata
+
 from domains.prompts.item import Prompt, PromptsOverviewInfo
+
 from api.routers.routes import Routes
 from api.schemas.request import  GetItemsRequest, GetItemsByIdRequest, GetClusterRequestParams, RenameClusterRequest, QueryItemsRequest, MoveItemRequest, MergeClustersRequest, AddItemsRequestOptions
 from api.schemas.response import AddItemsResponse
@@ -119,9 +120,9 @@ class SereleumClient:
             res.raise_for_status()
             return res.content 
         
-    async def merge_clusters(self, merges: ClusterMerges) -> List[StoredClusterMetadata]:
+    async def merge_clusters(self,  primary_collection_id: str, secondary_collection_ids: List[str]) -> List[StoredClusterMetadata]:
         url = f"{self.base_url}{Routes.MERGE_CLUSTERS_ENDPOINT}"
-        payload = MergeClustersRequest(merges=merges)
+        payload = MergeClustersRequest(primary_collection_id=primary_collection_id, secondary_collection_ids=secondary_collection_ids)
 
         async with httpx.AsyncClient() as client:
             res = await client.post(url, json=payload.model_dump())

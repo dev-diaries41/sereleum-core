@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Generic, List, Optional
 
-from pydantic import BaseModel
 from sqlalchemy import Select, func, inspect, select, delete, tuple_
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import async_sessionmaker
@@ -84,7 +83,7 @@ class BasePostgresStore(Generic[TEntity, TDomain], ABC):
 
     async def get(
         self,
-        filter: Optional[BaseModel] = None,
+        filter: Optional[Filter] = None,
         limit: Optional[int] = None,
         offset: int = 0,
         order_by: Optional[str] = None,

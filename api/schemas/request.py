@@ -1,9 +1,8 @@
 from pydantic import BaseModel
 from typing import List, Optional, Generic
 
-from smartscan import  ClusterMerges
-
 from sereleum.data.types import TItem
+from sereleum.collections.types import CollectionId
 
 class AddItemsRequest(BaseModel,  Generic[TItem]):
     items: List[TItem]
@@ -45,4 +44,5 @@ class MoveItemRequest(BaseModel):
     cluster_id: str
 
 class MergeClustersRequest(BaseModel):
-    merges: ClusterMerges
+    primary_collection_id: CollectionId
+    secondary_collection_ids: List[CollectionId]
