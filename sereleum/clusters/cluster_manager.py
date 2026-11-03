@@ -202,7 +202,7 @@ class ClusterManager(Generic[TItem]):
                 new_cluster_embed_updates.append(stored_embed)
                 new_cluster_metadata_updates.append(updated_meta)
             
-            if cluster.metadata.label== Cluster.UNLABELLED:
+            if not cluster.metadata.label:
                 unlabelled_clusters.append(updated_meta)
              
         await self.cluster_store.update(existing_cluster_metadata_updates)

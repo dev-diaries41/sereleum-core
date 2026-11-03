@@ -6,6 +6,6 @@ class ClusterBase(Base):
 
     id = Column(Text, primary_key=True)
     prototype_size = Column(Integer, nullable=False)
-    label = Column(Text, nullable=False, index=True)
+    label = Column(Text, nullable=True, index=True, unique=True)
     mean_similarity = Column(Float, nullable=False)
     std_similarity = Column(Float, nullable=False)

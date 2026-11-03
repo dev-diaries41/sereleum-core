@@ -1,8 +1,8 @@
-"""Initial migration
+"""initial
 
-Revision ID: 342778685f25
+Revision ID: 19ca9ff7f1cc
 Revises: 
-Create Date: 2026-10-29 11:21:27.415853
+Create Date: 2026-11-03 02:50:50.693084
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = '342778685f25'
+revision: str = '19ca9ff7f1cc'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -24,11 +24,12 @@ def upgrade() -> None:
     op.create_table('article_clusters',
     sa.Column('id', sa.Text(), nullable=False),
     sa.Column('prototype_size', sa.Integer(), nullable=False),
-    sa.Column('label', sa.Text(), nullable=False),
+    sa.Column('label', sa.Text(), nullable=True),
     sa.Column('mean_similarity', sa.Float(), nullable=False),
     sa.Column('std_similarity', sa.Float(), nullable=False),
     sa.PrimaryKeyConstraint('id')
     )
+    op.create_index(op.f('ix_article_clusters_label'), 'article_clusters', ['label'], unique=True)
     op.create_table('articles',
     sa.Column('title', sa.Text(), nullable=False),
     sa.Column('content', sa.Text(), nullable=False),
@@ -40,11 +41,12 @@ def upgrade() -> None:
     op.create_table('prompt_clusters',
     sa.Column('id', sa.Text(), nullable=False),
     sa.Column('prototype_size', sa.Integer(), nullable=False),
-    sa.Column('label', sa.Text(), nullable=False),
+    sa.Column('label', sa.Text(), nullable=True),
     sa.Column('mean_similarity', sa.Float(), nullable=False),
     sa.Column('std_similarity', sa.Float(), nullable=False),
     sa.PrimaryKeyConstraint('id')
     )
+    op.create_index(op.f('ix_prompt_clusters_label'), 'prompt_clusters', ['label'], unique=True)
     op.create_table('prompts',
     sa.Column('content', sa.Text(), nullable=False),
     sa.Column('created_at', postgresql.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
@@ -80,7 +82,9 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_article_cluster_crossref_cluster_id'), table_name='article_cluster_crossref')
     op.drop_table('article_cluster_crossref')
     op.drop_table('prompts')
+    op.drop_index(op.f('ix_prompt_clusters_label'), table_name='prompt_clusters')
     op.drop_table('prompt_clusters')
     op.drop_table('articles')
+    op.drop_index(op.f('ix_article_clusters_label'), table_name='article_clusters')
     op.drop_table('article_clusters')
     # ### end Alembic commands ###
