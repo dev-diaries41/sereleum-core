@@ -1,4 +1,4 @@
-from sereleum.data.models.cluster_base import ClusterBase
+from sereleum.data.models.clusters.cluster_base import ClusterBase
 
 
 class ArticleClusterModel(ClusterBase):

@@ -5,12 +5,12 @@ from sqlalchemy import Select
 
 from sereleum.data.stores.postgres.base_postgres_store import BasePostgresStore
 from sereleum.schemas.cluster import ClusterCrossRef
-from sereleum.data.types import TPostgresCrossRefModel, Filter
+from sereleum.data.types import TPostgresClusterCrossRefModel, Filter
 
 
 class PostgresClusterCrossRefStore(
-    Generic[TPostgresCrossRefModel],
-    BasePostgresStore[TPostgresCrossRefModel, ClusterCrossRef],
+    Generic[TPostgresClusterCrossRefModel],
+    BasePostgresStore[TPostgresClusterCrossRefModel, ClusterCrossRef],
     ABC,
 ):
 

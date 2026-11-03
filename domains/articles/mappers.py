@@ -1,7 +1,8 @@
 
-from domains.articles.models import ArticleClusterModel, ArticleClusterCrossRefModel, ArticleModel
+from domains.articles.models import ArticleClusterModel, ArticleClusterCrossRefModel, ArticleModel, ArticleTagModel, ArticleTagCrossRefModel
 from domains.articles.item import Article
 from sereleum.schemas.cluster import ClusterCrossRef, StoredClusterMetadata
+from sereleum.schemas.tag import TagCrossRef, Tag
 from sereleum.data.mappers.mapper import Mapper
 
 
@@ -57,3 +58,33 @@ class ArticleClusterCrossRefMapper(Mapper[ArticleClusterCrossRefModel, ClusterCr
             item_id=domain.item_id,
             cluster_id=domain.cluster_id,
         )
+
+
+
+class ArticleTagMapper(Mapper[ArticleTagModel, Tag]):
+    def to_domain(self, entity) -> Tag:
+        return Tag(
+            id=entity.id,
+            name=entity.name,
+        )
+
+    def to_entity(self, domain) -> ArticleTagModel:
+        return ArticleTagModel(
+            id=domain.id,
+            name=domain.name,
+        )
+
+
+class ArticleTagCrossRefMapper(Mapper[ArticleTagCrossRefModel, TagCrossRef]):
+    def to_domain(self, entity) -> TagCrossRef:
+        return TagCrossRef(
+            item_id=entity.item_id,
+            tag_id=entity.tag_id,
+        )
+
+    def to_entity(self, domain) -> ArticleTagCrossRefModel:
+        return ArticleTagCrossRefModel(
+            item_id=domain.item_id,
+            tag_id=domain.tag_id,
+        )
+
