@@ -1,6 +1,6 @@
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import mapped_column
-from sereleum.data.models.cluster_crossref_base import ClusterCrossRefBase
+from sereleum.data.models.clusters.cluster_crossref_base import ClusterCrossRefBase
 
 class PromptClusterCrossRefModel(ClusterCrossRefBase):
     __tablename__ = "prompts_cluster_crossref"

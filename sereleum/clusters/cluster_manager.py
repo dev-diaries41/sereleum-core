@@ -18,8 +18,8 @@ from sereleum.schemas.item import ItemsOverviewInfo
 from sereleum.schemas.cluster import ClusterCrossRef, StoredClusterMetadata
 from sereleum.errors import SereleumError, ErrorCode
 from sereleum.data.stores.item_store import ItemStore
-from sereleum.data.stores.cluster_store import ClusterStore
-from sereleum.data.stores.cluster_crossref_store import ClusterCrossRefStore
+from sereleum.data.stores.clusters.cluster_store import ClusterStore
+from sereleum.data.stores.clusters.cluster_crossref_store import ClusterCrossRefStore
 from sereleum.data.types import TItem
 
 class ClusterManager(Generic[TItem]):
