@@ -1,4 +1,4 @@
-from sereleum.data.stores.postgres.cluster_store import PostgresClusterStore
+from sereleum.data.stores.postgres.clusters.cluster_store import PostgresClusterStore
 from domains.articles.models import ArticleClusterModel, ArticleClusterCrossRefModel, ArticleModel
 from domains.articles.models import ArticleModel, ArticleClusterCrossRefModel
 from domains.articles.mappers import ArticleClusterMapper

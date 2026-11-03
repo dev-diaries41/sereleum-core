@@ -1,4 +1,4 @@
-from sereleum.data.stores.postgres.cluster_store import PostgresClusterStore
+from sereleum.data.stores.postgres.clusters.cluster_store import PostgresClusterStore
 from domains.prompts.models import PromptClusterModel, PromptClusterCrossRefModel, PromptModel
 from domains.prompts.mappers import PromptClusterMapper
 
