@@ -12,7 +12,8 @@ from sereleum.data.helpers import create_sessionmaker
 from sereleum.constants.db import POSTGRES_DSN
 from sereleum.constants.models import OPENAI_API_KEY, DEFAULT_SYSTEM_PROMPT, DEFAULT_OPENAI_MODEL
 
-from domains.prompts import create_cluster_manager, DomainItem, index_worker
+from domains.prompts import create_cluster_manager, DomainItem
+from domains.prompts.workers import index_worker
 
 from api.app import create_app
 
