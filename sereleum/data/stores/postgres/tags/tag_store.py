@@ -129,3 +129,41 @@ class PostgresTagStore(
 
             await session.execute(stmt)
             await session.commit()
+
+
+    async def tag(self, tag_name: str, item_ids: list[int]) -> None:
+        if not item_ids:
+            return
+
+        async with self.sessionmaker() as session:
+            tag_stmt = (
+                insert(self.model)
+                .values(name=tag_name)
+                .on_conflict_do_update(
+                    index_elements=[self.model.name],
+                    set_={"name": self.model.name},
+                )
+                .returning(self.model.id)
+                .cte("tag")
+            )
+
+            items = func.unnest(literal(item_ids)).table_valued(
+                "item_id"
+            ).render_derived()
+
+            stmt = (
+                insert(self.crossref_model)
+                .from_select(
+                    ["item_id", "tag_id"],
+                    select(items.c.item_id, tag_stmt.c.id),
+                )
+                .on_conflict_do_nothing(
+                    index_elements=[
+                        self.crossref_model.item_id,
+                        self.crossref_model.tag_id,
+                    ]
+                )
+            )
+
+            await session.execute(stmt)
+            await session.commit()
