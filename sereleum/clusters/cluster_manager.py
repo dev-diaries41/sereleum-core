@@ -73,9 +73,10 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
            await self.label_and_update(unlabelled)
         return result
 
-    
-    async def move(self, item_ids, collection_id: str) -> None:        
-        crossrefs = [ClusterCrossRef(item_id=item_id, cluster_id=collection_id) for item_id in item_ids]
+
+    # source_collection_id not used becaused crossref are 1:1 relationship
+    async def move(self, item_ids, destination_collection_id: int, source_collection_id: int) -> None:        
+        crossrefs = [ClusterCrossRef(item_id=item_id, cluster_id=destination_collection_id) for item_id in item_ids]
         try:
             await self.crossrefs_store.upsert(crossrefs)
         except IntegrityError as e:
