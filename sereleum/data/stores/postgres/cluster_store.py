@@ -1,5 +1,6 @@
 from abc import ABC
-from typing import Generic
+from pydantic import BaseModel
+from typing import Generic, Optional
 
 from sqlalchemy import Select, delete, select, exists, func
 
@@ -56,7 +57,14 @@ class PostgresClusterStore(
             return list(result.scalars().all())
 
 
-    async def get_collections(self, filter: Filter | None = None) -> list[BaseCollection]:
+    async def get_collections(
+            self,
+            filter: Optional[Filter] = None,
+            limit: Optional[int] = None,
+            offset: int = 0,
+            order_by: Optional[str] = None,
+            ascending: bool = True,
+            ) -> list[BaseCollection]:
         async with self.sessionmaker() as session:
             size_expr = func.count(self.crossref_model.item_id)
 
@@ -78,6 +86,12 @@ class PostgresClusterStore(
             if filter and (size := filter.get("size")) is not None:
                 stmt = stmt.having(size_expr == size)
 
+            column = getattr(self.model, order_by) if order_by else self.primary_keys[0]
+            stmt = stmt.order_by(column.asc() if ascending else column.desc()).offset(offset)
+
+            if limit is not None:
+                stmt = stmt.limit(limit)
+                
             result = await session.execute(stmt)
 
             return [
