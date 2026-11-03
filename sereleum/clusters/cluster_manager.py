@@ -75,7 +75,7 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
 
 
     # source_collection_id not used becaused crossref are 1:1 relationship
-    async def move(self, item_ids, destination_collection_id: int, source_collection_id: int) -> None:        
+    async def move(self, item_ids, destination_collection_id: str, source_collection_id: str | None = None) -> None:        
         crossrefs = [ClusterCrossRef(item_id=item_id, cluster_id=destination_collection_id) for item_id in item_ids]
         try:
             await self.crossrefs_store.upsert(crossrefs)
