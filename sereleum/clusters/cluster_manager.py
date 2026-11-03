@@ -20,9 +20,10 @@ from sereleum.errors import SereleumError, ErrorCode
 from sereleum.data.stores.item_store import ItemStore
 from sereleum.data.stores.clusters.cluster_store import ClusterStore
 from sereleum.data.stores.clusters.cluster_crossref_store import ClusterCrossRefStore
-from sereleum.data.types import TItem
+from sereleum.data.types import TItem, TCollection
+from sereleum.collections.collecion_manager import CollectionManager
 
-class ClusterManager(Generic[TItem]):
+class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]):
     def __init__(
         self, 
         cluster_store: ClusterStore,
