@@ -1,7 +1,8 @@
 from abc import ABC
 from typing import Generic, Optional
 
-from sqlalchemy import Select, delete, select, exists, func
+from sqlalchemy import Select, delete, select, exists, func, literal
+from sqlalchemy.dialects.postgresql import insert
 
 from sereleum.data.stores.postgres.base_postgres_store import BasePostgresStore
 from sereleum.schemas.tag import Tag
@@ -58,14 +59,14 @@ class PostgresTagStore(
             stmt = (
                 select(
                     self.model.id,
-                    self.model.label,
+                    self.model.name,
                     size_expr.label("size"),
                 )
                 .outerjoin(
                     self.crossref_model,
                     self.crossref_model.tag_id == self.model.id,
                 )
-                .group_by(self.model.id, self.model.label)
+                .group_by(self.model.id, self.model.name)
             )
 
             stmt = self.apply_filters(stmt, filter)
@@ -73,20 +74,58 @@ class PostgresTagStore(
             if filter and (size := filter.get("size")) is not None:
                 stmt = stmt.having(size_expr == size)
 
-            column = getattr(self.model, order_by) if order_by else self.primary_keys[0]
-            stmt = stmt.order_by(column.asc() if ascending else column.desc()).offset(offset)
+            column = (
+                size_expr if order_by == "size"
+                else getattr(self.model, order_by) if order_by
+                else self.primary_keys[0]
+            )
+
+            stmt = stmt.order_by(
+                column.asc() if ascending else column.desc()
+            ).offset(offset)
 
             if limit is not None:
                 stmt = stmt.limit(limit)
-                
+
             result = await session.execute(stmt)
 
             return [
                 BaseCollection(
                     id=row.id,
-                    name=row.label or row.id,
+                    name=row.name,
                     size=row.size,
                     type=CollectionType.TAG,
                 )
                 for row in result.all()
             ]
+
+
+    async def merge(self, primary_tag_id: int, secondary_tag_ids: list[int]) -> None:
+        if not secondary_tag_ids:
+            return
+
+        async with self.sessionmaker() as session:
+            source = (
+                select(
+                    self.crossref_model.item_id,
+                    literal(primary_tag_id),
+                )
+                .where(
+                    self.crossref_model.tag_id.in_(secondary_tag_ids),
+                    self.crossref_model.tag_id != primary_tag_id,
+                )
+            )
+
+            stmt = (
+                insert(self.crossref_model)
+                .from_select(["item_id", "tag_id"], source)
+                .on_conflict_do_nothing(
+                    index_elements=[
+                        self.crossref_model.item_id,
+                        self.crossref_model.tag_id,
+                    ]
+                )
+            )
+
+            await session.execute(stmt)
+            await session.commit()
