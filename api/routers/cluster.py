@@ -18,7 +18,7 @@ from api.routers.routes import Routes
 def create_clusters_router(cluster_manager: ClusterManager[TItem]) -> APIRouter:
     router = APIRouter()
 
-    @router.patch(Routes.BASE_ITEMS_ENDPOINT,  status_code=204)
+    @router.patch(Routes.MOVE_CLUSTER_ITEMS_ENDPOINT,  status_code=204)
     async def move_items(item_ids: list[str], cluster_id: str):
         try:
             await cluster_manager.move(set(item_ids), cluster_id)
