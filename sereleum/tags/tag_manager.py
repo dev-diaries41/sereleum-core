@@ -5,13 +5,12 @@ from sqlalchemy.exc import IntegrityError
 
 from sereleum.errors import SereleumError, ErrorCode
 from sereleum.schemas.tag import TagCrossRef
-from sereleum.data.stores.item_store import ItemStore
 from sereleum.collections.collecion_manager import CollectionManager
 from sereleum.data.stores.tags.tag_crossref_store import TagCrossRefStore
 from sereleum.data.stores.tags.tag_store import TagStore
-from sereleum.data.types import TItem, TCollection
+from sereleum.data.types import TCollection
 
-class TagManager(Generic[TItem, TCollection], CollectionManager[TCollection]):
+class TagManager(Generic[TCollection], CollectionManager[TCollection]):
     def __init__(
         self, 
         tag_store: TagStore,
