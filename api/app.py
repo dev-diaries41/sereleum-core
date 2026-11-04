@@ -7,18 +7,21 @@ from typing import Type
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api.routers import create_items_router, create_clusters_router, create_events_router
+from api.routers import create_items_router, create_clusters_router, create_events_router, create_tags_router
 
 from smartscan import TextEmbeddingProvider
 
 from sereleum.constants import  UPLOAD_DIR
 from sereleum.clusters.cluster_manager import ClusterManager
+from sereleum.tags.tag_manager import TagManager
+
 from sereleum.data.types import TItem
 
 
 def create_app(
     item_type: Type[TItem], 
-    cluster_manager: ClusterManager[TItem], 
+    cluster_manager: ClusterManager[TItem],
+    tag_manager: TagManager,
     index_worker: Actor, 
     text_embedder: TextEmbeddingProvider,
     allow_origins: list[str] | None = None,
@@ -40,5 +43,6 @@ def create_app(
 
     app.include_router(create_items_router(item_type, cluster_manager,text_embedder, index_worker))
     app.include_router(create_clusters_router(cluster_manager))
+    app.include_router(create_tags_router(tag_manager))
     app.include_router(create_events_router())
     return app

@@ -54,7 +54,7 @@ class TagManager(Generic[TCollection], CollectionManager[TCollection]):
         offset,
         order_by,
         ascending
-    ) -> TCollection:
+    ) -> list[TCollection]:
        return await self.tag_store.get_collections(
             filter=filter,
             limit=limit,
