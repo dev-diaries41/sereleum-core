@@ -17,6 +17,6 @@ TPostgresTagModel = TypeVar("TPostgresClusterModel", bound=TagBase)
 TPostgresTagCrossRefModel = TypeVar("TPostgresTagCrossRefModel", bound=TagCrossRefBase)
 
 TItem = TypeVar("TItem", bound=Item)
-TCollection = TypeVar("TCollection", bound=BaseCollection)
+TCollection = TypeVar("TCollection", bound=BaseCollection, default=BaseCollection)
 
 Filter: TypeAlias = dict[str, Any]
