@@ -6,8 +6,6 @@ from api.schemas.request import MergeClustersRequest
 from api.schemas.response import (
     GetCountResponse,
     GetClustersResponse,
-    RenameClusterResponse,
-    MoveItemResponse,
     MergeResponse,
 )
 from sereleum.errors import SereleumError, ErrorCode
@@ -20,15 +18,14 @@ from api.routers.routes import Routes
 def create_clusters_router(cluster_manager: ClusterManager[TItem],) -> APIRouter:
     router = APIRouter()
 
-    @router.patch(Routes.BASE_ITEMS_ENDPOINT, response_model=MoveItemResponse)
+    @router.patch(Routes.BASE_ITEMS_ENDPOINT,  status_code=204)
     async def move_item(item_id: str, cluster_id: str):
         try:
             await cluster_manager.move({item_id}, cluster_id)
         except SereleumError as e:
             if e.code == ErrorCode.INVALID_ARGUMENT:
-                raise HTTPException(status_code=400, detail="Prompt or cluster id doesn't exist")
-            raise
-        return MoveItemResponse(updated_cluster_id=cluster_id)
+                raise HTTPException(status_code=400, detail="Item or cluster id doesn't exist")
+            raise e
 
     @router.get(Routes.BASE_CLUSTER_ENDPOINT, response_model=GetClustersResponse)
     async def get_clusters(
@@ -44,10 +41,9 @@ def create_clusters_router(cluster_manager: ClusterManager[TItem],) -> APIRouter
             )
         return GetClustersResponse(clusters=clusters)
 
-    @router.patch(Routes.BASE_CLUSTER_ENDPOINT, response_model=RenameClusterResponse)
+    @router.patch(Routes.BASE_CLUSTER_ENDPOINT,  status_code=204)
     async def rename_cluster(cluster_id: str, label: str):
         await cluster_manager.rename(cluster_id, label)
-        return RenameClusterResponse(updated_label=label)
 
     @router.get(Routes.COUNT_CLUSTERS_ENDPOINT, response_model=GetCountResponse)
     async def count_clusters():

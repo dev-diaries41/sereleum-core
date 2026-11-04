@@ -50,11 +50,5 @@ class GetClustersResponse(BaseModel):
     clusters: List[StoredClusterMetadata]
 
 
-class RenameClusterResponse(BaseModel):
-    updated_label: str
-
-class MoveItemResponse(BaseModel):
-    updated_cluster_id: str
-    
 class MergeResponse(BaseModel):
     updated_clusters: List[StoredClusterMetadata]
