@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException, Response
 from api.schemas.request import MergeClustersRequest
 from api.schemas.response import (
     GetCountResponse,
-    GetClustersResponse,
+    GetCollectionsResponse,
     MergeResponse,
 )
 from sereleum.errors import SereleumError, ErrorCode
@@ -27,19 +27,15 @@ def create_clusters_router(cluster_manager: ClusterManager[TItem],) -> APIRouter
                 raise HTTPException(status_code=400, detail="Item or cluster id doesn't exist")
             raise e
 
-    @router.get(Routes.BASE_CLUSTER_ENDPOINT, response_model=GetClustersResponse)
-    async def get_clusters(
+    @router.get(Routes.BASE_CLUSTER_ENDPOINT, response_model=GetCollectionsResponse)
+    async def get_collections(
         cluster_id: Optional[str] = None,
         limit: Optional[int] = None,
         offset: Optional[int] = None,
     ):
-        if not cluster_id:
-            clusters = await cluster_manager.cluster_store.get(limit=limit, offset=offset)
-        else:
-            clusters = await cluster_manager.cluster_store.get(
-                filter={'ids': [cluster_id]}
-            )
-        return GetClustersResponse(clusters=clusters)
+        filter={'ids': [cluster_id]} if cluster_id else None
+        collections = await cluster_manager.cluster_store.get_collections(limit=limit, offset=offset, filter=filter, order_by='size')
+        return GetCollectionsResponse(collections=collections)
 
     @router.patch(Routes.BASE_CLUSTER_ENDPOINT,  status_code=204)
     async def rename_cluster(cluster_id: str, label: str):

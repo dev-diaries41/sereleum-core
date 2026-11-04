@@ -5,6 +5,7 @@ from sereleum.schemas.item import ItemsOverviewInfo
 from sereleum.schemas.cluster import StoredClusterMetadata
 from sereleum.types import Status
 from sereleum.data.types import TItem
+from sereleum.schemas.collection import BaseCollection
 
 # Websocksets / SSE
 class ProgressMessage(BaseModel):
@@ -46,9 +47,8 @@ class GetCountResponse(BaseModel):
     count: int
 
     
-class GetClustersResponse(BaseModel):
-    clusters: List[StoredClusterMetadata]
-
+class GetCollectionsResponse(BaseModel):
+    collections: List[BaseCollection]
 
 class MergeResponse(BaseModel):
     updated_clusters: List[StoredClusterMetadata]
