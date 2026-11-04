@@ -3,8 +3,7 @@ from sqlalchemy import exists, select
 from sereleum.data.types import Filter
 from sereleum.data.stores.postgres.base_postgres_store import BasePostgresStore
 
-from domains.prompts.models.item import PromptModel
-from domains.prompts.models.clusters.cluster_crossref import PromptClusterCrossRefModel
+from domains.prompts.models import PromptClusterCrossRefModel, PromptTagCrossRefModel, PromptModel
 from domains.prompts.item import Prompt
 from domains.prompts.mappers import PromptMapper
 
@@ -29,6 +28,17 @@ class PromptStore(BasePostgresStore[PromptModel, Prompt]):
                     )
                 )
             )
+
+        if (tag_ids := f.get('tag_ids')) is not None:
+                stmt = stmt.where(
+                    exists(
+                        select(1).where(
+                            PromptTagCrossRefModel.item_id == self.model.id,
+                            PromptTagCrossRefModel.tag_id.in_(tag_ids),
+                        )
+                    )
+                )
+    
 
         if (min_tokens := f.get('min_tokens')) is not None:
             stmt = stmt.where(self.model >= min_tokens)
