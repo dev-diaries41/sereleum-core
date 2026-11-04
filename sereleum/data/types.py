@@ -2,6 +2,7 @@ from pydantic import BaseModel
 from typing_extensions import TypeVar, TypeAlias, Any
 from sereleum.data.models import ItemBase, ClusterBase, ClusterCrossRefBase, TagBase, TagCrossRefBase
 from sereleum.schemas.item import Item
+from schemas.collection import BaseCollection
 
 TEntity = TypeVar("TEntity")
 TDomain = TypeVar("TDomain", bound=BaseModel)
@@ -16,4 +17,6 @@ TPostgresTagModel = TypeVar("TPostgresClusterModel", bound=TagBase)
 TPostgresTagCrossRefModel = TypeVar("TPostgresTagCrossRefModel", bound=TagCrossRefBase)
 
 TItem = TypeVar("TItem", bound=Item)
+TCollection = TypeVar("TCollection", bound=BaseCollection)
+
 Filter: TypeAlias = dict[str, Any]

@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Generic, List, Optional
 
-from pydantic import BaseModel
 from sqlalchemy import Select, func, inspect, select, delete, tuple_
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import async_sessionmaker
@@ -47,6 +46,25 @@ class BasePostgresStore(Generic[TEntity, TDomain], ABC):
             await session.execute(stmt)
             await session.commit()
 
+
+    async def upsert(self, items: List[TDomain]) -> None:
+        if not items:
+            return
+
+        entities = [self.mapper.to_entity(item) for item in items]
+        values = [
+            {column.name: getattr(item, column.name) for column in self.model.__table__.columns}
+            for item in entities
+        ]
+
+        async with self.sessionmaker() as session:
+            stmt = insert(self.model).values(values)
+            stmt = stmt.on_conflict_do_update(
+                index_elements=[column.name for column in self.primary_keys]
+            )
+            await session.execute(stmt)
+            await session.commit()
+
     async def update(self, items: List[TDomain]) -> None:
         if not items:
             return
@@ -65,7 +83,7 @@ class BasePostgresStore(Generic[TEntity, TDomain], ABC):
 
     async def get(
         self,
-        filter: Optional[BaseModel] = None,
+        filter: Optional[Filter] = None,
         limit: Optional[int] = None,
         offset: int = 0,
         order_by: Optional[str] = None,

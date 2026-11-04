@@ -20,9 +20,11 @@ from sereleum.errors import SereleumError, ErrorCode
 from sereleum.data.stores.item_store import ItemStore
 from sereleum.data.stores.clusters.cluster_store import ClusterStore
 from sereleum.data.stores.clusters.cluster_crossref_store import ClusterCrossRefStore
-from sereleum.data.types import TItem
+from sereleum.data.types import TItem, TCollection
+from sereleum.collections.collecion_manager import CollectionManager
+from sereleum.schemas.collection import BaseCollection
 
-class ClusterManager(Generic[TItem]):
+class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]):
     def __init__(
         self, 
         cluster_store: ClusterStore,
@@ -71,11 +73,12 @@ class ClusterManager(Generic[TItem]):
            await self.label_and_update(unlabelled)
         return result
 
-    
-    async def assign(self, assignments: Assignments) -> None:        
-        crossrefs = [ClusterCrossRef(item_id=item_id, cluster_id=cluster_id) for item_id, cluster_id in assignments.items()]
+
+    # source_collection_id not used becaused crossref are 1:1 relationship
+    async def move(self, item_ids, destination_collection_id: str, source_collection_id: str | None = None) -> None:        
+        crossrefs = [ClusterCrossRef(item_id=item_id, cluster_id=destination_collection_id) for item_id in item_ids]
         try:
-            await self.crossrefs_store.add(crossrefs)
+            await self.crossrefs_store.upsert(crossrefs)
         except IntegrityError as e:
             raise SereleumError(
                     "Foreign key violation in assign",
@@ -124,15 +127,36 @@ class ClusterManager(Generic[TItem]):
         return len(labelled_clusters)
     
 
-    async def update_label(self, cluster_id: str, label: str) -> bool:
-        result = await self.cluster_store.get(filter={'ids': [cluster_id]})
-        if(len(result)) == 0: return False
+    async def rename(self, collection_id: str, name) -> None:
+        result = await self.cluster_store.get(filter={'ids': [collection_id]})
+        if(len(result)) == 0:
+            raise SereleumError(
+                "Cluster not found",
+                code=ErrorCode.CLUSTER_NOT_FOUND,
+            )
         metadata=result[0]
-        metadata.label = label
+        metadata.label = name
         await self.cluster_store.update([metadata])
-        return True
 
-    async def merge(self, merges: ClusterMerges) -> List[StoredClusterMetadata]:
+    async def get_collections(
+        self,
+        filter,
+        limit,
+        offset,
+        order_by,
+        ascending
+    ) -> TCollection:
+       return await self.cluster_store.get_collections(
+            filter=filter,
+            limit=limit,
+            offset=offset,
+            order_by=order_by,
+            ascending=ascending
+            )
+
+
+    async def merge(self, primary_collection_id: str, secondary_collection_ids: list[str]) -> List[StoredClusterMetadata]:
+        merges: ClusterMerges = {primary_collection_id: secondary_collection_ids}
         await self._assign_from_merges(merges)
         merged_clustered_ids = {cid for targets in merges.values() for cid in targets}
         await self.cluster_embedding_store.delete(list(merged_clustered_ids)) 

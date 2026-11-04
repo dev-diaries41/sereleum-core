@@ -23,7 +23,7 @@ def create_clusters_router(cluster_manager: ClusterManager[TItem],) -> APIRouter
     @router.patch(Routes.BASE_ITEMS_ENDPOINT, response_model=MoveItemResponse)
     async def move_item(item_id: str, cluster_id: str):
         try:
-            await cluster_manager.assign({item_id: cluster_id})
+            await cluster_manager.move({item_id}, cluster_id)
         except SereleumError as e:
             if e.code == ErrorCode.INVALID_ARGUMENT:
                 raise HTTPException(status_code=400, detail="Prompt or cluster id doesn't exist")
@@ -46,9 +46,7 @@ def create_clusters_router(cluster_manager: ClusterManager[TItem],) -> APIRouter
 
     @router.patch(Routes.BASE_CLUSTER_ENDPOINT, response_model=RenameClusterResponse)
     async def rename_cluster(cluster_id: str, label: str):
-        updated = await cluster_manager.update_label(cluster_id, label)
-        if not updated:
-            raise HTTPException(status_code=404, detail="Label doesn't exist")
+        await cluster_manager.rename(cluster_id, label)
         return RenameClusterResponse(updated_label=label)
 
     @router.get(Routes.COUNT_CLUSTERS_ENDPOINT, response_model=GetCountResponse)
@@ -67,9 +65,7 @@ def create_clusters_router(cluster_manager: ClusterManager[TItem],) -> APIRouter
 
     @router.post(Routes.MERGE_CLUSTERS_ENDPOINT, response_model=MergeResponse)
     async def merge_clusters(req: MergeClustersRequest):
-        if not req.merges:
-            raise HTTPException(status_code=400, detail="Merges cannot be empty")
-        updated_clusters = await cluster_manager.merge(req.merges)
+        updated_clusters = await cluster_manager.merge(req.primary_collection_id, req.secondary_collection_ids)
         return MergeResponse(updated_clusters=updated_clusters)
 
     return router
