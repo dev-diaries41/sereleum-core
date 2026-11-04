@@ -16,12 +16,9 @@ class TagManager(Generic[TItem, TCollection], CollectionManager[TCollection]):
         self, 
         tag_store: TagStore,
         crossrefs_store: TagCrossRefStore,
-        item_store: ItemStore[TItem],
         ): 
         self.tag_store = tag_store
         self.crossrefs_store = crossrefs_store 
-        self.item_store = item_store
-
 
     async def tag_by_name(self, item_ids: list[int],  tag_name: str):
         await self.tag_store.tag(tag_name, item_ids)
