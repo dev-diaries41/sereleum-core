@@ -19,9 +19,9 @@ def create_clusters_router(cluster_manager: ClusterManager[TItem],) -> APIRouter
     router = APIRouter()
 
     @router.patch(Routes.BASE_ITEMS_ENDPOINT,  status_code=204)
-    async def move_item(item_id: str, cluster_id: str):
+    async def move_items(item_ids: list[str], cluster_id: str):
         try:
-            await cluster_manager.move({item_id}, cluster_id)
+            await cluster_manager.move(set(item_ids), cluster_id)
         except SereleumError as e:
             if e.code == ErrorCode.INVALID_ARGUMENT:
                 raise HTTPException(status_code=400, detail="Item or cluster id doesn't exist")
