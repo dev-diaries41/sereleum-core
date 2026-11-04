@@ -15,7 +15,7 @@ from sereleum.data.types import TItem
 from api.routers.routes import Routes
 
 
-def create_clusters_router(cluster_manager: ClusterManager[TItem],) -> APIRouter:
+def create_clusters_router(cluster_manager: ClusterManager[TItem]) -> APIRouter:
     router = APIRouter()
 
     @router.patch(Routes.BASE_ITEMS_ENDPOINT,  status_code=204)
@@ -34,7 +34,7 @@ def create_clusters_router(cluster_manager: ClusterManager[TItem],) -> APIRouter
         offset: Optional[int] = None,
     ):
         filter={'ids': [cluster_id]} if cluster_id else None
-        collections = await cluster_manager.cluster_store.get_collections(limit=limit, offset=offset, filter=filter, order_by='size')
+        collections = await cluster_manager.get_collections(limit=limit, offset=offset, filter=filter, order_by='size')
         return GetCollectionsResponse(collections=collections)
 
     @router.patch(Routes.BASE_CLUSTER_ENDPOINT,  status_code=204)
@@ -57,7 +57,8 @@ def create_clusters_router(cluster_manager: ClusterManager[TItem],) -> APIRouter
 
     @router.post(Routes.MERGE_CLUSTERS_ENDPOINT, response_model=MergeResponse)
     async def merge_clusters(req: MergeRequest):
-        updated_clusters = await cluster_manager.merge(req.primary_collection_id, req.secondary_collection_ids)
-        return MergeResponse(updated_clusters=updated_clusters)
+        await cluster_manager.merge(req.primary_collection_id, req.secondary_collection_ids)
+        collections = await cluster_manager.get_collections(filter={'ids': [req.primary_collection_id]}, limit=1)
+        return MergeResponse(updated_collections=collections[0])
 
     return router

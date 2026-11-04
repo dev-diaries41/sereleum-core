@@ -145,7 +145,7 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
         offset,
         order_by,
         ascending
-    ) -> TCollection:
+    ) -> List[TCollection]:
        return await self.cluster_store.get_collections(
             filter=filter,
             limit=limit,

@@ -51,4 +51,4 @@ class GetCollectionsResponse(BaseModel):
     collections: List[BaseCollection]
 
 class MergeResponse(BaseModel):
-    updated_clusters: List[StoredClusterMetadata]
+    updated_collections: List[BaseCollection]
