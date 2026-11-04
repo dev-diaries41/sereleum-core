@@ -1,0 +1,50 @@
+from typing import Optional
+
+from fastapi import APIRouter, HTTPException
+
+from api.schemas.request import MergeRequest
+from api.schemas.response import GetCountResponse,  MergeResponse, GetCollectionsResponse
+from sereleum.errors import SereleumError, ErrorCode
+from sereleum.tags.tag_manager import TagManager
+from api.routers.routes import Routes
+
+
+def create_tags_router(tag_manager: TagManager) -> APIRouter:
+    router = APIRouter()
+
+    @router.get(Routes.BASE_TAG_ENDPOINT, response_model=GetCollectionsResponse)
+    async def get_collections(
+        tag_id: Optional[int] = None,
+        limit: Optional[int] = None,
+        offset: Optional[int] = None,
+    ):
+        filter={'ids': [tag_id]} if tag_id else None
+        collections = await tag_manager.get_collections(limit=limit, offset=offset, filter=filter)
+        return GetCollectionsResponse(collections=collections)
+
+    @router.patch(Routes.MOVE_TAG_ITEMS_ENDPOINT, status_code=204)
+    async def move_items(item_ids: list[str], new_tag_id: int, current_tag_id: int):
+        try:
+            await tag_manager.move(set(item_ids), new_tag_id, current_tag_id)
+        except SereleumError as e:
+            if e.code == ErrorCode.INVALID_ARGUMENT:
+                raise HTTPException(status_code=400, detail="Item or cluster id doesn't exist")
+            raise
+
+    @router.patch(Routes.BASE_TAG_ENDPOINT,  status_code=204)
+    async def rename_tag(tag_id: int, name: str):
+        await tag_manager.rename(tag_id, name)
+
+    @router.get(Routes.COUNT_TAGS_ENDPOINT, response_model=GetCountResponse)
+    async def count_tags():
+        count = await tag_manager.tag_store.count()
+        return GetCountResponse(count=count)
+
+
+    @router.post(Routes.MERGE_TAGS_ENDPOINT, response_model=MergeResponse)
+    async def merge_tags(req: MergeRequest):
+        await tag_manager.merge(req.primary_collection_id, req.secondary_collection_ids)
+        collections = await tag_manager.get_collections(filter={'ids': [req.primary_collection_id]}, limit=1)
+        return MergeResponse(updated_collections=collections[0])
+
+    return router

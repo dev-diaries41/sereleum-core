@@ -145,7 +145,7 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
         offset,
         order_by,
         ascending
-    ) -> TCollection:
+    ) -> List[TCollection]:
        return await self.cluster_store.get_collections(
             filter=filter,
             limit=limit,
@@ -155,7 +155,7 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
             )
 
 
-    async def merge(self, primary_collection_id: str, secondary_collection_ids: list[str]) -> List[StoredClusterMetadata]:
+    async def merge(self, primary_collection_id: str, secondary_collection_ids: list[str]) -> None:
         merges: ClusterMerges = {primary_collection_id: secondary_collection_ids}
         await self._assign_from_merges(merges)
         merged_clustered_ids = {cid for targets in merges.values() for cid in targets}
@@ -173,7 +173,6 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
             
         await self.cluster_embedding_store.update(cluster_embed_updates)
         await self.cluster_store.update(cluster_metadata_updates)
-        return cluster_metadata_updates
      
 
     async def get_top_clusters(self, n: int) -> List[StoredClusterMetadata]:

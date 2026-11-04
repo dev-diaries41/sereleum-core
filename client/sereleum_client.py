@@ -8,7 +8,7 @@ from sereleum.schemas.cluster import StoredClusterMetadata
 from domains.prompts.item import Prompt, PromptsOverviewInfo
 
 from api.routers.routes import Routes
-from api.schemas.request import  GetItemsRequest, GetItemsByIdRequest, GetClusterRequestParams, RenameClusterRequest, QueryItemsRequest, MoveItemRequest, MergeClustersRequest, AddItemsRequestOptions
+from api.schemas.request import  GetItemsRequest, GetItemsByIdRequest, GetClusterRequestParams, RenameClusterRequest, QueryItemsRequest, MoveItemRequest, MergeRequest, AddItemsRequestOptions
 from api.schemas.response import AddItemsResponse
 
 class SereleumClient:
@@ -122,7 +122,7 @@ class SereleumClient:
         
     async def merge_clusters(self,  primary_collection_id: str, secondary_collection_ids: List[str]) -> List[StoredClusterMetadata]:
         url = f"{self.base_url}{Routes.MERGE_CLUSTERS_ENDPOINT}"
-        payload = MergeClustersRequest(primary_collection_id=primary_collection_id, secondary_collection_ids=secondary_collection_ids)
+        payload = MergeRequest(primary_collection_id=primary_collection_id, secondary_collection_ids=secondary_collection_ids)
 
         async with httpx.AsyncClient() as client:
             res = await client.post(url, json=payload.model_dump())

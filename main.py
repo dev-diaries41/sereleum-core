@@ -12,7 +12,7 @@ from sereleum.data.helpers import create_sessionmaker
 from sereleum.constants.db import POSTGRES_DSN
 from sereleum.constants.models import OPENAI_API_KEY, DEFAULT_SYSTEM_PROMPT, DEFAULT_OPENAI_MODEL
 
-from domains.prompts import create_cluster_manager, DomainItem
+from domains.prompts import create_cluster_manager, create_tag_manager, DomainItem
 from domains.prompts.workers import index_worker
 
 from api.app import create_app
@@ -33,10 +33,12 @@ def main():
 
     sessionmaker = create_sessionmaker(POSTGRES_DSN)
     cluster_manager = create_cluster_manager(sessionmaker, llm)
+    tag_manager = create_tag_manager(sessionmaker)
 
     return create_app(
         item_type=DomainItem,
         cluster_manager=cluster_manager,
+        tag_manager=tag_manager,
         text_embedder=text_embedder,
         index_worker=index_worker
     )
