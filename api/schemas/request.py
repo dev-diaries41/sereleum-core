@@ -43,6 +43,6 @@ class MoveItemRequest(BaseModel):
     item_id: str
     cluster_id: str
 
-class MergeClustersRequest(BaseModel):
+class MergeRequest(BaseModel):
     primary_collection_id: CollectionId
     secondary_collection_ids: List[CollectionId]

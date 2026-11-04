@@ -2,7 +2,7 @@ from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Response
 
-from api.schemas.request import MergeClustersRequest
+from api.schemas.request import MergeRequest
 from api.schemas.response import (
     GetCountResponse,
     GetCollectionsResponse,
@@ -56,7 +56,7 @@ def create_clusters_router(cluster_manager: ClusterManager[TItem],) -> APIRouter
         )
 
     @router.post(Routes.MERGE_CLUSTERS_ENDPOINT, response_model=MergeResponse)
-    async def merge_clusters(req: MergeClustersRequest):
+    async def merge_clusters(req: MergeRequest):
         updated_clusters = await cluster_manager.merge(req.primary_collection_id, req.secondary_collection_ids)
         return MergeResponse(updated_clusters=updated_clusters)
 
