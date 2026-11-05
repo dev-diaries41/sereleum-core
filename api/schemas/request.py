@@ -14,6 +14,7 @@ class AddItemsRequestOptions(BaseModel):
 
  
 class GetItemsRequest(BaseModel):
+    tag_ids: Optional[List[int]] = None
     cluster_ids: Optional[List[str]] = None
     limit: Optional[int] = None
     offset: Optional[int] = None

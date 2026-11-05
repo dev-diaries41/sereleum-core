@@ -31,7 +31,11 @@ def create_items_router(
 
     @router.post(Routes.BASE_ITEMS_ENDPOINT, response_model=GetItemsResponse[item_type])
     async def get_items(req: GetItemsRequest):
-        query_filter = {'cluster_ids': req.cluster_ids} if req.cluster_ids else None
+        query_filter = {
+            'cluster_ids': req.cluster_ids,
+            'tag_ids': req.tag_ids
+        }
+   
         items = await cluster_manager.item_store.get(filter=query_filter, limit=req.limit, offset=req.offset)
         return GetItemsResponse[item_type](items=items)
 
