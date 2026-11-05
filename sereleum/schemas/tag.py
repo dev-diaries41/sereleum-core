@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 
 class Tag(BaseModel):
-    id: str
+    id: int
     name: str
 
 class TagCrossRef(BaseModel):
