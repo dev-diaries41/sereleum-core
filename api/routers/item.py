@@ -58,9 +58,5 @@ def create_items_router(
         count = await cluster_manager.item_store.count()
         return GetCountResponse(count=count)
 
-    @router.get(Routes.GET_OVERVIEW_ENDPOINT, response_model=GetOverviewResponse)
-    async def get_overview():
-        overview = await cluster_manager.get_overview()
-        return overview
     
     return router

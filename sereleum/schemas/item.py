@@ -1,7 +1,7 @@
 
 from pydantic import BaseModel
 from typing import List 
-from sereleum.schemas.cluster import StoredClusterMetadata
+from sereleum.schemas.collection import BaseCollection
 
 class Item(BaseModel):
     id: str
@@ -9,4 +9,6 @@ class Item(BaseModel):
 class ItemsOverviewInfo(BaseModel):
     total_items: int
     total_clusters: int
-    top_clusters: List[StoredClusterMetadata]
+    total_tags: int
+    top_clusters: List[BaseCollection]
+    top_tags: List[BaseCollection]

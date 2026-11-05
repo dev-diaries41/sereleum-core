@@ -177,12 +177,7 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
 
     async def get_top_clusters(self, n: int) -> List[StoredClusterMetadata]:
         return await self.cluster_store.get(order_by="prototype_size", ascending=False, limit=n)
-
-    async def get_overview(self, top_n: int = 6) -> ItemsOverviewInfo:
-        item_count = await self.item_store.count()
-        cluster_count = await self.cluster_store.count()
-        top_clusters = await self.get_top_clusters(top_n)
-        return ItemsOverviewInfo(total_items=item_count, total_clusters=cluster_count, top_clusters=top_clusters)
+       
 
     async def _assign_from_merges(self, merges: ClusterMerges) -> None:
         all_target_cluster_ids = [cid for targets in merges.values() for cid in targets]
