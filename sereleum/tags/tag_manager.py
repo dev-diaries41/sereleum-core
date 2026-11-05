@@ -19,11 +19,11 @@ class TagManager(Generic[TCollection], CollectionManager[TCollection]):
         self.tag_store = tag_store
         self.crossrefs_store = crossrefs_store 
 
-    async def tag_by_name(self, item_ids: list[int],  tag_name: str):
+    async def tag_by_name(self, item_ids: list[str],  tag_name: str):
         await self.tag_store.tag(tag_name, item_ids)
 
 
-    async def tag_by_id(self, item_ids: list[int], collection_id: int) -> None:        
+    async def tag_by_id(self, item_ids: list[str], collection_id: int) -> None:        
         crossrefs = [TagCrossRef(item_id=item_id, tag_id=collection_id) for item_id in item_ids]
         try:
             await self.crossrefs_store.upsert(crossrefs)
