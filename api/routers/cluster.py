@@ -19,9 +19,9 @@ def create_clusters_router(cluster_manager: ClusterManager[TItem]) -> APIRouter:
     router = APIRouter()
 
     @router.patch(Routes.MOVE_CLUSTER_ITEMS_ENDPOINT,  status_code=204)
-    async def move_items(item_ids: list[str], cluster_id: str):
+    async def move_items(item_ids: list[str], new_collection_id: str):
         try:
-            await cluster_manager.move(set(item_ids), cluster_id)
+            await cluster_manager.move(set(item_ids), new_collection_id)
         except SereleumError as e:
             if e.code == ErrorCode.INVALID_ARGUMENT:
                 raise HTTPException(status_code=400, detail="Item or cluster id doesn't exist")
@@ -29,17 +29,17 @@ def create_clusters_router(cluster_manager: ClusterManager[TItem]) -> APIRouter:
 
     @router.get(Routes.BASE_CLUSTER_ENDPOINT, response_model=GetCollectionsResponse)
     async def get_collections(
-        cluster_id: Optional[str] = None,
+        collection_id: Optional[str] = None,
         limit: Optional[int] = None,
         offset: Optional[int] = None,
     ):
-        filter={'ids': [cluster_id]} if cluster_id else None
+        filter={'ids': [collection_id]} if collection_id else None
         collections = await cluster_manager.get_collections(limit=limit, offset=offset, filter=filter, order_by='size')
         return GetCollectionsResponse(collections=collections)
 
     @router.patch(Routes.BASE_CLUSTER_ENDPOINT,  status_code=204)
-    async def rename_cluster(cluster_id: str, label: str):
-        await cluster_manager.rename(cluster_id, label)
+    async def rename_cluster(collection_id: str, name: str):
+        await cluster_manager.rename(collection_id, name)
 
     @router.get(Routes.COUNT_CLUSTERS_ENDPOINT, response_model=GetCountResponse)
     async def count_clusters():

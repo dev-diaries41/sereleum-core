@@ -23,17 +23,17 @@ def create_tags_router(tag_manager: TagManager) -> APIRouter:
         return GetCollectionsResponse(collections=collections)
 
     @router.patch(Routes.MOVE_TAG_ITEMS_ENDPOINT, status_code=204)
-    async def move_items(item_ids: list[str], new_tag_id: int, current_tag_id: int):
+    async def move_items(item_ids: list[str], new_collection_id: int, current_collection_id: int):
         try:
-            await tag_manager.move(set(item_ids), new_tag_id, current_tag_id)
+            await tag_manager.move(set(item_ids), new_collection_id, current_collection_id)
         except SereleumError as e:
             if e.code == ErrorCode.INVALID_ARGUMENT:
                 raise HTTPException(status_code=400, detail="Item or cluster id doesn't exist")
             raise
 
     @router.patch(Routes.BASE_TAG_ENDPOINT,  status_code=204)
-    async def rename_tag(tag_id: int, name: str):
-        await tag_manager.rename(tag_id, name)
+    async def rename_tag(collection_id: int, name: str):
+        await tag_manager.rename(collection_id, name)
 
     @router.get(Routes.COUNT_TAGS_ENDPOINT, response_model=GetCountResponse)
     async def count_tags():
