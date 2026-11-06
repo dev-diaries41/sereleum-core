@@ -16,7 +16,7 @@ def create_overview_router(
 
     @router.get(Routes.GET_OVERVIEW_ENDPOINT, response_model=GetOverviewResponse)
     async def get_overview():
-        await _get_overview(tag_manager, cluster_manager)
+        return await _get_overview(tag_manager, cluster_manager)
 
     return router
 
