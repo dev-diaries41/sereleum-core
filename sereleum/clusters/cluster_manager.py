@@ -111,12 +111,12 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
         labelled_clusters: list[StoredClusterMetadata] = []
         
         for cluster in unlabelled_clusters:
-            result = label_results[cluster.item_id]
+            result = label_results[cluster.id]
             if isinstance(result, Exception):
-                print(f"[WARNING] Error labelling {cluster.item_id} | Details: {result}")
+                print(f"[WARNING] Error labelling {cluster.id} | Details: {result}")
             else:
                 if result.confidence < self.label_confidence_threshold:
-                    print(f"[WARNING] Cluster {cluster.item_id} not labelled | Details: Below confidence threshold: confidence={result.confidence}")
+                    print(f"[WARNING] Cluster {cluster.id} not labelled | Details: Below confidence threshold: confidence={result.confidence}")
                     continue
                 cluster.label = result.label
                 labelled_clusters.append(cluster)
