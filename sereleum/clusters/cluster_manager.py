@@ -173,9 +173,6 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
         await self.cluster_store.update(cluster_metadata_updates)
      
 
-    async def get_top_clusters(self, n: int) -> List[StoredClusterMetadata]:
-        return await self.cluster_store.get(order_by="prototype_size", ascending=False, limit=n)
-
     async def _assign(self, assignments: Assignments) -> None:        
         crossrefs = [ClusterCrossRef(item_id=item_id, cluster_id=cluster_id) for item_id, cluster_id in assignments.items()]
         try:
