@@ -2,7 +2,7 @@ from pydantic import BaseModel
 from typing_extensions import TypeVar, TypeAlias, Any
 from sereleum.data.models import ItemBase, ClusterBase, ClusterCrossRefBase, TagBase, TagCrossRefBase
 from sereleum.schemas.item import Item
-from schemas.collection import BaseCollection
+from sereleum.schemas.collection import BaseCollection
 
 TEntity = TypeVar("TEntity")
 TDomain = TypeVar("TDomain", bound=BaseModel)
