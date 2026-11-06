@@ -11,19 +11,6 @@ from smartscan import Assignments
 from sereleum.clusters.cluster_manager import ClusterManager
 
 
-# TODO: handle at db level or sample
-# Hanlde min perplexity 30 throw error if below
-async def get_cluster_plot(cluster_manager: ClusterManager, n: int = 6) -> Optional[bytes]:
-    top_clusters = await cluster_manager.get_top_clusters(n)
-    top_cluster_ids = [c.id for c in top_clusters]
-    assignments = {c.item_id: c.cluster_id for c in await cluster_manager.crossrefs_store.get(filter={'include_cluster_ids': top_cluster_ids})}
-    if not assignments:
-        return None
-    item_ids = list(assignments.keys())
-    stored_embeds = await cluster_manager.item_embedding_store.get(list(assignments.keys()))
-    embeddings = [emb.embedding for emb in stored_embeds]
-    return plot_clusters_bytes(item_ids, embeddings, assignments)
-
 def _plot_clusters_common(
     ids: list[str],
     embeddings: list[np.ndarray],

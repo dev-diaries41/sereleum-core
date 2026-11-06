@@ -9,7 +9,6 @@ from api.schemas.response import (
     MergeResponse,
 )
 from sereleum.errors import SereleumError, ErrorCode
-from sereleum.clusters.plot import get_cluster_plot
 from sereleum.clusters.cluster_manager import ClusterManager
 from sereleum.data.types import TItem
 from api.routers.routes import Routes
@@ -45,15 +44,7 @@ def create_clusters_router(cluster_manager: ClusterManager[TItem]) -> APIRouter:
     async def count_clusters():
         count = await cluster_manager.cluster_store.count()
         return GetCountResponse(count=count)
-
-    @router.get(Routes.GET_CLUSTER_PLOT_ENDPOINT, response_class=Response)
-    async def get_clusters_plot():
-        img_bytes = await get_cluster_plot(cluster_manager)
-        return Response(
-            status_code=200 if img_bytes else 204,
-            content=img_bytes,
-            media_type="image/png",
-        )
+    
 
     @router.post(Routes.MERGE_CLUSTERS_ENDPOINT, response_model=MergeResponse)
     async def merge_clusters(req: MergeRequest):

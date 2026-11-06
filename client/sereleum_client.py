@@ -107,18 +107,6 @@ class SereleumClient:
             return res.json().get("count", 0)
 
 
-    async def get_cluster_plot(self) -> Optional[bytes]:
-        url = f"{self.base_url}{Routes.GET_CLUSTER_PLOT_ENDPOINT}"
-        # params = {"method": method}
-
-        async with httpx.AsyncClient() as client:
-            res = await client.get(url)
-            print(res.status_code)
-            if res.status_code == 204:
-                return None
-
-            res.raise_for_status()
-            return res.content 
         
     async def merge_clusters(self,  primary_collection_id: str, secondary_collection_ids: List[str]) -> List[StoredClusterMetadata]:
         url = f"{self.base_url}{Routes.MERGE_CLUSTERS_ENDPOINT}"
