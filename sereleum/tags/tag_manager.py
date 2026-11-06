@@ -49,11 +49,11 @@ class TagManager(Generic[TCollection], CollectionManager[TCollection]):
 
     async def get_collections(
         self,
-        filter,
-        limit,
-        offset,
-        order_by,
-        ascending
+        filter = None,
+        limit = None,
+        offset = 0,
+        order_by = None,
+        ascending = False
     ) -> list[TCollection]:
        return await self.tag_store.get_collections(
             filter=filter,

@@ -140,11 +140,11 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
 
     async def get_collections(
         self,
-        filter,
-        limit,
-        offset,
-        order_by,
-        ascending
+        filter = None,
+        limit = None,
+        offset = 0,
+        order_by = None,
+        ascending = False
     ) -> List[TCollection]:
        return await self.cluster_store.get_collections(
             filter=filter,
