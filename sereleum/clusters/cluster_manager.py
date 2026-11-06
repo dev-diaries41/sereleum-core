@@ -246,10 +246,8 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
             await self.cluster_store.delete_by_ids([cluster_id])
             return None
         item_ids = [c.item_id for c in crossrefs]
-        print(f'item_ids: {len(item_ids)}')
 
         embeds = await self.item_embedding_store.get(ids=item_ids)
-        print(f'EMBEDS: {len(embeds)}')
         new_protoype_embed, new_mean_sim, new_std_sim = self._compute_cluster_metrics(np.stack([e.embedding for e in embeds], axis=0))
         
         old_cluster_metadata = result[0]
