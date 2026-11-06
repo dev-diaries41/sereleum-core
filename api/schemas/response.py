@@ -51,4 +51,4 @@ class GetCollectionsResponse(BaseModel):
     collections: List[BaseCollection]
 
 class MergeResponse(BaseModel):
-    updated_collections: List[BaseCollection]
+    merged_collection: BaseCollection

@@ -45,6 +45,6 @@ def create_tags_router(tag_manager: TagManager) -> APIRouter:
     async def merge_tags(req: MergeRequest):
         await tag_manager.merge(req.primary_collection_id, req.secondary_collection_ids)
         collections = await tag_manager.get_collections(filter={'ids': [req.primary_collection_id]}, limit=1)
-        return MergeResponse(updated_collections=collections[0])
+        return MergeResponse(merged_collection=collections[0])
 
     return router

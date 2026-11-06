@@ -59,6 +59,6 @@ def create_clusters_router(cluster_manager: ClusterManager[TItem]) -> APIRouter:
     async def merge_clusters(req: MergeRequest):
         await cluster_manager.merge(req.primary_collection_id, req.secondary_collection_ids)
         collections = await cluster_manager.get_collections(filter={'ids': [req.primary_collection_id]}, limit=1)
-        return MergeResponse(updated_collections=collections[0])
+        return MergeResponse(merged_collection=collections[0])
 
     return router
