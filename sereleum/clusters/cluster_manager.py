@@ -14,7 +14,6 @@ from smartscan.cluster import IncrementalClusterer
 from llm_connect.providers.llm_provider import LLMProvider
 
 from sereleum.schemas.llm import LLMClassificationResult
-from sereleum.schemas.item import ItemsOverviewInfo
 from sereleum.schemas.cluster import ClusterCrossRef, StoredClusterMetadata
 from sereleum.errors import SereleumError, ErrorCode
 from sereleum.data.stores.item_store import ItemStore
@@ -22,7 +21,6 @@ from sereleum.data.stores.clusters.cluster_store import ClusterStore
 from sereleum.data.stores.clusters.cluster_crossref_store import ClusterCrossRefStore
 from sereleum.data.types import TItem, TCollection
 from sereleum.collections.collecion_manager import CollectionManager
-from sereleum.schemas.collection import BaseCollection
 
 class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]):
     def __init__(
