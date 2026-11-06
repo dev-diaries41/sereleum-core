@@ -177,7 +177,18 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
 
     async def get_top_clusters(self, n: int) -> List[StoredClusterMetadata]:
         return await self.cluster_store.get(order_by="prototype_size", ascending=False, limit=n)
-       
+
+    async def _assign(self, assignments: Assignments) -> None:        
+        crossrefs = [ClusterCrossRef(item_id=item_id, cluster_id=cluster_id) for item_id, cluster_id in assignments.items()]
+        try:
+            await self.crossrefs_store.add(crossrefs)
+        except IntegrityError as e:
+            raise SereleumError(
+                    "Foreign key violation in assign",
+                    code=ErrorCode.INVALID_ARGUMENT,
+                    details={"error": str(e)},
+                )
+
 
     async def _assign_from_merges(self, merges: ClusterMerges) -> None:
         all_target_cluster_ids = [cid for targets in merges.values() for cid in targets]
@@ -227,7 +238,7 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
         await self.cluster_store.add(new_cluster_metadata_updates)
         await self.cluster_embedding_store.update(existing_cluster_embed_updates)
         await self.cluster_embedding_store.add(new_cluster_embed_updates)
-        await self.assign(result.assignments)
+        await self._assign(result.assignments)
         return unlabelled_clusters
 
     async def _sync(self, cluster_id: ClusterId) -> tuple[StoredEmbedding, StoredClusterMetadata] | None:
@@ -240,7 +251,10 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
             await self.cluster_store.delete_by_ids([cluster_id])
             return None
         item_ids = [c.item_id for c in crossrefs]
+        print(f'item_ids: {len(item_ids)}')
+
         embeds = await self.item_embedding_store.get(ids=item_ids)
+        print(f'EMBEDS: {len(embeds)}')
         new_protoype_embed, new_mean_sim, new_std_sim = self._compute_cluster_metrics(np.stack([e.embedding for e in embeds], axis=0))
         
         old_cluster_metadata = result[0]
