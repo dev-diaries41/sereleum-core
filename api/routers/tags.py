@@ -2,7 +2,7 @@ from typing import Optional
 
 from fastapi import APIRouter, HTTPException
 
-from api.schemas.request import MergeRequest
+from api.schemas.request import MergeRequest, TagRequest
 from api.schemas.response import GetCountResponse,  MergeResponse, GetCollectionsResponse
 from sereleum.errors import SereleumError, ErrorCode
 from sereleum.tags.tag_manager import TagManager
@@ -47,4 +47,12 @@ def create_tags_router(tag_manager: TagManager) -> APIRouter:
         collections = await tag_manager.get_collections(filter={'ids': [req.primary_collection_id]}, limit=1)
         return MergeResponse(merged_collection=collections[0])
 
+    
+    @router.post(Routes.TAG_ITEMS_ENDPOINT, status_code=204)
+    async def tag(req: TagRequest):
+        if isinstance(req.tag, str):
+            await tag_manager.tag_by_name(req.item_ids, req.tag)
+        else:
+            await tag_manager.tag_by_id(req.item_ids, req.tag)
+            
     return router

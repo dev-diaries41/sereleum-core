@@ -47,3 +47,8 @@ class MoveItemRequest(BaseModel):
 class MergeRequest(BaseModel):
     primary_collection_id: CollectionId
     secondary_collection_ids: List[CollectionId]
+
+
+class TagRequest(BaseModel):
+    tag: str | int # name or id
+    item_ids: List[str]
