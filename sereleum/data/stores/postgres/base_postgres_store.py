@@ -52,18 +52,17 @@ class BasePostgresStore(Generic[TEntity, TDomain], ABC):
             return
 
         entities = [self.mapper.to_entity(item) for item in items]
-        values = [
-            {column.name: getattr(item, column.name) for column in self.model.__table__.columns}
-            for item in entities
-        ]
+        values = [{column.name: getattr(item, column.name) for column in self.model.__table__.columns} for item in entities]
+
+        primary_keys = [column.name for column in self.primary_keys]
+        update_values = {column.name: getattr(insert(self.model).excluded, column.name) for column in self.model.__table__.columns if column.name not in primary_keys}
 
         async with self.sessionmaker() as session:
             stmt = insert(self.model).values(values)
-            stmt = stmt.on_conflict_do_update(
-                index_elements=[column.name for column in self.primary_keys]
-            )
+            stmt = stmt.on_conflict_do_update(index_elements=primary_keys, set_=update_values)
             await session.execute(stmt)
             await session.commit()
+
 
     async def update(self, items: List[TDomain]) -> None:
         if not items:
