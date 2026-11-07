@@ -2,7 +2,7 @@ from typing import Optional
 
 from fastapi import APIRouter, HTTPException
 
-from api.schemas.request import MergeRequest, TagRequest
+from api.schemas.request import MergeRequest, TagRequest, MoveRequest
 from api.schemas.response import GetCountResponse,  MergeResponse, GetCollectionsResponse
 from sereleum.errors import SereleumError, ErrorCode
 from sereleum.tags.tag_manager import TagManager
@@ -23,9 +23,14 @@ def create_tags_router(tag_manager: TagManager) -> APIRouter:
         return GetCollectionsResponse(collections=collections)
 
     @router.patch(Routes.MOVE_TAG_ITEMS_ENDPOINT, status_code=204)
-    async def move_items(item_ids: list[str], new_collection_id: int, current_collection_id: int):
+    async def move_items(req: MoveRequest):
+        if not isinstance(req.new_collection_id, int) or not isinstance(req.current_collection_id, int):
+            raise HTTPException(status_code=400, detail="Collection id must be of type int")
+        if not req.current_collection_id:
+            raise HTTPException(status_code=400, detail="Missing current_collection_id")
+        
         try:
-            await tag_manager.move(set(item_ids), new_collection_id, current_collection_id)
+            await tag_manager.move(set(req.item_ids), req.new_collection_id, req.current_collection_id)
         except SereleumError as e:
             if e.code == ErrorCode.INVALID_ARGUMENT:
                 raise HTTPException(status_code=400, detail="Item or cluster id doesn't exist")

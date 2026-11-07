@@ -40,9 +40,10 @@ class RenameClusterRequest(BaseModel):
     label: str
 
 
-class MoveItemRequest(BaseModel):
-    item_id: str
-    cluster_id: str
+class MoveRequest(BaseModel):
+    item_ids: List[str]
+    new_collection_id: CollectionId
+    current_collection_id: Optional[CollectionId] = None
 
 class MergeRequest(BaseModel):
     primary_collection_id: CollectionId

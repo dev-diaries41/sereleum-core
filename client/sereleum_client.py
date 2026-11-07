@@ -8,7 +8,7 @@ from sereleum.schemas.cluster import StoredClusterMetadata
 from domains.prompts.item import Prompt, PromptsOverviewInfo
 
 from api.routers.routes import Routes
-from api.schemas.request import  GetItemsRequest, GetItemsByIdRequest, GetClusterRequestParams, RenameClusterRequest, QueryItemsRequest, MoveItemRequest, MergeRequest, AddItemsRequestOptions
+from api.schemas.request import  GetItemsRequest, GetItemsByIdRequest, GetClusterRequestParams, RenameClusterRequest, QueryItemsRequest, MoveRequest, MergeRequest, AddItemsRequestOptions
 from api.schemas.response import AddItemsResponse
 
 class SereleumClient:
@@ -65,7 +65,7 @@ class SereleumClient:
 
     async def update_prompt_cluster_id(self, prompt_id: str, cluster_id: str) -> str:
         url = f"{self.base_url}{Routes.BASE_ITEMS_ENDPOINT}"
-        payload = MoveItemRequest(prompt_id=prompt_id, cluster_id=cluster_id)
+        payload = MoveRequest(prompt_id=prompt_id, cluster_id=cluster_id)
         async with httpx.AsyncClient() as client:
             res = await client.patch(url, params=payload.model_dump())
             res.raise_for_status() 

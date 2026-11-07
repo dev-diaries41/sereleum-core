@@ -1,8 +1,8 @@
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Response
+from fastapi import APIRouter, HTTPException
 
-from api.schemas.request import MergeRequest
+from api.schemas.request import MergeRequest, MoveRequest
 from api.schemas.response import (
     GetCountResponse,
     GetCollectionsResponse,
@@ -18,9 +18,12 @@ def create_clusters_router(cluster_manager: ClusterManager[TItem]) -> APIRouter:
     router = APIRouter()
 
     @router.patch(Routes.MOVE_CLUSTER_ITEMS_ENDPOINT,  status_code=204)
-    async def move_items(item_ids: list[str], new_collection_id: str):
+    async def move_items(req: MoveRequest):
+        if not isinstance(req.new_collection_id, str):
+            raise HTTPException(status_code=400, detail="Collection id must be of type str")
+        
         try:
-            await cluster_manager.move(set(item_ids), new_collection_id)
+            await cluster_manager.move(set(req.item_ids), req.new_collection_id)
         except SereleumError as e:
             if e.code == ErrorCode.INVALID_ARGUMENT:
                 raise HTTPException(status_code=400, detail="Item or cluster id doesn't exist")
