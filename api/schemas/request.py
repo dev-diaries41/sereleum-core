@@ -41,9 +41,11 @@ class RenameClusterRequest(BaseModel):
 
 
 class MoveRequest(BaseModel):
-    item_ids: List[str]
-    new_collection_id: CollectionId
-    current_collection_id: Optional[CollectionId] = None
+    destination_collection_id: CollectionId
+    source_collection_id: CollectionId
+    item_ids: Optional[List[str]] = None
+    excluded_item_ids: Optional[List[str]] = None
+    select_all: bool = False
 
 class MergeRequest(BaseModel):
     primary_collection_id: CollectionId

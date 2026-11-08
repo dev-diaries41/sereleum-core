@@ -19,11 +19,11 @@ def create_clusters_router(cluster_manager: ClusterManager[TItem]) -> APIRouter:
 
     @router.patch(Routes.MOVE_CLUSTER_ITEMS_ENDPOINT,  status_code=204)
     async def move_items(req: MoveRequest):
-        if not isinstance(req.new_collection_id, str):
+        if not isinstance(req.destination_collection_id, str) or not isinstance(req.source_collection_id, str):
             raise HTTPException(status_code=400, detail="Collection id must be of type str")
         
         try:
-            await cluster_manager.move(set(req.item_ids), req.new_collection_id)
+            await cluster_manager.move(req.destination_collection_id, req.source_collection_id, req.item_ids, select_all=req.select_all, excluded_item_ids=req.excluded_item_ids)
         except SereleumError as e:
             if e.code == ErrorCode.INVALID_ARGUMENT:
                 raise HTTPException(status_code=400, detail="Item or cluster id doesn't exist")
