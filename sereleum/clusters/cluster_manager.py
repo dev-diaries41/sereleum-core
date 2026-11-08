@@ -89,6 +89,7 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
                 excluded_item_ids=excluded_item_ids,
                 source_collection_id=source_collection_id,
             )
+            await self._sync(source_collection_id)
         except IntegrityError as e:
             raise SereleumError(
                 "Foreign key violation in assign",
