@@ -3,7 +3,7 @@ from domains.articles.models import ArticleClusterModel, ArticleClusterCrossRefM
 from domains.articles.models import ArticleModel, ArticleClusterCrossRefModel
 from domains.articles.mappers import ArticleClusterMapper
 
-class ArticleClusterStore(PostgresClusterStore[ArticleClusterModel, ArticleClusterCrossRefModel, ArticleModel]):
+class ArticleClusterStore(PostgresClusterStore):
     model = ArticleClusterModel
     crossref_model = ArticleClusterCrossRefModel
     item_model = ArticleModel

@@ -2,6 +2,6 @@ from sereleum.data.stores.postgres.clusters.cluster_crossrefs_store import Postg
 from domains.articles.models import ArticleClusterCrossRefModel
 from domains.articles.mappers import ArticleClusterCrossRefMapper
 
-class ArticleClusterCrossRefStore( PostgresClusterCrossRefStore[ArticleClusterCrossRefModel]):
+class ArticleClusterCrossRefStore(PostgresClusterCrossRefStore):
     model = ArticleClusterCrossRefModel
     mapper = ArticleClusterCrossRefMapper()

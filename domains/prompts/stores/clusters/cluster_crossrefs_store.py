@@ -2,6 +2,6 @@ from sereleum.data.stores.postgres.clusters.cluster_crossrefs_store import Postg
 from domains.prompts.models.clusters.cluster_crossref import PromptClusterCrossRefModel
 from domains.prompts.mappers import PromptClusterCrossRefMapper
 
-class PromptClusterCrossRefStore( PostgresClusterCrossRefStore[PromptClusterCrossRefModel]):
+class PromptClusterCrossRefStore( PostgresClusterCrossRefStore):
     model = PromptClusterCrossRefModel
     mapper = PromptClusterCrossRefMapper()

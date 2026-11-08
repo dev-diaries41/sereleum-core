@@ -1,22 +1,21 @@
 from abc import ABC
-from pydantic import BaseModel
-from typing import Generic, Optional
+from typing import Optional
 
 from sqlalchemy import Select, delete, select, exists, func
 
 from sereleum.data.stores.postgres.base_postgres_store import BasePostgresStore
 from sereleum.schemas.cluster import StoredClusterMetadata
-from sereleum.data.types import TPostgresClusterModel, TPostgresItemModel, TPostgresClusterCrossRefModel, Filter
+from sereleum.data.types import   Filter
 from sereleum.enums.collections import CollectionType
 from sereleum.schemas.collection import BaseCollection
+from sereleum.data.models import ItemBase, ClusterCrossRefBase, ClusterBase
 
 class PostgresClusterStore(
-    Generic[TPostgresClusterModel, TPostgresClusterCrossRefModel, TPostgresItemModel],
-    BasePostgresStore[TPostgresClusterModel, StoredClusterMetadata],
+    BasePostgresStore[ClusterBase, StoredClusterMetadata],
     ABC,
 ):
-    item_model: type[TPostgresItemModel]
-    crossref_model: type[TPostgresClusterCrossRefModel]
+    item_model: type[ItemBase]
+    crossref_model: type[ClusterCrossRefBase]
 
 
     def apply_filters(self, stmt: Select, f: Filter | None) -> Select:

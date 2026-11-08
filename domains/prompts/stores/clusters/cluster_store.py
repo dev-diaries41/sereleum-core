@@ -2,7 +2,7 @@ from sereleum.data.stores.postgres.clusters.cluster_store import PostgresCluster
 from domains.prompts.models import PromptClusterModel, PromptClusterCrossRefModel, PromptModel
 from domains.prompts.mappers import PromptClusterMapper
 
-class PromptClusterStore(PostgresClusterStore[PromptClusterModel, PromptClusterCrossRefModel, PromptModel]):
+class PromptClusterStore(PostgresClusterStore):
     model = PromptClusterModel
     crossref_model = PromptClusterCrossRefModel
     item_model = PromptModel

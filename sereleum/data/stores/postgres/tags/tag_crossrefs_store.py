@@ -1,16 +1,15 @@
 from abc import ABC
-from typing import Generic
 
 from sqlalchemy import Select
 
 from sereleum.data.stores.postgres.base_postgres_store import BasePostgresStore
 from sereleum.schemas.tag import TagCrossRef
-from sereleum.data.types import TPostgresTagCrossRefModel, Filter
+from sereleum.data.types import Filter
+from sereleum.data.models import TagCrossRefBase
 
 
 class PostgresTagCrossRefStore(
-    Generic[TPostgresTagCrossRefModel],
-    BasePostgresStore[TPostgresTagCrossRefModel, TagCrossRef],
+    BasePostgresStore[TagCrossRefBase, TagCrossRef],
     ABC,
 ):
 

@@ -9,17 +9,16 @@ from sereleum.collections.types import CollectionId
 from sereleum.data.models import ItemBase, ClusterCrossRefBase, TagBase, TagCrossRefBase
 from sereleum.data.stores.postgres.base_postgres_store import BasePostgresStore
 from sereleum.schemas.tag import Tag
-from sereleum.data.types import TPostgresTagCrossRefModel, TPostgresItemModel, TPostgresTagModel, Filter
+from sereleum.data.types import Filter
 from sereleum.enums.collections import CollectionType
 from sereleum.schemas.collection import BaseCollection
 
 class PostgresTagStore(
-    Generic[TPostgresTagModel, TPostgresTagCrossRefModel, TPostgresItemModel],
-    BasePostgresStore[TPostgresTagModel, Tag],
+    BasePostgresStore[TagBase, Tag],
     ABC,
 ):
-    item_model: type[TPostgresItemModel]
-    tag_crossref_model: type[TPostgresTagCrossRefModel]
+    item_model: type[ItemBase]
+    tag_crossref_model: type[TagCrossRefBase]
     cluster_crossref_model: type[ClusterCrossRefBase]
 
     def apply_filters(
