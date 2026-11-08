@@ -3,6 +3,7 @@ from typing import Generic
 
 from sqlalchemy.exc import IntegrityError
 
+from sereleum.collections.types import CollectionId
 from sereleum.errors import SereleumError, ErrorCode
 from sereleum.schemas.tag import TagCrossRef
 from sereleum.collections.collecion_manager import CollectionManager
@@ -19,20 +20,28 @@ class TagManager(Generic[TCollection], CollectionManager[TCollection]):
         self.tag_store = tag_store
         self.crossrefs_store = crossrefs_store 
 
-    async def tag_by_name(self, item_ids: list[str],  tag_name: str):
-        await self.tag_store.tag(tag_name, item_ids)
+    async def tag(
+            self,
+            tag_name: str,
+            collection_id: CollectionId,
+            item_ids: list[str] | None = None,
+            *,
+            select_all: bool = False,
+            excluded_item_ids: list[str] | None = None,
+        ) -> None:
+        await self.tag_store.tag(tag_name, collection_id, item_ids, select_all=select_all, excluded_item_ids=excluded_item_ids)
 
 
-    async def tag_by_id(self, item_ids: list[str], collection_id: int) -> None:        
-        crossrefs = [TagCrossRef(item_id=item_id, tag_id=collection_id) for item_id in item_ids]
-        try:
-            await self.crossrefs_store.upsert(crossrefs)
-        except IntegrityError as e:
-            raise SereleumError(
-                    "Foreign key violation in assign",
-                    code=ErrorCode.INVALID_ARGUMENT,
-                    details={"error": str(e)},
-                )
+    # async def tag_by_id(self, item_ids: list[str], collection_id: int) -> None:        
+    #     crossrefs = [TagCrossRef(item_id=item_id, tag_id=collection_id) for item_id in item_ids]
+    #     try:
+    #         await self.crossrefs_store.upsert(crossrefs)
+    #     except IntegrityError as e:
+    #         raise SereleumError(
+    #                 "Foreign key violation in assign",
+    #                 code=ErrorCode.INVALID_ARGUMENT,
+    #                 details={"error": str(e)},
+    #             )
 
     
     async def move(self, item_ids, destination_collection_id: int, source_collection_id: int) -> None:        

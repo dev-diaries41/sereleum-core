@@ -4,6 +4,7 @@ from sereleum.data.stores.store import Store
 from sereleum.schemas.tag import Tag
 from sereleum.data.types import Filter
 from sereleum.schemas.collection import BaseCollection
+from sereleum.collections.types import CollectionId
 
 class TagStore(Store[Tag], Protocol):
     async def delete_by_ids(self, ids: list[str]) -> None: ...
@@ -17,4 +18,12 @@ class TagStore(Store[Tag], Protocol):
     ) -> list[BaseCollection]: 
         ...
     async def merge(self, primary_tag_id: int, secondary_tag_ids: list[int]) -> None: ...
-    async def tag(self, tag_name: str, item_ids: list[int]): ...
+    async def tag(
+        self,
+        tag_name: str,
+        collection_id: CollectionId,
+        item_ids: list[str] | None = None,
+        *,
+        select_all: bool = False,
+        excluded_item_ids: list[str] | None = None,
+    ) -> None: ...

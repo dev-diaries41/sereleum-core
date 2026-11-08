@@ -55,10 +55,8 @@ def create_tags_router(tag_manager: TagManager) -> APIRouter:
     
     @router.post(Routes.TAG_ITEMS_ENDPOINT, status_code=204)
     async def tag(req: TagRequest):
-        if isinstance(req.tag, str):
-            await tag_manager.tag_by_name(req.item_ids, req.tag)
-        else:
-            await tag_manager.tag_by_id(req.item_ids, req.tag)
+        await tag_manager.tag(req.tag, req.collection_id, req.item_ids, select_all=req.select_all, excluded_item_ids=req.excluded_item_ids)
+
 
     @router.post(Routes.DELETE_TAGS_ENDPOINT, status_code=204)
     async def delete_tags(req: DeleteTagsRequest):

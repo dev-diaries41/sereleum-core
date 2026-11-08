@@ -2,9 +2,11 @@ from abc import ABC
 from typing import Generic, Optional
 
 
-from sqlalchemy import Select, delete, select, exists, func, literal, String, cast
+from sqlalchemy import Select, delete, select, func, literal, String, cast
 from sqlalchemy.dialects.postgresql import insert, ARRAY
 
+from sereleum.collections.types import CollectionId
+from sereleum.data.models import ItemBase, ClusterCrossRefBase, TagBase, TagCrossRefBase
 from sereleum.data.stores.postgres.base_postgres_store import BasePostgresStore
 from sereleum.schemas.tag import Tag
 from sereleum.data.types import TPostgresTagCrossRefModel, TPostgresItemModel, TPostgresTagModel, Filter
@@ -17,7 +19,8 @@ class PostgresTagStore(
     ABC,
 ):
     item_model: type[TPostgresItemModel]
-    crossref_model: type[TPostgresTagCrossRefModel]
+    tag_crossref_model: type[TPostgresTagCrossRefModel]
+    cluster_crossref_model: type[ClusterCrossRefBase]
 
     def apply_filters(
         self,
@@ -55,7 +58,7 @@ class PostgresTagStore(
         ascending: bool = True,
     ) -> list[BaseCollection]:
         async with self.sessionmaker() as session:
-            size_expr = func.count(self.crossref_model.item_id)
+            size_expr = func.count(self.tag_crossref_model.item_id)
 
             stmt = (
                 select(
@@ -64,8 +67,8 @@ class PostgresTagStore(
                     size_expr.label("size"),
                 )
                 .outerjoin(
-                    self.crossref_model,
-                    self.crossref_model.tag_id == self.model.id,
+                    self.tag_crossref_model,
+                    self.tag_crossref_model.tag_id == self.model.id,
                 )
                 .group_by(self.model.id, self.model.name)
             )
@@ -108,22 +111,22 @@ class PostgresTagStore(
         async with self.sessionmaker() as session:
             source = (
                 select(
-                    self.crossref_model.item_id,
+                    self.tag_crossref_model.item_id,
                     literal(primary_tag_id),
                 )
                 .where(
-                    self.crossref_model.tag_id.in_(secondary_tag_ids),
-                    self.crossref_model.tag_id != primary_tag_id,
+                    self.tag_crossref_model.tag_id.in_(secondary_tag_ids),
+                    self.tag_crossref_model.tag_id != primary_tag_id,
                 )
             )
 
             stmt = (
-                insert(self.crossref_model)
+                insert(self.tag_crossref_model)
                 .from_select(["item_id", "tag_id"], source)
                 .on_conflict_do_nothing(
                     index_elements=[
-                        self.crossref_model.item_id,
-                        self.crossref_model.tag_id,
+                        self.tag_crossref_model.item_id,
+                        self.tag_crossref_model.tag_id,
                     ]
                 )
             )
@@ -132,9 +135,19 @@ class PostgresTagStore(
             await session.commit()
 
 
+    async def tag(
+        self,
+        tag_name: str,
+        collection_id: CollectionId,
+        item_ids: list[str] | None = None,
+        *,
+        select_all: bool = False,
+        excluded_item_ids: list[str] | None = None,
+    ) -> None:
+        item_ids = item_ids or []
+        excluded_item_ids = excluded_item_ids or []
 
-    async def tag(self, tag_name: str, item_ids: list[str]) -> None:
-        if not item_ids:
+        if not select_all and not item_ids:
             return
 
         async with self.sessionmaker() as session:
@@ -149,20 +162,53 @@ class PostgresTagStore(
                 .cte("tag")
             )
 
-            items = func.unnest(
-                cast(literal(item_ids), ARRAY(String))
-            ).table_valued("item_id").render_derived()
+            if select_all:
+                exclusion = (
+                    ~self.item_model.id.in_(excluded_item_ids)
+                    if excluded_item_ids
+                    else True
+                )
+
+                if isinstance(collection_id, int):
+                    items_stmt = (
+                        select(self.item_model.id.label("item_id"))
+                        .join(
+                            self.tag_crossref_model,
+                            self.tag_crossref_model.item_id == self.item_model.id,
+                        )
+                        .where(
+                            self.tag_crossref_model.tag_id == collection_id,
+                            exclusion,
+                        )
+                    )
+                else:
+                    items_stmt = (
+                        select(self.item_model.id.label("item_id"))
+                        .join(
+                            self.cluster_crossref_model,
+                            self.cluster_crossref_model.item_id == self.item_model.id,
+                        )
+                        .where(
+                            self.cluster_crossref_model.cluster_id == collection_id,
+                            exclusion,
+                        )
+                    )
+                items = items_stmt.subquery("items")
+            else:
+                items = func.unnest(
+                    cast(literal(item_ids), ARRAY(String))
+                ).table_valued("item_id").render_derived()
 
             stmt = (
-                insert(self.crossref_model)
+                insert(self.tag_crossref_model)
                 .from_select(
                     ["item_id", "tag_id"],
                     select(items.c.item_id, tag_stmt.c.id),
                 )
                 .on_conflict_do_nothing(
                     index_elements=[
-                        self.crossref_model.item_id,
-                        self.crossref_model.tag_id,
+                        self.tag_crossref_model.item_id,
+                        self.tag_crossref_model.tag_id,
                     ]
                 )
             )

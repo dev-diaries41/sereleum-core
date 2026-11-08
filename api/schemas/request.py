@@ -51,8 +51,11 @@ class MergeRequest(BaseModel):
 
 
 class TagRequest(BaseModel):
-    tag: str | int # name or id
-    item_ids: List[str]
+    tag: str
+    collection_id: CollectionId
+    item_ids: Optional[List[str]] = None
+    excluded_item_ids: Optional[List[str]] = None
+    select_all: bool = False
 
 
 class DeleteTagsRequest(BaseModel):
