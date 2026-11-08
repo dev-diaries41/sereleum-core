@@ -28,6 +28,7 @@ class PostgresClusterCrossRefStore(
             stmt = stmt.where( ~self.model.cluster_id.in_(exclude_cluster_ids) )
         return stmt
 
+
     async def move(
         self,
         destination_collection_id: str,
@@ -55,9 +56,10 @@ class PostgresClusterCrossRefStore(
                     )
                 )
             else:
-                items_stmt = (
-                    select(func.unnest(cast(literal(item_ids), ARRAY(String))))
-                    .select_from(literal(1))
+                items_stmt = select(
+                    func.unnest(
+                        cast(literal(item_ids), ARRAY(String))
+                    ).label("item_id")
                 )
 
             stmt = (
