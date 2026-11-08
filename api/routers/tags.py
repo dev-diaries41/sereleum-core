@@ -2,7 +2,7 @@ from typing import Optional
 
 from fastapi import APIRouter, HTTPException
 
-from api.schemas.request import MergeRequest, TagRequest, MoveRequest, DeleteTagsRequest
+from api.schemas.request import MergeRequest, TagRequest, DeleteTagsRequest, RemoveTagRequest
 from api.schemas.response import GetCountResponse,  MergeResponse, GetCollectionsResponse
 from sereleum.errors import SereleumError, ErrorCode
 from sereleum.tags.tag_manager import TagManager
@@ -61,5 +61,9 @@ def create_tags_router(tag_manager: TagManager) -> APIRouter:
     @router.post(Routes.DELETE_TAGS_ENDPOINT, status_code=204)
     async def delete_tags(req: DeleteTagsRequest):
         await tag_manager.delete(req.collection_ids)
+
+    @router.post(Routes.REMOVE_TAG_ENDPOINT, status_code=204)
+    async def remove_tag(req: RemoveTagRequest):
+        await tag_manager.remove(req.tag_id, req.item_ids, select_all=req.select_all, excluded_item_ids=req.excluded_item_ids)
             
     return router

@@ -64,3 +64,11 @@ class DeleteTagsRequest(BaseModel):
 
 class DeleteClusterRequest(BaseModel):
     collection_ids: List[str]
+
+
+class RemoveTagRequest(BaseModel):
+    tag_id: int
+    item_ids: Optional[List[str]] = None
+    excluded_item_ids: Optional[List[str]] = None
+    select_all: bool = False
+

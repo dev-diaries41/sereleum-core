@@ -25,7 +25,14 @@ class CollectionManager(ABC, Generic[TCollection]):
     @abstractmethod
     async def delete(self, collection_ids: List[CollectionId]) -> None: ...
 
-    async def remove(self, collection_id: CollectionId, item_ids: Set[str]) -> None: ...
+    async def remove(
+        self,
+        collection_id: CollectionId,
+        item_ids: list[str] | None = None,
+        *,
+        select_all: bool = False,
+        excluded_item_ids: list[str] | None = None,
+    ) -> None: ...
 
     @abstractmethod
     async def get_collections(

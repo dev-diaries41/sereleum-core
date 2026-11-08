@@ -27,3 +27,11 @@ class TagStore(Store[Tag], Protocol):
         select_all: bool = False,
         excluded_item_ids: list[str] | None = None,
     ) -> None: ...
+    async def untag(
+        self,
+        tag_id: int,
+        item_ids: list[str] | None = None,
+        *,
+        select_all: bool = False,
+        excluded_item_ids: list[str] | None = None,
+    ) -> None: ...

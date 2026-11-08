@@ -214,3 +214,38 @@ class PostgresTagStore(
 
             await session.execute(stmt)
             await session.commit()
+
+
+    async def untag(
+        self,
+        tag_id: int,
+        item_ids: list[str] | None = None,
+        *,
+        select_all: bool = False,
+        excluded_item_ids: list[str] | None = None,
+    ) -> None:
+        item_ids = item_ids or []
+        excluded_item_ids = excluded_item_ids or []
+
+        if not select_all and not item_ids:
+            return
+
+        async with self.sessionmaker() as session:
+            if select_all:
+                exclusion = (
+                    ~self.item_model.id.in_(excluded_item_ids)
+                    if excluded_item_ids
+                    else True
+                )
+                items_stmt = select(self.item_model.id).where(exclusion)
+                item_filter = self.tag_crossref_model.item_id.in_(items_stmt)
+            else:
+                item_filter = self.tag_crossref_model.item_id.in_(item_ids)
+
+            stmt = delete(self.tag_crossref_model).where(
+                self.tag_crossref_model.tag_id == tag_id,
+                item_filter,
+            )
+
+            await session.execute(stmt)
+            await session.commit()

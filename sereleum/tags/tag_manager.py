@@ -3,7 +3,6 @@ from typing import Generic
 
 from sereleum.collections.types import CollectionId
 from sereleum.errors import SereleumError, ErrorCode
-from sereleum.schemas.tag import TagCrossRef
 from sereleum.collections.collecion_manager import CollectionManager
 from sereleum.data.stores.tags.tag_crossref_store import TagCrossRefStore
 from sereleum.data.stores.tags.tag_store import TagStore
@@ -29,7 +28,16 @@ class TagManager(Generic[TCollection], CollectionManager[TCollection]):
         ) -> None:
         await self.tag_store.tag(tag_name, collection_id, item_ids, select_all=select_all, excluded_item_ids=excluded_item_ids)
 
-
+    async def remove(
+        self,
+        collection_id: int,
+        item_ids: list[str] | None = None,
+        *,
+        select_all: bool = False,
+        excluded_item_ids: list[str] | None = None,
+    ) -> None:
+        
+        await self.tag_store.untag(collection_id, item_ids, select_all=select_all, excluded_item_ids=excluded_item_ids)
 
     async def rename(self, collection_id: int, name) -> None:
         result = await self.tag_store.get(filter={'ids': [collection_id]})
@@ -61,7 +69,3 @@ class TagManager(Generic[TCollection], CollectionManager[TCollection]):
     
     async def delete(self, collection_ids: list[int]):
         return await self.tag_store.delete_by_ids(collection_ids)
-
-    # TODO; change to delete_by_ids
-    async def remove(self, collection_id: int, item_ids):
-        await self.crossrefs_store.delete([TagCrossRef(item_id=item_id, tag_id=collection_id) for item_id in item_ids])
