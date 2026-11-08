@@ -1,0 +1,10 @@
+from sereleum.data.stores.postgres.clusters.cluster_store import PostgresClusterStore
+from domains.articles.models import ArticleClusterModel, ArticleClusterCrossRefModel, ArticleModel
+from domains.articles.models import ArticleModel, ArticleClusterCrossRefModel
+from domains.articles.mappers import ArticleClusterMapper
+
+class ArticleClusterStore(PostgresClusterStore):
+    model = ArticleClusterModel
+    crossref_model = ArticleClusterCrossRefModel
+    item_model = ArticleModel
+    mapper = ArticleClusterMapper()

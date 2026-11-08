@@ -1,33 +1,35 @@
-from typing import List, Optional
 import httpx
 import json
 
-from smartscan import ClusterMerges
+from typing import List, Optional
 
 from sereleum.schemas.cluster import StoredClusterMetadata
-from sereleum.schemas.items.prompt import Prompt, PromptsOverviewInfo
-from sereleum.constants.api import Routes
-from sereleum.schemas.api import  GetPromptsRequest, GetPromptsByIdsRequest, GetClusterRequestParams, UpdateLabelParams, QueryPromptsRequest, UpdatePromptClusterIdParams, AddPromptsResponse, MergeClustersRequest, ClusterOptionsForm
+
+from domains.prompts.item import Prompt, PromptsOverviewInfo
+
+from api.routers.routes import Routes
+from api.schemas.request import  GetItemsRequest, GetItemsByIdRequest, GetClusterRequestParams, RenameClusterRequest, QueryItemsRequest, MoveRequest, MergeRequest, AddItemsRequestOptions
+from api.schemas.response import AddItemsResponse
 
 class SereleumClient:
     def __init__(self, base_url: str):
         self.base_url = base_url.rstrip("/")
     
-    async def add_prompts_file(self, file_path: str, auto_label: bool = True, default_threshold: float = 0.55) -> AddPromptsResponse:
+    async def add_prompts_file(self, file_path: str, auto_label: bool = True, default_threshold: float = 0.55) -> AddItemsResponse:
         """
         Upload a JSON file containing prompts.
         """
-        url = f"{self.base_url}{Routes.ADD_PROMPTS_FILE_ENDPOINT}"
+        url = f"{self.base_url}{Routes.INDEX_FILE_ENDPOINT}"
         async with httpx.AsyncClient() as client:
             with open(file_path, "rb") as f:
                 files = {"file": (file_path, f, "application/json")}
-                res = await client.post(url, files=files, data=ClusterOptionsForm(auto_label=auto_label, default_threshold=default_threshold).model_dump())
+                res = await client.post(url, files=files, data=AddItemsRequestOptions(auto_label=auto_label, default_threshold=default_threshold).model_dump())
             res.raise_for_status() 
-            return AddPromptsResponse(**res.json())
+            return AddItemsResponse(**res.json())
         
     async def get_prompts(self, cluster_ids: Optional[List[str]] = None, limit: Optional[int] = None, offset: Optional[int] = None) -> List[Prompt]:
-        url = f"{self.base_url}{Routes.BASE_PROMPTS_ENDPOINT}"
-        payload = GetPromptsRequest(cluster_ids=cluster_ids, limit=limit, offset=offset)
+        url = f"{self.base_url}{Routes.BASE_ITEMS_ENDPOINT}"
+        payload = GetItemsRequest(cluster_ids=cluster_ids, limit=limit, offset=offset)
 
         async with httpx.AsyncClient() as client:
             res = await client.post(url, json=payload.model_dump())
@@ -35,8 +37,8 @@ class SereleumClient:
             return [Prompt(**p) for p in res.json().get('prompts', [])]
         
     async def get_prompts_by_ids(self, ids: List[str]) -> List[Prompt]:
-        url = f"{self.base_url}{Routes.GET_PROMPTS_BY_IDS_ENDPOINT}"
-        payload = GetPromptsByIdsRequest(prompt_ids=ids)
+        url = f"{self.base_url}{Routes.GET_ITEMS_BY_IDS_ENDPOINT}"
+        payload = GetItemsByIdRequest(prompt_ids=ids)
 
         async with httpx.AsyncClient() as client:
             res = await client.post(url, json=payload.model_dump())
@@ -45,8 +47,8 @@ class SereleumClient:
         
         
     async def query_prompts(self, query: str, cluster_ids: Optional[List[str]] = None, limit: Optional[int] = None) -> List[Prompt]:
-        url = f"{self.base_url}{Routes.QUERY_PROMPTS_ENDPOINT}"
-        payload = QueryPromptsRequest(query=query, cluster_ids=cluster_ids, limit=limit)
+        url = f"{self.base_url}{Routes.QUERY_ITEMS_ENDPOINT}"
+        payload = QueryItemsRequest(query=query, cluster_ids=cluster_ids, limit=limit)
 
         async with httpx.AsyncClient() as client:
             res = await client.post(url, json=payload.model_dump())
@@ -55,15 +57,15 @@ class SereleumClient:
         
         
     async def get_prompts_overview(self) -> PromptsOverviewInfo:
-        url = f"{self.base_url}{Routes.GET_PROMPTS_OVERVIEW_ENDPOINT}"
+        url = f"{self.base_url}{Routes.GET_OVERVIEW_ENDPOINT}"
         async with httpx.AsyncClient() as client:
             res = await client.get(url)
             res.raise_for_status() 
             return PromptsOverviewInfo(**res.json())
 
     async def update_prompt_cluster_id(self, prompt_id: str, cluster_id: str) -> str:
-        url = f"{self.base_url}{Routes.BASE_PROMPTS_ENDPOINT}"
-        payload = UpdatePromptClusterIdParams(prompt_id=prompt_id, cluster_id=cluster_id)
+        url = f"{self.base_url}{Routes.BASE_ITEMS_ENDPOINT}"
+        payload = MoveRequest(prompt_id=prompt_id, cluster_id=cluster_id)
         async with httpx.AsyncClient() as client:
             res = await client.patch(url, params=payload.model_dump())
             res.raise_for_status() 
@@ -82,7 +84,7 @@ class SereleumClient:
 
     async def update_cluster_label(self, cluster_id: str, label: str) -> str:
         url = f"{self.base_url}{Routes.BASE_CLUSTER_ENDPOINT}"
-        params = UpdateLabelParams(cluster_id=cluster_id, label=label)
+        params = RenameClusterRequest(cluster_id=cluster_id, label=label)
 
         async with httpx.AsyncClient() as client:
             res = await client.patch(url, params=params.model_dump())
@@ -90,7 +92,7 @@ class SereleumClient:
             return res.json().get("updated_label")
         
     async def count_prompts(self) -> int:
-        url = f"{self.base_url}{Routes.COUNT_PROMPTS_ENDPOINT}"
+        url = f"{self.base_url}{Routes.COUNT_ITEMS_ENDPOINT}"
         async with httpx.AsyncClient() as client:
             res = await client.get(url)
             res.raise_for_status() 
@@ -105,22 +107,10 @@ class SereleumClient:
             return res.json().get("count", 0)
 
 
-    async def get_cluster_plot(self) -> Optional[bytes]:
-        url = f"{self.base_url}{Routes.GET_CLUSTER_PLOT_ENDPOINT}"
-        # params = {"method": method}
-
-        async with httpx.AsyncClient() as client:
-            res = await client.get(url)
-            print(res.status_code)
-            if res.status_code == 204:
-                return None
-
-            res.raise_for_status()
-            return res.content 
         
-    async def merge_clusters(self, merges: ClusterMerges) -> List[StoredClusterMetadata]:
+    async def merge_clusters(self,  primary_collection_id: str, secondary_collection_ids: List[str]) -> List[StoredClusterMetadata]:
         url = f"{self.base_url}{Routes.MERGE_CLUSTERS_ENDPOINT}"
-        payload = MergeClustersRequest(merges=merges)
+        payload = MergeRequest(primary_collection_id=primary_collection_id, secondary_collection_ids=secondary_collection_ids)
 
         async with httpx.AsyncClient() as client:
             res = await client.post(url, json=payload.model_dump())
@@ -129,7 +119,7 @@ class SereleumClient:
         
         
     async def track_prompts_index_progress(self, job_id: str):
-        url = f"{self.base_url}{Routes.SSE_PROMPTS_INDEX_PROGRESS}?job_id={job_id}"
+        url = f"{self.base_url}{Routes.INDEX_PROGRESS_EVENT_ENDPOINT}?job_id={job_id}"
 
         async with httpx.AsyncClient(timeout=None) as client:
             async with client.stream("GET", url) as response:
@@ -142,7 +132,7 @@ class SereleumClient:
                         yield json.loads(data_str)
 
     async def track_prompts_cluster_status(self, job_id: str):
-        url = f"{self.base_url}{Routes.SSE_PROMPTS_CLUSTER_STATUS}?job_id={job_id}"
+        url = f"{self.base_url}{Routes.CLUSTER_STATUS_EVENT_ENDPOINT}?job_id={job_id}"
 
         async with httpx.AsyncClient(timeout=None) as client:
             async with client.stream("GET", url) as response:

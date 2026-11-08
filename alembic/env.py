@@ -4,8 +4,10 @@ from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 
 from alembic import context
-from sereleum.data.base import Base
-import sereleum.data.models # required
+from sereleum.data.models.base import Base
+import domains.prompts.models # required
+import domains.articles.models # required
+
 import os
 
 # this is the Alembic Config object, which provides

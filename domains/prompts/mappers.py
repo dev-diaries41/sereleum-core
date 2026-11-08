@@ -1,0 +1,89 @@
+
+from domains.prompts.models import PromptModel, PromptClusterCrossRefModel, PromptClusterModel, PromptTagCrossRefModel, PromptTagModel
+from domains.prompts.item import Prompt
+from sereleum.schemas.cluster import ClusterCrossRef, StoredClusterMetadata
+from sereleum.schemas.tag import TagCrossRef, Tag
+from sereleum.data.mappers.mapper import Mapper
+
+
+class PromptMapper(Mapper[PromptModel, Prompt]):
+    def to_domain(self, entity: PromptModel) -> Prompt:
+        return Prompt(
+            id=entity.id,
+            content=entity.content,
+            created_at=entity.created_at,
+            updated_at=entity.updated_at,
+            tokens=entity.tokens,
+        )
+
+    def to_entity(self, domain: Prompt) -> PromptModel:
+        return PromptModel(
+            id=domain.id,
+            content=domain.content,
+            created_at=domain.created_at,
+            updated_at=domain.updated_at,
+            tokens=domain.tokens,
+        )
+
+
+class PromptClusterMapper(Mapper[PromptClusterModel, StoredClusterMetadata]):
+    def to_domain(self, entity) -> StoredClusterMetadata:
+        return StoredClusterMetadata(
+            id=entity.id,
+            prototype_size=entity.prototype_size,
+            label=entity.label,
+            mean_similarity=entity.mean_similarity,
+            std_similarity=entity.std_similarity,
+        )
+
+    def to_entity(self, domain) -> PromptClusterModel:
+        return PromptClusterModel(
+            id=domain.id,
+            prototype_size=domain.prototype_size,
+            label=domain.label,
+            mean_similarity=domain.mean_similarity,
+            std_similarity=domain.std_similarity,
+        )
+
+
+class PromptClusterCrossRefMapper(Mapper[PromptClusterCrossRefModel, ClusterCrossRef]):
+    def to_domain(self, entity) -> ClusterCrossRef:
+        return ClusterCrossRef(
+            item_id=entity.item_id,
+            cluster_id=entity.cluster_id,
+        )
+
+    def to_entity(self, domain) -> PromptClusterCrossRefModel:
+        return PromptClusterCrossRefModel(
+            item_id=domain.item_id,
+            cluster_id=domain.cluster_id,
+        )
+
+class PromptTagMapper(Mapper[PromptTagModel, Tag]):
+    def to_domain(self, entity) -> Tag:
+        return Tag(
+            id=entity.id,
+            name=entity.name,
+        )
+
+    def to_entity(self, domain) -> PromptTagModel:
+        return PromptTagModel(
+            id=domain.id,
+            name=domain.name,
+        )
+
+
+class PromptTagCrossRefMapper(Mapper[PromptTagCrossRefModel, TagCrossRef]):
+    def to_domain(self, entity) -> TagCrossRef:
+        return TagCrossRef(
+            item_id=entity.item_id,
+            tag_id=entity.tag_id,
+        )
+
+    def to_entity(self, domain) -> PromptTagCrossRefModel:
+        return PromptTagCrossRefModel(
+            item_id=domain.item_id,
+            tag_id=domain.tag_id,
+        )
+
+

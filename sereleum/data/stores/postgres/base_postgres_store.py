@@ -1,0 +1,122 @@
+from abc import ABC, abstractmethod
+from typing import Generic, List, Optional
+
+from sqlalchemy import Select, func, inspect, select, delete, tuple_
+from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.ext.asyncio import async_sessionmaker
+
+from sereleum.data.mappers.mapper import Mapper
+from sereleum.data.types import TEntity, TDomain, Filter
+
+
+
+class BasePostgresStore(Generic[TEntity, TDomain], ABC):
+    model: type[TEntity]
+    mapper: Mapper[TEntity, TDomain]
+
+    def __init__(
+        self,
+        sessionmaker: async_sessionmaker,
+    ):
+        self.sessionmaker = sessionmaker
+
+    @property
+    def primary_keys(self):
+        return inspect(self.model).primary_key
+
+    @abstractmethod
+    def apply_filters(self, stmt: Select, filter: Optional[Filter]) -> Select:
+        ...
+
+    async def add(self, items: List[TDomain]) -> None:
+        if not items:
+            return
+
+        entities = [self.mapper.to_entity(item) for item in items]
+        values = [
+            {column.name: getattr(item, column.name) for column in self.model.__table__.columns}
+            for item in entities
+        ]
+
+        async with self.sessionmaker() as session:
+            stmt = insert(self.model).values(values)
+            stmt = stmt.on_conflict_do_nothing(
+                index_elements=[column.name for column in self.primary_keys]
+            )
+            await session.execute(stmt)
+            await session.commit()
+
+
+    async def upsert(self, items: List[TDomain]) -> None:
+        if not items:
+            return
+
+        entities = [self.mapper.to_entity(item) for item in items]
+        values = [{column.name: getattr(item, column.name) for column in self.model.__table__.columns} for item in entities]
+
+        primary_keys = [column.name for column in self.primary_keys]
+        update_values = {column.name: getattr(insert(self.model).excluded, column.name) for column in self.model.__table__.columns if column.name not in primary_keys}
+
+        async with self.sessionmaker() as session:
+            stmt = insert(self.model).values(values)
+            stmt = stmt.on_conflict_do_update(index_elements=primary_keys, set_=update_values)
+            await session.execute(stmt)
+            await session.commit()
+
+
+    async def update(self, items: List[TDomain]) -> None:
+        if not items:
+            return
+
+        entities = [self.mapper.to_entity(item) for item in items]
+        mappings = [
+            {column.name: getattr(item, column.name) for column in self.model.__table__.columns}
+            for item in entities
+        ]
+
+        async with self.sessionmaker() as session:
+            await session.run_sync(
+                lambda sync_session: sync_session.bulk_update_mappings(self.model, mappings)
+            )
+            await session.commit()
+
+    async def get(
+        self,
+        filter: Optional[Filter] = None,
+        limit: Optional[int] = None,
+        offset: int = 0,
+        order_by: Optional[str] = None,
+        ascending: bool = True,
+    ) -> List[TDomain]:
+        async with self.sessionmaker() as session:
+            stmt = self.apply_filters(select(self.model), filter)
+            column = getattr(self.model, order_by) if order_by else self.primary_keys[0]
+            stmt = stmt.order_by(column.asc() if ascending else column.desc()).offset(offset)
+
+            if limit is not None:
+                stmt = stmt.limit(limit)
+
+            result = await session.execute(stmt)
+            return [self.mapper.to_domain(entity) for entity in result.scalars().all()]
+
+    
+    async def delete(self, items: List[TDomain]) -> None:
+        if not items:
+            return
+
+        entities = [self.mapper.to_entity(item) for item in items]
+        pk_columns = list(self.primary_keys)
+        keys = [tuple(getattr(entity, col.name) for col in pk_columns) for entity in entities]
+
+        async with self.sessionmaker() as session:
+            stmt = delete(self.model).where(
+                tuple_(*pk_columns).in_(keys)
+            )
+            await session.execute(stmt)
+            await session.commit()
+
+    async def count(self, filter: Optional[Filter] = None) -> int:
+        async with self.sessionmaker() as session:
+            stmt = self.apply_filters( select(func.count()).select_from(self.model), filter )
+            result = await session.execute(stmt)
+            return result.scalar_one()

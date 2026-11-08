@@ -56,20 +56,17 @@ drop_db() {
 
 start_api() {
   export ENV=local
-  exec "$PYTHON" -m api.main
+  exec "$PYTHON" -m main
 }
 
 start_worker() {
   export ENV=local
-  exec "$PYTHON" -m dramatiq api.prompts.tasks --processes 1 --threads 1
+  exec "$PYTHON" -m dramatiq domains.prompts.workers --processes 1 --threads 1
 }
 
 case "$ACTION" in
   create)
     create_db
-    ;;
-  clear)
-    clear_db
     ;;
   drop)
     drop_db
@@ -83,7 +80,7 @@ case "$ACTION" in
     start_worker
     ;;
   *)
-    echo "Usage: $0 [create|clear|drop|api|worker]"
+    echo "Usage: $0 [create|drop|api|worker]"
     exit 1
     ;;
 esac
