@@ -22,19 +22,19 @@ def create_tags_router(tag_manager: TagManager) -> APIRouter:
         collections = await tag_manager.get_collections(limit=limit, offset=offset, filter=filter)
         return GetCollectionsResponse(collections=collections)
 
-    @router.patch(Routes.MOVE_TAG_ITEMS_ENDPOINT, status_code=204)
-    async def move_items(req: MoveRequest):
-        if not isinstance(req.new_collection_id, int) or not isinstance(req.current_collection_id, int):
-            raise HTTPException(status_code=400, detail="Collection id must be of type int")
-        if not req.current_collection_id:
-            raise HTTPException(status_code=400, detail="Missing current_collection_id")
+    # @router.patch(Routes.MOVE_TAG_ITEMS_ENDPOINT, status_code=204)
+    # async def move_items(req: MoveRequest):
+    #     if not isinstance(req.new_collection_id, int) or not isinstance(req.current_collection_id, int):
+    #         raise HTTPException(status_code=400, detail="Collection id must be of type int")
+    #     if not req.current_collection_id:
+    #         raise HTTPException(status_code=400, detail="Missing current_collection_id")
         
-        try:
-            await tag_manager.move(set(req.item_ids), req.new_collection_id, req.current_collection_id)
-        except SereleumError as e:
-            if e.code == ErrorCode.INVALID_ARGUMENT:
-                raise HTTPException(status_code=400, detail="Item or cluster id doesn't exist")
-            raise
+    #     try:
+    #         await tag_manager.move(set(req.item_ids), req.new_collection_id, req.current_collection_id)
+    #     except SereleumError as e:
+    #         if e.code == ErrorCode.INVALID_ARGUMENT:
+    #             raise HTTPException(status_code=400, detail="Item or cluster id doesn't exist")
+    #         raise
 
     @router.patch(Routes.BASE_TAG_ENDPOINT,  status_code=204)
     async def rename_tag(collection_id: int, name: str):
