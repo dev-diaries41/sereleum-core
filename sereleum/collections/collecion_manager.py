@@ -6,8 +6,15 @@ from sereleum.collections.types import CollectionId
 
 class CollectionManager(ABC, Generic[TCollection]):
 
-    @abstractmethod
-    async def move(self, item_ids: Set[str], destination_collection_id: CollectionId, source_collection_id: Optional[CollectionId] = None) -> None: ...
+    async def move(
+        self,
+        destination_collection_id: CollectionId,
+        source_collection_id: CollectionId,
+        item_ids: Set[str] | None,
+        *,
+        select_all: bool = False,
+        excluded_item_ids: Set[str] | None = None,
+    ) -> None: ...
 
     @abstractmethod
     async def merge(self, primary_collection_id: CollectionId, secondary_collection_ids: List[CollectionId]) -> None: ...
@@ -15,11 +22,10 @@ class CollectionManager(ABC, Generic[TCollection]):
     @abstractmethod
     async def rename(self, collection_id: CollectionId, name: str) -> None: ...
 
-    async def delete(self, collection_ids: List[CollectionId]) -> None:
-        raise NotImplementedError()
+    @abstractmethod
+    async def delete(self, collection_ids: List[CollectionId]) -> None: ...
 
-    async def remove(self, collection_id: CollectionId, item_ids: Set[str]) -> None:
-        raise NotImplementedError()
+    async def remove(self, collection_id: CollectionId, item_ids: Set[str]) -> None: ...
 
     @abstractmethod
     async def get_collections(

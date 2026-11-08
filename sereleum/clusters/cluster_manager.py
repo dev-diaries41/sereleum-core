@@ -72,21 +72,33 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
         return result
 
 
-    # source_collection_id not used becaused crossref are 1:1 relationship
-    async def move(self, item_ids, destination_collection_id: str, source_collection_id: str | None = None) -> None:        
-        crossrefs = [ClusterCrossRef(item_id=item_id, cluster_id=destination_collection_id) for item_id in item_ids]
+    async def move(
+        self,
+        destination_collection_id: str,
+        source_collection_id: str,
+        item_ids: list[str] | None,
+        *,
+        select_all: bool = False,
+        excluded_item_ids: list[str] | None = None,
+    ) -> None:
         try:
-            await self.crossrefs_store.upsert(crossrefs)
+            await self.crossrefs_store.move(
+                destination_collection_id=destination_collection_id,
+                item_ids=item_ids,
+                select_all=select_all,
+                excluded_item_ids=excluded_item_ids,
+                source_collection_id=source_collection_id,
+            )
         except IntegrityError as e:
             raise SereleumError(
-                    "Foreign key violation in assign",
-                    code=ErrorCode.INVALID_ARGUMENT,
-                    details={"error": str(e)},
-                )
+                "Foreign key violation in assign",
+                code=ErrorCode.INVALID_ARGUMENT,
+                details={"error": str(e)},
+            )
+
 
     async def delete(self, collection_ids: list[str]):
         return await self.cluster_store.delete_by_ids(collection_ids)
-
 
     async def rename(self, collection_id: str, name) -> None:
         result = await self.cluster_store.get(filter={'ids': [collection_id]})
