@@ -84,46 +84,9 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
                     details={"error": str(e)},
                 )
 
+    async def delete(self, collection_ids: list[str]):
+        return await self.cluster_store.delete_by_ids(collection_ids)
 
-    async def label(self, cluster_id: str, sample_size: int) -> LLMClassificationResult:
-        result = await self.cluster_embedding_store.get([cluster_id])
-        if len(result) == 0:
-            raise ValueError("Cluster not found")
-        
-        cluster_embed = result[0]
-        crossrefs = await self.crossrefs_store.get(filter={'include_cluster_ids': [cluster_id]})
-        ids = [c.item_id for c in crossrefs]
-        query_result = await self.item_embedding_store.query(query_embed=cluster_embed.embedding, ids=ids, topK=sample_size)
-        sample_contents = [item.content for item in await self.item_store.get(filter={'ids': query_result.ids})]
-        input_prompt = self._get_labelling_prompt(cluster_id, sample_contents)
-        return self.llm.generate_json(input_prompt, LLMClassificationResult)
-        
-    
-    async def label_and_update(self, unlabelled_clusters: List[StoredClusterMetadata], sample_size: int = 10) -> int:
-        sem = asyncio.Semaphore(self.label_concurrency)
-        label_tasks = {cluster.id: self._label_with_sem(sem, cluster.id, sample_size) for cluster in unlabelled_clusters}
-        label_results = {}
-        
-        if label_tasks:
-            results = await asyncio.gather(*label_tasks.values(), return_exceptions=True)
-            label_results = dict(zip(label_tasks.keys(), results))
-        
-        labelled_clusters: list[StoredClusterMetadata] = []
-        
-        for cluster in unlabelled_clusters:
-            result = label_results[cluster.id]
-            if isinstance(result, Exception):
-                print(f"[WARNING] Error labelling {cluster.id} | Details: {result}")
-            else:
-                if result.confidence < self.label_confidence_threshold:
-                    print(f"[WARNING] Cluster {cluster.id} not labelled | Details: Below confidence threshold: confidence={result.confidence}")
-                    continue
-                cluster.label = result.label
-                labelled_clusters.append(cluster)
-
-        await self.cluster_store.update(labelled_clusters)
-        return len(labelled_clusters)
-    
 
     async def rename(self, collection_id: str, name) -> None:
         result = await self.cluster_store.get(filter={'ids': [collection_id]})
@@ -171,8 +134,57 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
             
         await self.cluster_embedding_store.update(cluster_embed_updates)
         await self.cluster_store.update(cluster_metadata_updates)
-     
 
+
+    async def label(self, cluster_id: str, sample_size: int) -> LLMClassificationResult:
+        result = await self.cluster_embedding_store.get([cluster_id])
+        if len(result) == 0:
+            raise ValueError("Cluster not found")
+        
+        cluster_embed = result[0]
+        crossrefs = await self.crossrefs_store.get(filter={'include_cluster_ids': [cluster_id]})
+        ids = [c.item_id for c in crossrefs]
+        query_result = await self.item_embedding_store.query(query_embed=cluster_embed.embedding, ids=ids, topK=sample_size)
+        sample_contents = [item.content for item in await self.item_store.get(filter={'ids': query_result.ids})]
+        input_prompt = self._get_labelling_prompt(cluster_id, sample_contents)
+        return self.llm.generate_json(input_prompt, LLMClassificationResult)
+        
+        
+    async def label_and_update(self, unlabelled_clusters: List[StoredClusterMetadata], sample_size: int = 10) -> int:
+        sem = asyncio.Semaphore(self.label_concurrency)
+        label_tasks = {cluster.id: self._label_with_sem(sem, cluster.id, sample_size) for cluster in unlabelled_clusters}
+        label_results = {}
+        
+        if label_tasks:
+            results = await asyncio.gather(*label_tasks.values(), return_exceptions=True)
+            label_results = dict(zip(label_tasks.keys(), results))
+        
+        labelled_clusters: list[StoredClusterMetadata] = []
+        
+        for cluster in unlabelled_clusters:
+            result = label_results[cluster.id]
+            if isinstance(result, Exception):
+                print(f"[WARNING] Error labelling {cluster.id} | Details: {result}")
+            else:
+                if result.confidence < self.label_confidence_threshold:
+                    print(f"[WARNING] Cluster {cluster.id} not labelled | Details: Below confidence threshold: confidence={result.confidence}")
+                    continue
+                cluster.label = result.label
+                labelled_clusters.append(cluster)
+
+        await self.cluster_store.update(labelled_clusters)
+        return len(labelled_clusters)
+        
+    
+    async def _label_with_sem(self, semaphore:  asyncio.Semaphore, cluster_id: str, sample_size: int) -> LLMClassificationResult:
+        async with semaphore:
+            return await self.label(cluster_id, sample_size)
+
+    @staticmethod
+    def _get_labelling_prompt(cluster_id: str, sample_contents: list[str]) -> str:
+        return f"""## ClusterId: {cluster_id}\n\n Cluster sample items \n\n {sample_contents}"""
+    
+        
     async def _assign(self, assignments: Assignments) -> None:        
         crossrefs = [ClusterCrossRef(item_id=item_id, cluster_id=cluster_id) for item_id, cluster_id in assignments.items()]
         try:
@@ -278,13 +290,3 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
 
     def _get_default_threshold(self, existing_clusters: List[StoredClusterMetadata]) -> float:
         return float(np.mean([(c.mean_similarity - c.std_similarity) for c in existing_clusters]))
-    
-    async def _label_with_sem(self, semaphore:  asyncio.Semaphore, cluster_id: str, sample_size: int) -> LLMClassificationResult:
-        async with semaphore:
-            return await self.label(cluster_id, sample_size)
-
-    @staticmethod
-    def _get_labelling_prompt(cluster_id: str, sample_contents: list[str]) -> str:
-        return f"""## ClusterId: {cluster_id}\n\n Cluster sample items \n\n {sample_contents}"""
-    
-        
