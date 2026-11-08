@@ -53,3 +53,11 @@ class MergeRequest(BaseModel):
 class TagRequest(BaseModel):
     tag: str | int # name or id
     item_ids: List[str]
+
+
+class DeleteTagsRequest(BaseModel):
+    collection_ids: List[int]
+
+
+class DeleteClusterRequest(BaseModel):
+    collection_ids: List[str]

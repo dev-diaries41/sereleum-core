@@ -2,7 +2,7 @@ from typing import Optional
 
 from fastapi import APIRouter, HTTPException
 
-from api.schemas.request import MergeRequest, MoveRequest
+from api.schemas.request import MergeRequest, MoveRequest, DeleteClusterRequest
 from api.schemas.response import (
     GetCountResponse,
     GetCollectionsResponse,
@@ -55,4 +55,8 @@ def create_clusters_router(cluster_manager: ClusterManager[TItem]) -> APIRouter:
         collections = await cluster_manager.get_collections(filter={'ids': [req.primary_collection_id]}, limit=1)
         return MergeResponse(merged_collection=collections[0])
 
+    @router.post(Routes.DELETE_CLUSTERS_ENDPOINT, status_code=204)
+    async def delete_clusters(req: DeleteClusterRequest):
+        await cluster_manager.delete(req.collection_ids)
+            
     return router
