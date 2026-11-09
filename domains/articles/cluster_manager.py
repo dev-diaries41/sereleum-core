@@ -1,10 +1,12 @@
 from sereleum.clusters.cluster_manager import ClusterManager
 from sereleum.data.embeds.pgvector_embed_store import PgVectorEmbeddingStore
+from sereleum.label.cluster_labeller import ClusterLabeller
 
 from domains.articles.item import Article
 from domains.articles.stores import ArticleStore, ArticleClusterStore, ArticleClusterCrossRefStore
 
 from sqlalchemy.ext.asyncio import async_sessionmaker
+
 from llm_connect.providers.llm_provider import LLMProvider
 
 
@@ -13,6 +15,7 @@ def create_cluster_manager(
         llm: LLMProvider,
         collection_name: str = 'articles'
         ):
+    labeller = ClusterLabeller(llm=llm)
     item_store = ArticleStore(sessionmaker)
     cluster_store = ArticleClusterStore(sessionmaker)
     cluster_crossref_store = ArticleClusterCrossRefStore(sessionmaker)
@@ -24,5 +27,5 @@ def create_cluster_manager(
         crossrefs_store=cluster_crossref_store,
         item_embedding_store=item_embed_store, 
         item_store=item_store,
-        llm=llm,
+        labeller=labeller,
     )
