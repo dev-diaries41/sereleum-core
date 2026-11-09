@@ -20,7 +20,12 @@ def register_workers(item_cls: type[TItem], indexer: Indexer[TItem], cluster_man
     redis_broker = get_broker()
     redis_broker.add_middleware(AsyncIO())
     redis_broker.add_middleware(CurrentMessage())
-    redis_broker.add_middleware(TimeLimit(time_limit=time_limit))    
+    time_limit_middleware = next(
+        middleware for middleware in redis_broker.middleware
+            if isinstance(middleware, TimeLimit)
+            )
+    time_limit_middleware.time_limit = time_limit
+
     dramatiq.set_broker(redis_broker)
 
     logger = getLogger("tasks", "logs/tasks.log")
@@ -34,14 +39,18 @@ def register_workers(item_cls: type[TItem], indexer: Indexer[TItem], cluster_man
         msg = CurrentMessage().get_current_message()
         job_id = msg.message_id
 
-        ## TODO: Add a check to filter outs indexed items
-        ## DB alredy ignores but doing this prevents unncessary embeddings
+        
         with open(file_path) as f:
             items = [item_cls(**p) for p in json.load(f)]
 
+        ids = [item.id for item in items]
+        unindexed_ids = set(await cluster_manager.item_store.check_unindexed_items(ids))
+        unindexed_items = [item for item in items if item.id in unindexed_ids]
+        print(f'Number of undexed items: {len(unindexed_ids)}')
+
         ## TODO: pass file_path to RedisIndexListener and update on_fail to delete file
         indexer.register_listener(RedisIndexListener[TItem](msg.message_id, redis_client))
-        await indexer.run(items)
+        await indexer.run(unindexed_items)
 
         if os.path.exists(file_path):
             os.remove(file_path)
