@@ -5,7 +5,7 @@ from smartscan.processor.types import Input
 
 from sereleum.types import Status
 from sereleum.helpers import get_index_progres_key, get_index_status_key, get_index_progress_channel
-from api.schemas.response import ProgressMessage, FailMessage, CompleteMessage, ErrorMessage
+from api.schemas.response import ProgressMessage, FailMessage, CompleteMessage, ErrorMessage, ActiveMessage
 
 
 # TODO: Use Item interface inplace of Input
@@ -16,6 +16,11 @@ class RedisIndexListener(ProcessorListener[Input]):
 
     async def on_active(self):
         await self._update_status('active')
+        await self.redis.publish(
+                get_index_progress_channel(self.job_id), 
+                ActiveMessage().model_dump_json()
+                )
+        
 
     async def on_complete(self, result):
         await self._update_status('complete')
