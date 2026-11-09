@@ -1,4 +1,3 @@
-import asyncio 
 import numpy as np
 import math
 
@@ -7,13 +6,10 @@ from sqlalchemy.exc import IntegrityError
 from numpy.typing import NDArray
 from typing import List, Dict, Generic
 
-from smartscan import Cluster, ClusterMetadata, ClusterMerges, ClusterId, StoredEmbedding, ClusterResult, Assignments
+from smartscan import Cluster, ClusterMetadata, ClusterMerges, ClusterId, StoredEmbedding, ClusterResult
 from smartscan.embeds import EmbeddingStore, generate_prototype_embedding
 from smartscan.cluster import IncrementalClusterer
 
-from llm_connect.providers.llm_provider import LLMProvider
-
-from sereleum.schemas.llm import LLMClassificationResult
 from sereleum.schemas.cluster import ClusterCrossRef, StoredClusterMetadata
 from sereleum.errors import SereleumError, ErrorCode
 from sereleum.data.stores.item_store import ItemStore
@@ -21,6 +17,7 @@ from sereleum.data.stores.clusters.cluster_store import ClusterStore
 from sereleum.data.stores.clusters.cluster_crossref_store import ClusterCrossRefStore
 from sereleum.data.types import TItem, TCollection
 from sereleum.collections.collecion_manager import CollectionManager
+from sereleum.label.cluster_labeller import ClusterLabeller
 
 class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]):
     def __init__(
@@ -30,20 +27,16 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
         cluster_embedding_store: EmbeddingStore,
         item_store: ItemStore[TItem],
         item_embedding_store: EmbeddingStore,
-        llm: LLMProvider, 
-        label_confidence_threshold: float = 0.8,
-        label_concurrency: int = 8
+        labeller: ClusterLabeller | None = None
         ): 
         self.cluster_embedding_store = cluster_embedding_store 
         self.cluster_store = cluster_store
         self.crossrefs_store = crossrefs_store 
-        self.llm = llm
-        self.label_confidence_threshold = label_confidence_threshold
-        self.label_concurrency = label_concurrency
         self.item_store = item_store
         self.item_embedding_store = item_embedding_store
+        self.labeller = labeller
 
-                
+            
     async def cluster(self, auto_label: bool = True, default_threshold: float = 0.3) -> ClusterResult:
         uncluster_embeds = await self._get_unclustered_items()
         if not uncluster_embeds: return ClusterResult()
@@ -66,9 +59,9 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
             existing_clusters=existing_clusters,
         )
         result = clusterer.cluster(uncluster_embeds)
-        unlabelled = await self._update_clusters_and_assisgn(result, set(existing_clusters.keys()))
-        if len(unlabelled) > 0 and auto_label:
-           await self.label_and_update(unlabelled)
+        unlabelled_clusters = await self._update_clusters_and_assisgn(result, set(existing_clusters.keys()))
+        if len(unlabelled_clusters) > 0 and auto_label and self.labeller:
+           await self.label(unlabelled_clusters)
         return result
 
 
@@ -149,65 +142,12 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
         await self.cluster_store.update(cluster_metadata_updates)
 
 
-    async def label(self, cluster_id: str, sample_size: int) -> LLMClassificationResult:
-        result = await self.cluster_embedding_store.get([cluster_id])
-        if len(result) == 0:
-            raise ValueError("Cluster not found")
-        
-        cluster_embed = result[0]
-        crossrefs = await self.crossrefs_store.get(filter={'include_cluster_ids': [cluster_id]})
-        ids = [c.item_id for c in crossrefs]
-        query_result = await self.item_embedding_store.query(query_embed=cluster_embed.embedding, ids=ids, topK=sample_size)
-        sample_contents = [item.content for item in await self.item_store.get(filter={'ids': query_result.ids})]
-        input_prompt = self._get_labelling_prompt(cluster_id, sample_contents)
-        return self.llm.generate_json(input_prompt, LLMClassificationResult)
-        
-        
-    async def label_and_update(self, unlabelled_clusters: List[StoredClusterMetadata], sample_size: int = 10) -> int:
-        sem = asyncio.Semaphore(self.label_concurrency)
-        label_tasks = {cluster.id: self._label_with_sem(sem, cluster.id, sample_size) for cluster in unlabelled_clusters}
-        label_results = {}
-        
-        if label_tasks:
-            results = await asyncio.gather(*label_tasks.values(), return_exceptions=True)
-            label_results = dict(zip(label_tasks.keys(), results))
-        
-        labelled_clusters: list[StoredClusterMetadata] = []
-        
-        for cluster in unlabelled_clusters:
-            result = label_results[cluster.id]
-            if isinstance(result, Exception):
-                print(f"[WARNING] Error labelling {cluster.id} | Details: {result}")
-            else:
-                if result.confidence < self.label_confidence_threshold:
-                    print(f"[WARNING] Cluster {cluster.id} not labelled | Details: Below confidence threshold: confidence={result.confidence}")
-                    continue
-                cluster.label = result.label
-                labelled_clusters.append(cluster)
-
-        await self.cluster_store.update(labelled_clusters)
-        return len(labelled_clusters)
-        
-    
-    async def _label_with_sem(self, semaphore:  asyncio.Semaphore, cluster_id: str, sample_size: int) -> LLMClassificationResult:
-        async with semaphore:
-            return await self.label(cluster_id, sample_size)
-
-    @staticmethod
-    def _get_labelling_prompt(cluster_id: str, sample_contents: list[str]) -> str:
-        return f"""## ClusterId: {cluster_id}\n\n Cluster sample items \n\n {sample_contents}"""
-    
-        
-    async def _assign(self, assignments: Assignments) -> None:        
-        crossrefs = [ClusterCrossRef(item_id=item_id, cluster_id=cluster_id) for item_id, cluster_id in assignments.items()]
-        try:
-            await self.crossrefs_store.add(crossrefs)
-        except IntegrityError as e:
-            raise SereleumError(
-                    "Foreign key violation in assign",
-                    code=ErrorCode.INVALID_ARGUMENT,
-                    details={"error": str(e)},
-                )
+    async def label(self, cluster_ids: list[str]) -> None:
+        if not self.labeller:
+            raise ValueError("Missing cluster labeller")
+        cluster_samples = {cluster_id : await self._get_cluster_samples(cluster_id) for cluster_id in cluster_ids}
+        labelled_clusters = await self.labeller.label_clusters(cluster_samples)
+        await self.cluster_store.update_labels(labelled_clusters)
 
 
     async def _assign_from_merges(self, merges: ClusterMerges) -> None:
@@ -227,7 +167,7 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
         await self.crossrefs_store.update(cross_refs)
 
     # MUST update clusters firsts before assignments!!!
-    async def _update_clusters_and_assisgn(self, result: ClusterResult, existing_clusters_ids: set[str]) -> List[StoredClusterMetadata]:
+    async def _update_clusters_and_assisgn(self, result: ClusterResult, existing_clusters_ids: set[str]) -> list[str]:
         new_cluster_metadata_updates: list[StoredClusterMetadata] = []
         existing_cluster_metadata_updates: list[StoredClusterMetadata] = []
         new_cluster_embed_updates: list[StoredEmbedding] = []
@@ -259,7 +199,7 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
         await self.cluster_embedding_store.update(existing_cluster_embed_updates)
         await self.cluster_embedding_store.add(new_cluster_embed_updates)
         await self._assign(result.assignments)
-        return unlabelled_clusters
+        return [cluster.id for cluster in unlabelled_clusters]
 
     async def _sync(self, cluster_id: ClusterId) -> tuple[StoredEmbedding, StoredClusterMetadata] | None:
         result = await self.cluster_store.get(filter={'ids': [cluster_id]})
@@ -288,7 +228,6 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
     
     async def _get_unclustered_items(self) -> Dict[str, NDArray]:
         unclustered_items_ids = await self.cluster_store.get_unclustered_item_ids()
-        print(f"Unclustered items: {len(unclustered_items_ids)}")
         if len(unclustered_items_ids) == 0:
             return {}
         unclustered_item_embeds  = await self.item_embedding_store.get(unclustered_items_ids)
@@ -303,3 +242,15 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
 
     def _get_default_threshold(self, existing_clusters: List[StoredClusterMetadata]) -> float:
         return float(np.mean([(c.mean_similarity - c.std_similarity) for c in existing_clusters]))
+
+    async def _get_cluster_samples(self, cluster_id: str, sample_size: int = 10)-> list[str]:
+        result = await self.cluster_embedding_store.get([cluster_id])
+        if len(result) == 0:
+            raise ValueError("Cluster not found")
+        
+        cluster_embed = result[0]
+        crossrefs = await self.crossrefs_store.get(filter={'include_cluster_ids': [cluster_id]})
+        ids = [c.item_id for c in crossrefs]
+        query_result = await self.item_embedding_store.query(query_embed=cluster_embed.embedding, ids=ids, topK=sample_size)
+        samples = [item.content for item in await self.item_store.get(filter={'ids': query_result.ids})]
+        return samples
