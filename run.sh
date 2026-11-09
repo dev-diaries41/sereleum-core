@@ -61,7 +61,7 @@ start_api() {
 
 start_worker() {
   export ENV=local
-  exec "$PYTHON" -m dramatiq domains.prompts.workers --processes 1 --threads 1
+  exec "$PYTHON" -m dramatiq domains.articles.workers --processes 1 --threads 1
 }
 
 case "$ACTION" in
