@@ -3,7 +3,7 @@ import os
 from time import perf_counter
 
 import dramatiq
-from dramatiq.middleware import AsyncIO, CurrentMessage
+from dramatiq.middleware import AsyncIO, CurrentMessage, TimeLimit
 
 from api.redis import redis_client, get_broker
 from api.schemas.response import FailMessage, CompleteMessage, ActiveMessage
@@ -16,10 +16,11 @@ from sereleum.data.types import TItem
 
 from sereleum.index.redis_index_listener import RedisIndexListener
 
-def register_workers(item_cls: type[TItem], indexer: Indexer[TItem], cluster_manager: ClusterManager[TItem]):
+def register_workers(item_cls: type[TItem], indexer: Indexer[TItem], cluster_manager: ClusterManager[TItem], time_limit: float = float("inf")):
     redis_broker = get_broker()
     redis_broker.add_middleware(AsyncIO())
     redis_broker.add_middleware(CurrentMessage())
+    redis_broker.add_middleware(TimeLimit(time_limit=time_limit))    
     dramatiq.set_broker(redis_broker)
 
     logger = getLogger("tasks", "logs/tasks.log")
@@ -33,21 +34,24 @@ def register_workers(item_cls: type[TItem], indexer: Indexer[TItem], cluster_man
         msg = CurrentMessage().get_current_message()
         job_id = msg.message_id
 
-        try:
-            with open(file_path) as f:
-                items = [item_cls(**p) for p in json.load(f)]
-            
-            indexer.register_listener(RedisIndexListener[TItem](msg.message_id, redis_client))
-            await indexer.run(items)
+        ## TODO: Add a check to filter outs indexed items
+        ## DB alredy ignores but doing this prevents unncessary embeddings
+        with open(file_path) as f:
+            items = [item_cls(**p) for p in json.load(f)]
 
-            cluster_worker.send(
-                index_job_id=job_id,
-                auto_label=auto_label,
-                default_threshold=default_threshold,
-            )
-        finally:
-            if os.path.exists(file_path):
-                os.remove(file_path)
+        ## TODO: pass file_path to RedisIndexListener and update on_fail to delete file
+        indexer.register_listener(RedisIndexListener[TItem](msg.message_id, redis_client))
+        await indexer.run(items)
+
+        if os.path.exists(file_path):
+            os.remove(file_path)
+
+        cluster_worker.send(
+            index_job_id=job_id,
+            auto_label=auto_label,
+            default_threshold=default_threshold,
+        )
+           
 
 
     @dramatiq.actor(max_retries=2)
