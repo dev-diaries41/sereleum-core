@@ -7,7 +7,7 @@ from dramatiq.middleware import AsyncIO, CurrentMessage, TimeLimit
 
 from api.redis import redis_client, get_broker
 from api.schemas.response import FailMessage, CompleteMessage, ActiveMessage
-from sereleum.helpers import get_cluster_status_key, get_cluster_status_channel
+from sereleum.helpers import get_cluster_status_key, get_cluster_status_channel, get_index_progress_channel, get_index_status_key
 from sereleum.logs import getLogger
 
 from sereleum.index.types import Indexer
@@ -38,6 +38,16 @@ def register_workers(item_cls: type[TItem], indexer: Indexer[TItem], cluster_man
     ):
         msg = CurrentMessage().get_current_message()
         job_id = msg.message_id
+        retries = msg.options.setdefault("retries", 0)
+
+        status_key = get_index_status_key(job_id)
+        channel = get_index_progress_channel(job_id)
+
+        if retries + 1 > 2:
+                await redis_client.set(status_key, "failed", ex=86400)
+                await redis_client.publish(channel, FailMessage(error="indexing failed").model_dump_json(), )
+                logger.error(f"indexing failed: {job_id}")
+                return
 
         
         with open(file_path) as f:
@@ -46,7 +56,7 @@ def register_workers(item_cls: type[TItem], indexer: Indexer[TItem], cluster_man
         ids = [item.id for item in items]
         unindexed_ids = set(await cluster_manager.item_store.check_unindexed_items(ids))
         unindexed_items = [item for item in items if item.id in unindexed_ids]
-        print(f'Number of undexed items: {len(unindexed_ids)}')
+        logger.info(f'Number of undexed items: {len(unindexed_ids)}')
 
         ## TODO: pass file_path to RedisIndexListener and update on_fail to delete file
         indexer.register_listener(RedisIndexListener[TItem](msg.message_id, redis_client))
