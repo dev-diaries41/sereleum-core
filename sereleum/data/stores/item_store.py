@@ -4,4 +4,4 @@ from sereleum.data.stores.store import Store
 from sereleum.data.types import TItem
 
 class ItemStore(Store[TItem], Protocol):
-    pass
+    async def check_unindexed_items(self, ids: list[str]) -> list[str]: ...

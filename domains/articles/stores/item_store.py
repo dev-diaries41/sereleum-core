@@ -1,14 +1,14 @@
 from sqlalchemy import exists, select
 
 from sereleum.data.types import Filter
-from sereleum.data.stores.postgres.base_postgres_store import BasePostgresStore
+from sereleum.data.stores.postgres.base_postgres_item_store import PostgresItemStore
 
 from domains.articles.models import ArticleModel, ArticleClusterCrossRefModel, ArticleTagCrossRefModel
 from domains.articles.item import Article
 from domains.articles.mappers import ArticleMapper
 
 
-class ArticleStore(BasePostgresStore[ArticleModel, Article]):
+class ArticleStore(PostgresItemStore[ArticleModel, Article]):
     model = ArticleModel
     mapper = ArticleMapper()
 

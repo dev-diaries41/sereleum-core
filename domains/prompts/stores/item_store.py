@@ -1,14 +1,14 @@
 from sqlalchemy import exists, select
 
 from sereleum.data.types import Filter
-from sereleum.data.stores.postgres.base_postgres_store import BasePostgresStore
+from sereleum.data.stores.postgres.base_postgres_item_store import PostgresItemStore
 
 from domains.prompts.models import PromptClusterCrossRefModel, PromptTagCrossRefModel, PromptModel
 from domains.prompts.item import Prompt
 from domains.prompts.mappers import PromptMapper
 
 
-class PromptStore(BasePostgresStore[PromptModel, Prompt]):
+class PromptStore(PostgresItemStore[PromptModel, Prompt]):
     model = PromptModel
     mapper = PromptMapper()
 
