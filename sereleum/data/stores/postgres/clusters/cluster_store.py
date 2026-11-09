@@ -1,7 +1,7 @@
 from abc import ABC
 from typing import Optional
 
-from sqlalchemy import Select, delete, select, exists, func
+from sqlalchemy import Select, delete, select, exists, func, values, update
 
 from sereleum.data.stores.postgres.base_postgres_store import BasePostgresStore
 from sereleum.schemas.cluster import StoredClusterMetadata
@@ -109,3 +109,22 @@ class PostgresClusterStore(
                 )
                 for row in result.all()
             ]
+
+        
+    async def update_labels(self, labelled_clusters: dict[str, str]) -> None:
+        if not labelled_clusters:
+            return
+
+        labels = values(
+            self.model.id,
+            self.model.label,
+        ).data(list(labelled_clusters.items()))
+
+        async with self.sessionmaker() as session:
+            stmt = (
+                update(self.model)
+                .where(self.model.id == labels.c.id)
+                .values(label=labels.c.label)
+            )
+            await session.execute(stmt)
+            await session.commit()
