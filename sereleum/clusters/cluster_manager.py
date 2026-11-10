@@ -41,20 +41,9 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
     async def cluster(self, auto_label: bool = True, default_threshold: float = 0.3) -> ClusterResult:
         uncluster_embeds = await self._get_unclustered_items()
         if not uncluster_embeds: return ClusterResult()
-        all_meta = await self.cluster_store.get()
-        all_cluster_embeds = await self.cluster_embedding_store.get()
-        existing_clusters = { emb.item_id: Cluster(
-            prototype_id=emb.item_id,
-            embedding=emb.embedding,
-            metadata=ClusterMetadata(
-                prototype_size=meta.prototype_size,
-                mean_similarity=meta.mean_similarity,
-                std_similarity=meta.std_similarity,
-                label=meta.label
-            )
-        ) for emb, meta in zip(all_cluster_embeds, all_meta)}
+        existing_clusters = await self._get_existing_clusters()
         ## TODO: sample run to get default threshold if existing clusters dont exist
-        threshold = self._get_default_threshold(all_meta) if existing_clusters else default_threshold
+        threshold = self._get_default_threshold(existing_clusters) if existing_clusters else default_threshold
         clusterer = IncrementalClusterer(
             default_threshold=threshold,
             existing_clusters=existing_clusters,
@@ -272,8 +261,8 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
         new_std_sim = math.sqrt(np.mean([(float(sim) - new_mean_sim)**2 for sim in sims]))
         return new_protoype_embed, new_mean_sim, new_std_sim
 
-    def _get_default_threshold(self, existing_clusters: List[StoredClusterMetadata]) -> float:
-        return float(np.mean([(c.mean_similarity - c.std_similarity) for c in existing_clusters]))
+    def _get_default_threshold(self, existing_clusters: dict[ClusterId, Cluster]) -> float:
+        return float(np.mean([(c.metadata.mean_similarity - c.metadata.std_similarity) for c in existing_clusters.values()]))
 
     async def _get_cluster_samples(self, cluster_id: str, sample_size: int = 10)-> list[str]:
         result = await self.cluster_embedding_store.get([cluster_id])
@@ -290,3 +279,19 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
     @staticmethod
     def _generate_id() -> str:
         return uuid.uuid4().hex
+
+    async def _get_existing_clusters(self) -> dict[ClusterId, Cluster]:
+        all_meta = await self.cluster_store.get()
+        all_cluster_embeds = {emb.item_id : emb for emb in await self.cluster_embedding_store.get()}
+        existing_clusters = { meta.id: Cluster(
+            prototype_id=meta.id,
+            embedding=all_cluster_embeds[meta.id].embedding,
+            metadata=ClusterMetadata(
+                prototype_size=meta.prototype_size,
+                mean_similarity=meta.mean_similarity,
+                std_similarity=meta.std_similarity,
+                label=meta.label
+                )
+            ) for meta in all_meta
+        }
+        return existing_clusters
