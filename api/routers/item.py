@@ -50,7 +50,7 @@ def create_items_router(
 
     @router.post(Routes.QUERY_ITEMS_ENDPOINT, response_model=GetItemsResponse[item_type])
     async def query_items(req: QueryItemsRequest):
-        embedding = await run_in_threadpool(text_embedder.embed, req.query)[0]
+        embedding = (await run_in_threadpool(text_embedder.embed, req.query))[0]
 
         ids = None
         if req.cluster_ids:

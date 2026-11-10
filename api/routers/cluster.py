@@ -64,7 +64,7 @@ def create_clusters_router(
 
     @router.post(Routes.CREATE_CLUSTER_ENDPOINT, response_model=CreateClusterResponse)
     async def create_cluster(req: CreateClusterRequest):
-        embed = await run_in_threadpool(text_embedder.embed, req.seed)[0]
+        embed = (await run_in_threadpool(text_embedder.embed, req.seed))[0]
         cluster_id = await cluster_manager.create(req.name, embed)
         return CreateClusterResponse(cluster_id=cluster_id)
             
