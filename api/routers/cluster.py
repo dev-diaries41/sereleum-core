@@ -44,7 +44,19 @@ def create_clusters_router(
 
     @router.patch(Routes.BASE_CLUSTER_ENDPOINT,  status_code=204)
     async def rename_cluster(collection_id: str, name: str):
-        await cluster_manager.rename(collection_id, name)
+        try:
+            await cluster_manager.rename(collection_id, name)
+        except SereleumError as e:
+            if e.code == ErrorCode.DUPLICATE_NAME:
+                raise HTTPException(
+                    status_code=400, 
+                    detail={
+                    "code": ErrorCode.DUPLICATE_NAME.value,
+                    "message": "Cluster label already exists"
+                    }
+                )
+            raise e
+
 
     @router.get(Routes.COUNT_CLUSTERS_ENDPOINT, response_model=GetCountResponse)
     async def count_clusters():

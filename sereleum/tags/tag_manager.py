@@ -1,6 +1,8 @@
 
 from typing import Generic
 
+from sqlalchemy.exc import IntegrityError
+
 from sereleum.collections.types import CollectionId
 from sereleum.errors import SereleumError, ErrorCode
 from sereleum.collections.collecion_manager import CollectionManager
@@ -42,10 +44,18 @@ class TagManager(Generic[TCollection], CollectionManager[TCollection]):
     async def rename(self, collection_id: int, name) -> None:
         result = await self.tag_store.get(filter={'ids': [collection_id]})
         if(len(result)) == 0:
-            raise SereleumError( "Cluster not found", code=ErrorCode.CLUSTER_NOT_FOUND)
+            raise SereleumError( "Tag not found", code=ErrorCode.CLUSTER_NOT_FOUND)
         metadata=result[0]
         metadata.label = name
-        await self.tag_store.update([metadata])
+
+        try:
+            await self.tag_store.update([metadata])
+        except IntegrityError as e:
+            raise SereleumError(
+                    "Tag name already exists",
+                    code=ErrorCode.DUPLICATE_NAME,
+                    details={"error": str(e)},
+                ) from None
 
     async def get_collections(
         self,

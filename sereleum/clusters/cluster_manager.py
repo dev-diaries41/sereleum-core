@@ -98,7 +98,16 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
             )
         metadata=result[0]
         metadata.label = name
-        await self.cluster_store.update([metadata])
+
+        try:
+            await self.cluster_store.update([metadata])
+        except IntegrityError as e:
+            raise SereleumError(
+                    "Cluster label already exists",
+                    code=ErrorCode.DUPLICATE_NAME,
+                    details={"error": str(e)},
+                ) from None
+
 
     async def get_collections(
         self,

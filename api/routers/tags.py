@@ -38,7 +38,17 @@ def create_tags_router(tag_manager: TagManager) -> APIRouter:
 
     @router.patch(Routes.BASE_TAG_ENDPOINT,  status_code=204)
     async def rename_tag(collection_id: int, name: str):
-        await tag_manager.rename(collection_id, name)
+        try:
+            await tag_manager.rename(collection_id, name)
+        except SereleumError as e:
+            if e.code == ErrorCode.DUPLICATE_NAME:
+                raise HTTPException(
+                    status_code=400, 
+                    detail={
+                    "code": ErrorCode.DUPLICATE_NAME.value,
+                    "message": "Tag name already exists"
+                    }
+                )
 
     @router.get(Routes.COUNT_TAGS_ENDPOINT, response_model=GetCountResponse)
     async def count_tags():
