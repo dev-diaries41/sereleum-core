@@ -44,7 +44,7 @@ class TagManager(Generic[TCollection], CollectionManager[TCollection]):
     async def rename(self, collection_id: int, name) -> None:
         result = await self.tag_store.get(filter={'ids': [collection_id]})
         if(len(result)) == 0:
-            raise SereleumError( "Tag not found", code=ErrorCode.CLUSTER_NOT_FOUND)
+            raise SereleumError( "Tag not found", code=ErrorCode.COLLECTION_NOT_FOUND)
         metadata=result[0]
         metadata.label = name
 

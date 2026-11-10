@@ -94,7 +94,7 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
         if(len(result)) == 0:
             raise SereleumError(
                 "Cluster not found",
-                code=ErrorCode.CLUSTER_NOT_FOUND,
+                code=ErrorCode.COLLECTION_NOT_FOUND,
             )
         metadata=result[0]
         metadata.label = name
@@ -185,7 +185,7 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
         except IntegrityError as e:
             raise SereleumError(
                     "Foreign key violation in assign",
-                    code=ErrorCode.ITEM_OR_CLUSTER_NOT_FOUND,
+                    code=ErrorCode.ITEM_OR_COLLECTION_NOT_FOUND,
                     details={"error": str(e)},
                 ) from None
 
