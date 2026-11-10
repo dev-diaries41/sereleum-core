@@ -120,3 +120,8 @@ class BasePostgresStore(Generic[TEntity, TDomain], ABC):
             stmt = self.apply_filters( select(func.count()).select_from(self.model), filter )
             result = await session.execute(stmt)
             return result.scalar_one()
+
+    async def clear(self) -> None:
+        async with self.sessionmaker() as session:
+            await session.execute(delete(self.model))
+            await session.commit()
