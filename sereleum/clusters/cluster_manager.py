@@ -200,7 +200,7 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
         existing_cluster_metadata_updates: list[StoredClusterMetadata] = []
         new_cluster_embed_updates: list[StoredEmbedding] = []
         existing_cluster_embed_updates: list[StoredEmbedding] = []
-        unlabelled_clusters: list[StoredClusterMetadata] = []
+        unlabelled_cluster_ids: list[str] = []
 
         for cluster in result.clusters.values():
             updated_meta = StoredClusterMetadata(
@@ -220,14 +220,14 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
                 new_cluster_metadata_updates.append(updated_meta)
             
             if not cluster.metadata.label:
-                unlabelled_clusters.append(updated_meta)
+                unlabelled_cluster_ids.append(updated_meta.id)
              
         await self.cluster_store.update(existing_cluster_metadata_updates)
         await self.cluster_store.add(new_cluster_metadata_updates)
         await self.cluster_embedding_store.update(existing_cluster_embed_updates)
         await self.cluster_embedding_store.add(new_cluster_embed_updates)
         await self._assign(result.assignments)
-        return [cluster.id for cluster in unlabelled_clusters]
+        return unlabelled_cluster_ids
 
     async def _sync(self, cluster_id: ClusterId) -> tuple[StoredEmbedding, StoredClusterMetadata] | None:
         result = await self.cluster_store.get(filter={'ids': [cluster_id]})
