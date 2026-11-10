@@ -7,7 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from numpy.typing import NDArray
 from typing import List, Dict, Generic
 
-from smartscan import Cluster, ClusterMetadata, ClusterMerges, ClusterId, StoredEmbedding, ClusterResult
+from smartscan import Cluster, ClusterMetadata, ClusterMerges, ClusterId, StoredEmbedding, ClusterResult, Assignments
 from smartscan.embeds import EmbeddingStore, generate_prototype_embedding
 from smartscan.cluster import IncrementalClusterer
 
@@ -93,7 +93,7 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
 
 
     async def delete(self, collection_ids: list[str]):
-        return await self.cluster_store.delete_by_ids(collection_ids)
+        await self.cluster_store.delete_by_ids(collection_ids)
 
     async def rename(self, collection_id: str, name) -> None:
         result = await self.cluster_store.get(filter={'ids': [collection_id]})
@@ -164,6 +164,18 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
         await self.cluster_embedding_store.add([cluster_embed])
         return cluster_meta.id
 
+
+    async def _assign(self, assignments: Assignments) -> None:        
+        crossrefs = [ClusterCrossRef(item_id=item_id, cluster_id=cluster_id) for item_id, cluster_id in assignments.items()]
+        try:
+            await self.crossrefs_store.upsert(crossrefs)
+        except IntegrityError as e:
+            print(e)
+            raise SereleumError(
+                    "Foreign key violation in assign",
+                    code=ErrorCode.INVALID_ARGUMENT,
+                    details={"error": str(e)},
+                )
 
     async def _assign_from_merges(self, merges: ClusterMerges) -> None:
         all_target_cluster_ids = [cid for targets in merges.values() for cid in targets]
