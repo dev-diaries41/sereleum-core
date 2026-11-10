@@ -148,7 +148,7 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
 
     async def label(self, cluster_ids: list[str]) -> None:
         if not self.labeller:
-            raise ValueError("Missing cluster labeller")
+             raise SereleumError( "Missing cluster labeller", code=ErrorCode.MISSING_LABELLER)
         cluster_samples = {cluster_id : await self._get_cluster_samples(cluster_id) for cluster_id in cluster_ids}
         labelled_clusters = await self.labeller.label_clusters(cluster_samples)
         await self.cluster_store.update_labels(labelled_clusters)
