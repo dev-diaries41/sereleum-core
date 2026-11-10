@@ -65,6 +65,10 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
            await self.label(unlabelled_clusters)
         return result
 
+    async def rebuild_clusters(self, auto_label: bool = True, default_threshold: float = 0.3) -> ClusterResult:
+        await self.cluster_store.clear()
+        await self.cluster_embedding_store.clear()
+        return await self.cluster(auto_label, default_threshold)
 
     async def move(
         self,
