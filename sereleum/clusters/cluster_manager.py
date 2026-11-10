@@ -169,7 +169,7 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
         except IntegrityError as e:
             raise SereleumError(
                     "Foreign key violation in assign",
-                    code=ErrorCode.INVALID_ARGUMENT,
+                    code=ErrorCode.ITEM_OR_CLUSTER_NOT_FOUND,
                     details={"error": str(e)},
                 ) from None
 
