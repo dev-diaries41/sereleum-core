@@ -157,19 +157,21 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
         await self.cluster_store.add([cluster_meta])
         await self.cluster_embedding_store.add([cluster_embed])
         return cluster_meta.id
-
+   
+    async def clear(self):
+        await self.cluster_store.clear()
+        await self.cluster_embedding_store.clear()
 
     async def _assign(self, assignments: Assignments) -> None:        
         crossrefs = [ClusterCrossRef(item_id=item_id, cluster_id=cluster_id) for item_id, cluster_id in assignments.items()]
         try:
             await self.crossrefs_store.upsert(crossrefs)
         except IntegrityError as e:
-            print(e)
             raise SereleumError(
                     "Foreign key violation in assign",
                     code=ErrorCode.INVALID_ARGUMENT,
                     details={"error": str(e)},
-                )
+                ) from None
 
     async def _assign_from_merges(self, merges: ClusterMerges) -> None:
         all_target_cluster_ids = [cid for targets in merges.values() for cid in targets]
