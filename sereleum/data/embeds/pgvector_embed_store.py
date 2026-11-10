@@ -263,3 +263,11 @@ class PgVectorEmbeddingStore(EmbeddingStore):
             stmt = select(func.count()).select_from(self._table)
             result = await session.execute(stmt)
             return result.scalar_one()
+
+    async def clear(self) -> None:
+        await self._init()
+
+        async with self._write_lock:
+            async with self.sessionmaker() as session:
+                await session.execute(delete(self._table))
+                await session.commit()
