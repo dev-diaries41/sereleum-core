@@ -2,10 +2,9 @@ from datetime import datetime, timezone
 from pydantic import Field
 from typing import Optional, Dict
 
-from sereleum.schemas.item import Item, ItemsOverviewInfo
+from sereleum.schemas.item import DocItem, ItemsOverviewInfo
 
-class Prompt(Item):
-    content: str
+class Prompt(DocItem):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     tokens: Optional[int] = None

@@ -3,8 +3,9 @@ from pydantic import BaseModel
 from typing import List 
 from sereleum.schemas.collection import BaseCollection
 
-class Item(BaseModel):
+class DocItem(BaseModel):
     id: str
+    content: str
 
 class ItemsOverviewInfo(BaseModel):
     total_items: int
