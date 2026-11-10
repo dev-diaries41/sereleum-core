@@ -74,3 +74,6 @@ class RemoveTagRequest(BaseModel):
     excluded_item_ids: Optional[List[str]] = None
     select_all: bool = False
 
+class CreateClusterRequest(BaseModel):
+    name: str
+    seed: str

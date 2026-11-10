@@ -52,3 +52,6 @@ class GetCollectionsResponse(BaseModel):
 
 class MergeResponse(BaseModel):
     merged_collection: BaseCollection
+
+class CreateClusterResponse(BaseModel):
+    cluster_id: str

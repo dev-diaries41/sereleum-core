@@ -43,7 +43,7 @@ def create_app(
 
     app.include_router(create_overview_router(tag_manager, cluster_manager))
     app.include_router(create_items_router(item_type, cluster_manager,text_embedder, index_worker))
-    app.include_router(create_clusters_router(cluster_manager))
+    app.include_router(create_clusters_router(cluster_manager, text_embedder))
     app.include_router(create_tags_router(tag_manager))
     app.include_router(create_events_router())
     return app

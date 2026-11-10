@@ -1,20 +1,23 @@
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException
+from fastapi.concurrency import run_in_threadpool
 
-from api.schemas.request import MergeRequest, MoveRequest, DeleteClusterRequest
-from api.schemas.response import (
-    GetCountResponse,
-    GetCollectionsResponse,
-    MergeResponse,
-)
+from smartscan import TextEmbeddingProvider
+
+from api.routers.routes import Routes
+from api.schemas.request import MergeRequest, MoveRequest, DeleteClusterRequest, CreateClusterRequest
+from api.schemas.response import GetCountResponse, GetCollectionsResponse, MergeResponse, CreateClusterResponse
+
 from sereleum.errors import SereleumError, ErrorCode
 from sereleum.clusters.cluster_manager import ClusterManager
 from sereleum.data.types import TItem
-from api.routers.routes import Routes
 
 
-def create_clusters_router(cluster_manager: ClusterManager[TItem]) -> APIRouter:
+def create_clusters_router(
+        cluster_manager: ClusterManager[TItem],
+        text_embedder: TextEmbeddingProvider,
+        ) -> APIRouter:
     router = APIRouter()
 
     @router.patch(Routes.MOVE_CLUSTER_ITEMS_ENDPOINT,  status_code=204)
@@ -58,5 +61,11 @@ def create_clusters_router(cluster_manager: ClusterManager[TItem]) -> APIRouter:
     @router.post(Routes.DELETE_CLUSTERS_ENDPOINT, status_code=204)
     async def delete_clusters(req: DeleteClusterRequest):
         await cluster_manager.delete(req.collection_ids)
+
+    @router.post(Routes.CREATE_CLUSTER_ENDPOINT, response_model=CreateClusterResponse)
+    async def create_cluster(req: CreateClusterRequest):
+        embed = await run_in_threadpool(text_embedder.embed, req.seed)[0]
+        cluster_id = await cluster_manager.create(req.name, embed)
+        return CreateClusterResponse(cluster_id=cluster_id)
             
     return router
