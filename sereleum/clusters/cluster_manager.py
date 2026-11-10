@@ -94,6 +94,7 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
 
     async def delete(self, collection_ids: list[str]):
         await self.cluster_store.delete_by_ids(collection_ids)
+        await self.cluster_embedding_store.delete(collection_ids)
 
     async def rename(self, collection_id: str, name) -> None:
         result = await self.cluster_store.get(filter={'ids': [collection_id]})
