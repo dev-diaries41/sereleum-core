@@ -1,5 +1,6 @@
 import numpy as np
 import math
+import uuid
 
 from sqlalchemy.exc import IntegrityError
 
@@ -150,6 +151,20 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
         await self.cluster_store.update_labels(labelled_clusters)
 
 
+    async def create(self, name: str, seed: NDArray) -> str:
+        cluster_embed = StoredEmbedding(item_id=self._generate_id(), embedding=seed)
+        cluster_meta = StoredClusterMetadata(
+            id=cluster_embed.item_id,
+            label=name,
+            prototype_size=1,
+            std_similarity=0.0,
+            mean_similarity=0.3 # default threshold
+        )
+        await self.cluster_store.add([cluster_meta])
+        await self.cluster_embedding_store.add([cluster_embed])
+        return cluster_meta.id
+
+
     async def _assign_from_merges(self, merges: ClusterMerges) -> None:
         all_target_cluster_ids = [cid for targets in merges.values() for cid in targets]
         cross_refs: list[ClusterCrossRef] = []
@@ -254,3 +269,7 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
         query_result = await self.item_embedding_store.query(query_embed=cluster_embed.embedding, ids=ids, topK=sample_size)
         samples = [item.content for item in await self.item_store.get(filter={'ids': query_result.ids})]
         return samples
+
+    @staticmethod
+    def _generate_id() -> str:
+        return uuid.uuid4().hex
