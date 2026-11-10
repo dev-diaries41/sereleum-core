@@ -146,17 +146,24 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
 
 
     async def create(self, name: str, seed: NDArray) -> str:
-        cluster_embed = StoredEmbedding(item_id=self._generate_id(), embedding=seed)
-        cluster_meta = StoredClusterMetadata(
-            id=cluster_embed.item_id,
-            label=name,
-            prototype_size=1,
-            std_similarity=0.0,
-            mean_similarity=0.3 # default threshold
-        )
-        await self.cluster_store.add([cluster_meta])
-        await self.cluster_embedding_store.add([cluster_embed])
-        return cluster_meta.id
+        try:
+            cluster_embed = StoredEmbedding(item_id=self._generate_id(), embedding=seed)
+            cluster_meta = StoredClusterMetadata(
+                id=cluster_embed.item_id,
+                label=name,
+                prototype_size=1,
+                std_similarity=0.0,
+                mean_similarity=0.3 # default threshold
+            )
+            await self.cluster_store.add([cluster_meta])
+            await self.cluster_embedding_store.add([cluster_embed])
+            return cluster_meta.id
+        except IntegrityError as e:
+            raise SereleumError(
+                    "Cluster label already exists",
+                    code=ErrorCode.DUPLICATE_NAME,
+                    details={"error": str(e)},
+                ) from None
    
     async def clear(self):
         await self.cluster_store.clear()
