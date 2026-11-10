@@ -1,6 +1,10 @@
 from dramatiq import Actor
+
 from typing import Type
+
 from fastapi import  UploadFile, File, Form, APIRouter
+from fastapi.concurrency import run_in_threadpool
+
 from tempfile import NamedTemporaryFile
 
 from api.routers.routes import Routes
@@ -46,7 +50,8 @@ def create_items_router(
 
     @router.post(Routes.QUERY_ITEMS_ENDPOINT, response_model=GetItemsResponse[item_type])
     async def query_items(req: QueryItemsRequest):
-        embedding = text_embedder.embed(req.query)[0]
+        embedding = await run_in_threadpool(text_embedder.embed, req.query)[0]
+
         ids = None
         if req.cluster_ids:
             crossrefs = await cluster_manager.crossrefs_store.get(
