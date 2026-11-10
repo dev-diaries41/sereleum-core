@@ -11,10 +11,10 @@ from llm_connect.providers.llm_provider import LLMProvider
 
 def create_cluster_manager(
         sessionmaker: async_sessionmaker, 
-        llm: LLMProvider,
+        llm: LLMProvider | None = None,
         collection_name: str = 'prompts'
         ):
-    labeller = ClusterLabeller(llm=llm)
+    labeller = ClusterLabeller(llm=llm) if llm else None
     item_store = PromptStore(sessionmaker)
     cluster_store = PromptClusterStore(sessionmaker)
     cluster_crossref_store = PromptClusterCrossRefStore(sessionmaker)

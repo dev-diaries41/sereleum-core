@@ -12,10 +12,10 @@ from llm_connect.providers.llm_provider import LLMProvider
 
 def create_cluster_manager(
         sessionmaker: async_sessionmaker, 
-        llm: LLMProvider,
+        llm: LLMProvider | None = None,
         collection_name: str = 'articles'
         ):
-    labeller = ClusterLabeller(llm=llm)
+    labeller = ClusterLabeller(llm=llm) if llm else None
     item_store = ArticleStore(sessionmaker)
     cluster_store = ArticleClusterStore(sessionmaker)
     cluster_crossref_store = ArticleClusterCrossRefStore(sessionmaker)
