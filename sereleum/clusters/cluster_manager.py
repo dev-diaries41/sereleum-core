@@ -242,12 +242,11 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
         result = await self.cluster_store.get(filter={'ids': [cluster_id]})
         if len(result) == 0:
             return None
-        crossrefs = await self.crossrefs_store.get(filter={'include_cluster_ids': [cluster_id]})
+        item_ids = await self.item_store.items.get_ids(filter={'cluster_ids': [cluster_id]})
         
-        if len(crossrefs) == 0:
+        if len(item_ids) == 0:
             await self.cluster_store.delete_by_ids([cluster_id])
             return None
-        item_ids = [c.item_id for c in crossrefs]
 
         embeds = await self.item_store.embeds.get(ids=item_ids)
         new_protoype_embed, new_mean_sim, new_std_sim = self._compute_cluster_metrics(np.stack([e.embedding for e in embeds], axis=0))
@@ -286,10 +285,9 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
             raise ValueError("Cluster not found")
         
         cluster_embed = result[0]
-        crossrefs = await self.crossrefs_store.get(filter={'include_cluster_ids': [cluster_id]})
-        ids = [c.item_id for c in crossrefs]
+        ids = await self.item_store.items.get_ids(filter={'cluster_ids': [cluster_id]})
         query_result = await self.item_store.embeds.query(query_embed=cluster_embed.embedding, ids=ids, topK=sample_size)
-        samples = [item.content for item in await self.item_store.get(filter={'ids': query_result.ids})]
+        samples = [item.content for item in await self.item_store.items.get(filter={'ids': query_result.ids})]
         return samples
 
     @staticmethod
