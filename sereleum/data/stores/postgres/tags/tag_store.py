@@ -1,8 +1,8 @@
 from abc import ABC
-from typing import Generic, Optional
+from typing import Optional
 
 
-from sqlalchemy import Select, delete, select, func, literal, String, cast
+from sqlalchemy import Select, delete, select, func, literal, String, cast, true
 from sqlalchemy.dialects.postgresql import insert, ARRAY
 
 from sereleum.collections.types import CollectionId
@@ -202,11 +202,13 @@ class PostgresTagStore(
                     cast(literal(item_ids), ARRAY(String))
                 ).table_valued("item_id").render_derived()
 
-            stmt = (
+                stmt = (
                 insert(self.tag_crossref_model)
                 .from_select(
                     ["item_id", "tag_id"],
-                    select(items.c.item_id, tag_stmt.c.id),
+                    select(items.c.item_id, tag_stmt.c.id).select_from(
+                        items.join(tag_stmt, true())
+                    ),
                 )
                 .on_conflict_do_nothing(
                     index_elements=[
