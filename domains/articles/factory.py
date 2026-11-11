@@ -15,7 +15,7 @@ from llm_connect.providers.llm_provider import LLMProvider
 from smartscan.providers import TextEmbeddingProvider
 
 
-def create_item_embed_store(sessionmaker):
+def create_item_embed_store(sessionmaker:  async_sessionmaker):
     return ItemEmbedStore(
         items= ArticleStore(sessionmaker),
         embeds=PgVectorEmbeddingStore(name=f'articles_embeds', sessionmaker=sessionmaker)
