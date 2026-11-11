@@ -8,13 +8,13 @@ from numpy.typing import NDArray
 from typing import List, Dict, Generic
 
 from smartscan import Cluster, ClusterMetadata, ClusterMerges, ClusterId, StoredEmbedding, ClusterResult, Assignments
-from smartscan.embeds import EmbeddingStore, generate_prototype_embedding
+from smartscan.embeds import generate_prototype_embedding
 from smartscan.cluster import IncrementalClusterer
 
 from sereleum.schemas.cluster import ClusterCrossRef, StoredClusterMetadata
 from sereleum.errors import SereleumError, ErrorCode
-from sereleum.data.stores.clusters.cluster_store import ClusterStore
 from sereleum.data.stores.clusters.cluster_crossref_store import ClusterCrossRefStore
+from sereleum.data.stores.clusters.cluster_embed_store import ClusterEmbedStore
 from sereleum.data.types import TItem, TCollection
 from sereleum.collections.collecion_manager import CollectionManager
 from sereleum.label.cluster_labeller import ClusterLabeller
@@ -23,13 +23,11 @@ from sereleum.data.stores.item_embed_store import ItemEmbedStore
 class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]):
     def __init__(
         self, 
-        cluster_store: ClusterStore,
+        cluster_store: ClusterEmbedStore,
         crossrefs_store: ClusterCrossRefStore,
-        cluster_embedding_store: EmbeddingStore,
         item_store: ItemEmbedStore[TItem],
         labeller: ClusterLabeller | None = None
         ): 
-        self.cluster_embedding_store = cluster_embedding_store 
         self.cluster_store = cluster_store
         self.crossrefs_store = crossrefs_store 
         self.item_store = item_store
@@ -53,8 +51,7 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
         return result
 
     async def rebuild_clusters(self, auto_label: bool = True, default_threshold: float = 0.3) -> ClusterResult:
-        await self.cluster_store.clear()
-        await self.cluster_embedding_store.clear()
+        await self.clear()
         return await self.cluster(auto_label, default_threshold)
 
     async def move(
@@ -84,11 +81,11 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
 
 
     async def delete(self, collection_ids: list[str]):
-        await self.cluster_store.delete_by_ids(collection_ids)
-        await self.cluster_embedding_store.delete(collection_ids)
+        await self.cluster_store.clusters.delete_by_ids(collection_ids)
+        await self.cluster_store.embeds.delete(collection_ids)
 
     async def rename(self, collection_id: str, name) -> None:
-        result = await self.cluster_store.get(filter={'ids': [collection_id]})
+        result = await self.cluster_store.clusters.get(filter={'ids': [collection_id]})
         if(len(result)) == 0:
             raise SereleumError(
                 "Cluster not found",
@@ -98,7 +95,7 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
         metadata.label = name
 
         try:
-            await self.cluster_store.update([metadata])
+            await self.cluster_store.clusters.update([metadata])
         except IntegrityError as e:
             raise SereleumError(
                     "Cluster label already exists",
@@ -115,7 +112,7 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
         order_by = None,
         ascending = False
     ) -> List[TCollection]:
-       return await self.cluster_store.get_collections(
+       return await self.cluster_store.clusters.get_collections(
             filter=filter,
             limit=limit,
             offset=offset,
@@ -128,8 +125,8 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
         merges: ClusterMerges = {primary_collection_id: secondary_collection_ids}
         await self._assign_from_merges(merges)
         merged_clustered_ids = {cid for targets in merges.values() for cid in targets}
-        await self.cluster_embedding_store.delete(list(merged_clustered_ids)) 
-        await self.cluster_store.delete_by_ids(list(merged_clustered_ids)) 
+        await self.cluster_store.embeds.delete(list(merged_clustered_ids)) 
+        await self.cluster_store.clusters.delete_by_ids(list(merged_clustered_ids)) 
 
         cluster_metadata_updates: list[StoredClusterMetadata] = []
         cluster_embed_updates: list[StoredEmbedding] = []
@@ -140,8 +137,8 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
                 cluster_embed_updates.append(stored_embed)
                 cluster_metadata_updates.append(meta)
             
-        await self.cluster_embedding_store.update(cluster_embed_updates)
-        await self.cluster_store.update(cluster_metadata_updates)
+        await self.cluster_store.embeds.update(cluster_embed_updates)
+        await self.cluster_store.clusters.update(cluster_metadata_updates)
 
 
     async def label(self, cluster_ids: list[str]) -> None:
@@ -149,7 +146,7 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
              raise SereleumError( "Missing cluster labeller", code=ErrorCode.MISSING_LABELLER)
         cluster_samples = {cluster_id : await self._get_cluster_samples(cluster_id) for cluster_id in cluster_ids}
         labelled_clusters = await self.labeller.label_clusters(cluster_samples)
-        await self.cluster_store.update_labels(labelled_clusters)
+        await self.cluster_store.clusters.update_labels(labelled_clusters)
 
 
     async def create(self, name: str, seed: NDArray) -> str:
@@ -162,8 +159,8 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
                 std_similarity=0.0,
                 mean_similarity=0.3 # default threshold
             )
-            await self.cluster_store.add([cluster_meta])
-            await self.cluster_embedding_store.add([cluster_embed])
+            await self.cluster_store.clusters.add([cluster_meta])
+            await self.cluster_store.embeds.add([cluster_embed])
             return cluster_meta.id
         except IntegrityError as e:
             raise SereleumError(
@@ -173,8 +170,8 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
                 ) from None
    
     async def clear(self):
-        await self.cluster_store.clear()
-        await self.cluster_embedding_store.clear()
+        await self.cluster_store.clusters.clear()
+        await self.cluster_store.embeds.clear()
 
     async def _assign(self, assignments: Assignments) -> None:        
         crossrefs = [ClusterCrossRef(item_id=item_id, cluster_id=cluster_id) for item_id, cluster_id in assignments.items()]
@@ -231,21 +228,21 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
             if not cluster.metadata.label:
                 unlabelled_cluster_ids.append(updated_meta.id)
              
-        await self.cluster_store.update(existing_cluster_metadata_updates)
-        await self.cluster_store.add(new_cluster_metadata_updates)
-        await self.cluster_embedding_store.update(existing_cluster_embed_updates)
-        await self.cluster_embedding_store.add(new_cluster_embed_updates)
+        await self.cluster_store.clusters.update(existing_cluster_metadata_updates)
+        await self.cluster_store.clusters.add(new_cluster_metadata_updates)
+        await self.cluster_store.embeds.update(existing_cluster_embed_updates)
+        await self.cluster_store.embeds.add(new_cluster_embed_updates)
         await self._assign(result.assignments)
         return unlabelled_cluster_ids
 
     async def _sync(self, cluster_id: ClusterId) -> tuple[StoredEmbedding, StoredClusterMetadata] | None:
-        result = await self.cluster_store.get(filter={'ids': [cluster_id]})
+        result = await self.cluster_store.clusters.get(filter={'ids': [cluster_id]})
         if len(result) == 0:
             return None
         item_ids = await self.item_store.items.get_ids(filter={'cluster_ids': [cluster_id]})
         
         if len(item_ids) == 0:
-            await self.cluster_store.delete_by_ids([cluster_id])
+            await self.cluster_store.clusters.delete_by_ids([cluster_id])
             return None
 
         embeds = await self.item_store.embeds.get(ids=item_ids)
@@ -263,7 +260,7 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
         return stored_embed, new_meta
     
     async def _get_unclustered_items(self) -> Dict[str, NDArray]:
-        unclustered_items_ids = await self.cluster_store.get_unclustered_item_ids()
+        unclustered_items_ids = await self.cluster_store.clusters.get_unclustered_item_ids()
         if len(unclustered_items_ids) == 0:
             return {}
         unclustered_item_embeds  = await self.item_store.embeds.get(unclustered_items_ids)
@@ -280,7 +277,7 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
         return float(np.mean([(c.metadata.mean_similarity - c.metadata.std_similarity) for c in existing_clusters.values()]))
 
     async def _get_cluster_samples(self, cluster_id: str, sample_size: int = 10)-> list[str]:
-        result = await self.cluster_embedding_store.get([cluster_id])
+        result = await self.cluster_store.embeds.get([cluster_id])
         if len(result) == 0:
             raise ValueError("Cluster not found")
         
@@ -295,8 +292,8 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
         return uuid.uuid4().hex
 
     async def _get_existing_clusters(self) -> dict[ClusterId, Cluster]:
-        all_meta = await self.cluster_store.get()
-        all_cluster_embeds = {emb.item_id : emb for emb in await self.cluster_embedding_store.get()}
+        all_meta = await self.cluster_store.clusters.get()
+        all_cluster_embeds = {emb.item_id : emb for emb in await self.cluster_store.embeds.get()}
         existing_clusters = { meta.id: Cluster(
             prototype_id=meta.id,
             embedding=all_cluster_embeds[meta.id].embedding,

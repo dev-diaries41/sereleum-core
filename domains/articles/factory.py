@@ -3,6 +3,7 @@ from sereleum.data.embeds.pgvector_embed_store import PgVectorEmbeddingStore
 from sereleum.label.cluster_labeller import ClusterLabeller
 from sereleum.tags.tag_manager import TagManager
 from sereleum.data.stores.item_embed_store import ItemEmbedStore
+from sereleum.data.stores.clusters.cluster_embed_store import ClusterEmbedStore
 
 from domains.articles.item import Article
 from domains.articles.stores import ArticleStore, ArticleClusterStore, ArticleClusterCrossRefStore, ArticleTagStore, ArticleTagCrossRefStore
@@ -23,14 +24,15 @@ def create_item_embed_store(sessionmaker:  async_sessionmaker):
 
 def create_cluster_manager( sessionmaker: async_sessionmaker, llm: LLMProvider | None = None, ):
     labeller = ClusterLabeller(llm=llm) if llm else None
-    cluster_store = ArticleClusterStore(sessionmaker)
+    cluster_embed_store = ClusterEmbedStore(
+        clusters=ArticleClusterStore(sessionmaker),
+        embeds=PgVectorEmbeddingStore(name=f'articles_cluster_embeds', sessionmaker=sessionmaker)
+    )
     cluster_crossref_store = ArticleClusterCrossRefStore(sessionmaker)
-    cluster_embed_store = PgVectorEmbeddingStore(name=f'articles_cluster_embeds', sessionmaker=sessionmaker)
     item_embed_store = create_item_embed_store(sessionmaker=sessionmaker)
 
     return ClusterManager[Article](
-        cluster_embedding_store=cluster_embed_store,
-        cluster_store=cluster_store,
+        cluster_store=cluster_embed_store,
         crossrefs_store=cluster_crossref_store,
         item_store=item_embed_store,
         labeller=labeller,
