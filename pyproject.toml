@@ -15,7 +15,6 @@ dependencies = [
     "llm_connect @ git+https://github.com/dev-diaries41/llm-connect.git",
     "aiosqlite==0.22.1",
     "matplotlib==3.10.8",
-    "openai==2.14.0",
     "scikit-learn==1.7.2",
     "tiktoken==0.12.0",
     "pytest==9.0.2",
