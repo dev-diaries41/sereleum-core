@@ -14,12 +14,14 @@ from smartscan import TextEmbeddingProvider
 from sereleum.constants import  UPLOAD_DIR
 from sereleum.clusters.cluster_manager import ClusterManager
 from sereleum.tags.tag_manager import TagManager
+from sereleum.data.stores.item_embed_store import ItemEmbedStore
 
 from sereleum.data.types import TItem
 
 
 def create_app(
-    item_type: Type[TItem], 
+    item_type: Type[TItem],
+    item_embed_store: ItemEmbedStore[TItem],
     cluster_manager: ClusterManager[TItem],
     tag_manager: TagManager,
     index_worker: Actor, 
@@ -42,7 +44,7 @@ def create_app(
     )
 
     app.include_router(create_overview_router(tag_manager, cluster_manager))
-    app.include_router(create_items_router(item_type, cluster_manager,text_embedder, index_worker))
+    app.include_router(create_items_router(item_type, item_embed_store,text_embedder, index_worker))
     app.include_router(create_clusters_router(cluster_manager, text_embedder))
     app.include_router(create_tags_router(tag_manager))
     app.include_router(create_events_router())

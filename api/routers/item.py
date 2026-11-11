@@ -9,17 +9,17 @@ from tempfile import NamedTemporaryFile
 
 from api.routers.routes import Routes
 from api.schemas.request import GetItemsRequest, GetItemsByIdRequest, QueryItemsRequest
-from api.schemas.response import GetItemsResponse, GetCountResponse, AddItemsResponse, GetOverviewResponse
+from api.schemas.response import GetItemsResponse, GetCountResponse, AddItemsResponse
 from smartscan.types import TextEmbeddingProvider
 
 from sereleum.data.types import TItem
-from sereleum.clusters.cluster_manager import ClusterManager
+from sereleum.data.stores.item_embed_store import ItemEmbedStore
 from sereleum.constants import  UPLOAD_DIR
 
 
 def create_items_router(
         item_type: Type[TItem], 
-        cluster_manager: ClusterManager[TItem], 
+        item_embed_store: ItemEmbedStore[TItem], 
         text_embedder: TextEmbeddingProvider,
         index_worker: Actor
         ) -> APIRouter:
@@ -40,12 +40,12 @@ def create_items_router(
             'tag_ids': req.tag_ids
         }
    
-        items = await cluster_manager.item_store.get(filter=query_filter, limit=req.limit, offset=req.offset)
+        items = await item_embed_store.items.get(filter=query_filter, limit=req.limit, offset=req.offset)
         return GetItemsResponse[item_type](items=items)
 
     @router.post(Routes.GET_ITEMS_BY_IDS_ENDPOINT, response_model=GetItemsResponse[item_type])
     async def get_items_by_id(req: GetItemsByIdRequest):
-        items = await cluster_manager.item_store.get(filter={'ids': req.item_ids})
+        items = await item_embed_store.items.get(filter={'ids': req.item_ids})
         return GetItemsResponse[item_type](items=items)
 
     @router.post(Routes.QUERY_ITEMS_ENDPOINT, response_model=GetItemsResponse[item_type])
@@ -54,17 +54,14 @@ def create_items_router(
 
         ids = None
         if req.cluster_ids:
-            crossrefs = await cluster_manager.crossrefs_store.get(
-                filter={'include_cluster_ids': req.cluster_ids}
-            )
-            ids = [c.item_id for c in crossrefs]
-        query_result = await cluster_manager.item_embedding_store.query(embedding, topK=req.limit, ids=ids)
-        items = await cluster_manager.item_store.get(filter={'ids': query_result.ids})
+            ids = await item_embed_store.items.get_ids(filter={'cluster_ids': req.cluster_ids})
+        query_result = await item_embed_store.embeds.query(embedding, topK=req.limit, ids=ids)
+        items = await item_embed_store.items.get(filter={'ids': query_result.ids})
         return GetItemsResponse[item_type](items=items)
 
     @router.get(Routes.COUNT_ITEMS_ENDPOINT, response_model=GetCountResponse)
     async def count_items():
-        count = await cluster_manager.item_store.count()
+        count = await item_embed_store.items.count()
         return GetCountResponse(count=count)
 
     
