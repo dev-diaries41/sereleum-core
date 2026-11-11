@@ -14,11 +14,11 @@ def create_tags_router(tag_manager: TagManager) -> APIRouter:
 
     @router.get(Routes.BASE_TAG_ENDPOINT, response_model=GetCollectionsResponse)
     async def get_collections(
-        tag_id: Optional[int] = None,
+        collection_id: Optional[int] = None,
         limit: Optional[int] = None,
         offset: Optional[int] = None,
     ):
-        filter={'ids': [tag_id]} if tag_id else None
+        filter={'ids': [collection_id]} if collection_id else None
         collections = await tag_manager.get_collections(limit=limit, offset=offset, filter=filter, order_by='size')
         return GetCollectionsResponse(collections=collections)
 
