@@ -131,6 +131,12 @@ class PostgresTagStore(
             )
 
             await session.execute(stmt)
+
+            await session.execute(
+                        delete(self.model).where(
+                            self.model.id.in_(secondary_tag_ids)
+                        )
+                    )
             await session.commit()
 
 
