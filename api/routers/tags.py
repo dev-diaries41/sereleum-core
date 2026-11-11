@@ -19,7 +19,7 @@ def create_tags_router(tag_manager: TagManager) -> APIRouter:
         offset: Optional[int] = None,
     ):
         filter={'ids': [tag_id]} if tag_id else None
-        collections = await tag_manager.get_collections(limit=limit, offset=offset, filter=filter)
+        collections = await tag_manager.get_collections(limit=limit, offset=offset, filter=filter, order_by='size')
         return GetCollectionsResponse(collections=collections)
 
     # @router.patch(Routes.MOVE_TAG_ITEMS_ENDPOINT, status_code=204)
