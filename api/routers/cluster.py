@@ -60,7 +60,7 @@ def create_clusters_router(
 
     @router.get(Routes.COUNT_CLUSTERS_ENDPOINT, response_model=GetCountResponse)
     async def count_clusters():
-        count = await cluster_manager.cluster_store.count()
+        count = await cluster_manager.cluster_store.clusters.count()
         return GetCountResponse(count=count)
     
 

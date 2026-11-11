@@ -23,9 +23,9 @@ def create_overview_router(
 async def _get_overview( tag_manager: TagManager, cluster_manager: ClusterManager[TItem] ):
     top_cluster_collections = await cluster_manager.get_collections(order_by='size', limit=6, ascending=False)
     top_tag_collections = await tag_manager.get_collections(order_by='size', limit=6, ascending=False)
-    clusters_count = await cluster_manager.cluster_store.count()
+    clusters_count = await cluster_manager.cluster_store.clusters.count()
     tags_count = await tag_manager.tag_store.count()
-    items_count = await cluster_manager.item_store.count()
+    items_count = await cluster_manager.item_store.items.count()
     return GetOverviewResponse(
         total_items=items_count,
         total_clusters=clusters_count,

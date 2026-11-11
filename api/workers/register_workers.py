@@ -54,7 +54,7 @@ def register_workers(item_cls: type[TItem], indexer: Indexer[TItem], cluster_man
             items = [item_cls(**p) for p in json.load(f)]
 
         ids = [item.id for item in items]
-        unindexed_ids = set(await cluster_manager.item_store.check_unindexed_items(ids))
+        unindexed_ids = set(await cluster_manager.item_store.items.check_unindexed_items(ids))
         unindexed_items = [item for item in items if item.id in unindexed_ids]
         logger.info(f'Number of undexed items: {len(unindexed_ids)}')
 
