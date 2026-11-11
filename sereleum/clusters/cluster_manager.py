@@ -13,12 +13,12 @@ from smartscan.cluster import IncrementalClusterer
 
 from sereleum.schemas.cluster import ClusterCrossRef, StoredClusterMetadata
 from sereleum.errors import SereleumError, ErrorCode
-from sereleum.data.stores.item_store import ItemStore
 from sereleum.data.stores.clusters.cluster_store import ClusterStore
 from sereleum.data.stores.clusters.cluster_crossref_store import ClusterCrossRefStore
 from sereleum.data.types import TItem, TCollection
 from sereleum.collections.collecion_manager import CollectionManager
 from sereleum.label.cluster_labeller import ClusterLabeller
+from sereleum.data.stores.item_embed_store import ItemEmbedStore
 
 class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]):
     def __init__(
@@ -26,15 +26,13 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
         cluster_store: ClusterStore,
         crossrefs_store: ClusterCrossRefStore,
         cluster_embedding_store: EmbeddingStore,
-        item_store: ItemStore[TItem],
-        item_embedding_store: EmbeddingStore,
+        item_store: ItemEmbedStore[TItem],
         labeller: ClusterLabeller | None = None
         ): 
         self.cluster_embedding_store = cluster_embedding_store 
         self.cluster_store = cluster_store
         self.crossrefs_store = crossrefs_store 
         self.item_store = item_store
-        self.item_embedding_store = item_embedding_store
         self.labeller = labeller
 
             
@@ -251,7 +249,7 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
             return None
         item_ids = [c.item_id for c in crossrefs]
 
-        embeds = await self.item_embedding_store.get(ids=item_ids)
+        embeds = await self.item_store.embeds.get(ids=item_ids)
         new_protoype_embed, new_mean_sim, new_std_sim = self._compute_cluster_metrics(np.stack([e.embedding for e in embeds], axis=0))
         
         old_cluster_metadata = result[0]
@@ -269,7 +267,7 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
         unclustered_items_ids = await self.cluster_store.get_unclustered_item_ids()
         if len(unclustered_items_ids) == 0:
             return {}
-        unclustered_item_embeds  = await self.item_embedding_store.get(unclustered_items_ids)
+        unclustered_item_embeds  = await self.item_store.embeds.get(unclustered_items_ids)
         return {emb.item_id: emb.embedding for emb in unclustered_item_embeds}
 
     def _compute_cluster_metrics(self, embeds: List[NDArray]):
@@ -290,7 +288,7 @@ class ClusterManager(Generic[TItem, TCollection], CollectionManager[TCollection]
         cluster_embed = result[0]
         crossrefs = await self.crossrefs_store.get(filter={'include_cluster_ids': [cluster_id]})
         ids = [c.item_id for c in crossrefs]
-        query_result = await self.item_embedding_store.query(query_embed=cluster_embed.embedding, ids=ids, topK=sample_size)
+        query_result = await self.item_store.embeds.query(query_embed=cluster_embed.embedding, ids=ids, topK=sample_size)
         samples = [item.content for item in await self.item_store.get(filter={'ids': query_result.ids})]
         return samples
 
