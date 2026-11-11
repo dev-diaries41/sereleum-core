@@ -21,7 +21,7 @@ class TagStore(Store[Tag], Protocol):
     async def tag(
         self,
         tag_name: str,
-        collection_id: CollectionId,
+        collection_id: CollectionId | None = None,
         item_ids: list[str] | None = None,
         *,
         select_all: bool = False,

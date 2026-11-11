@@ -137,7 +137,7 @@ class PostgresTagStore(
     async def tag(
         self,
         tag_name: str,
-        collection_id: CollectionId,
+        collection_id: CollectionId | None = None,
         item_ids: list[str] | None = None,
         *,
         select_all: bool = False,
@@ -145,6 +145,10 @@ class PostgresTagStore(
     ) -> None:
         item_ids = item_ids or []
         excluded_item_ids = excluded_item_ids or []
+
+        # This is only acceptable because items are currently always accessed through a collection in the app.
+        if select_all and collection_id is None:
+            raise ValueError("collection_id is required when select_all=True")
 
         if not select_all and not item_ids:
             return
