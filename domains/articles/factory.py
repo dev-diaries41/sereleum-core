@@ -54,6 +54,6 @@ def create_indexer( text_embedder: TextEmbeddingProvider, sessionmaker: async_se
 
     return ArticleIndexer(
         text_encoder=text_embedder,
-        item_store=item_embed_store,
+        item_embed_store=item_embed_store,
         **kwargs
     )
