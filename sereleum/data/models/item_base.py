@@ -5,3 +5,4 @@ class ItemBase(Base):
     __abstract__ = True
 
     id = Column(Text, primary_key=True)
+    content = Column(Text, nullable=False)
